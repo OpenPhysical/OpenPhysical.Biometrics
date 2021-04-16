@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <doc>
     <assembly>
-        <name>FaceONNX.Gpu</name>
+        <name>FaceONNX</name>
     </assembly>
     <members>
         <member name="T:FaceONNX.FaceAgeClassifier">
@@ -725,7 +725,7 @@
         </member>
         <member name="M:FaceONNX.Landmarks.GetFace(System.Drawing.Point[])">
             <summary>
-            Returns tongue points.
+            Returns face points.
             </summary>
             <param name="points">Points</param>
             <returns>Points</returns>
