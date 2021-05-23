@@ -1,10 +1,11 @@
-﻿using FaceONNX.Core;
-using Microsoft.ML.OnnxRuntime;
+﻿using Microsoft.ML.OnnxRuntime;
 using Microsoft.ML.OnnxRuntime.Tensors;
 using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
+using UMapx.Core;
+using UMapx.Imaging;
 
 namespace FaceONNX
 {
@@ -53,7 +54,7 @@ namespace FaceONNX
 
 			for (int i = 0; i < length; i++)
 			{
-				using var cropped = Imaging.Crop(image, rectangles[i]);
+				using var cropped = BitmapTransform.Crop(image, rectangles[i]);
 				vector[i] = Forward(cropped);
 			}
 
@@ -67,7 +68,7 @@ namespace FaceONNX
 		public float[] Forward(Bitmap image)
 		{
 			var size = new Size(48, 48);
-			using var clone = Imaging.Resize(image, size);
+			using var clone = BitmapTransform.Resize(image, size);
 			int width = clone.Width;
 			int height = clone.Height;
 			var inputMeta = _session.InputMetadata;
@@ -76,7 +77,7 @@ namespace FaceONNX
 			// pre-processing
 			var dimentions = new int[] { 1, 1, height, width };
 			var tensors = clone.ToFloatTensor(true);
-			tensors.Operator(256, Vector.Div);
+			tensors.Compute(256, Matrice.Div);
 			var inputData = tensors.Average();
 
 			// session run
@@ -84,7 +85,7 @@ namespace FaceONNX
 			var inputs = new List<NamedOnnxValue> { NamedOnnxValue.CreateFromTensor(name, t) };
 			var results = _session.Run(inputs).ToArray();
 			var length = results.Length;
-			var confidences = Vector.Exp(results[length - 1].AsTensor<float>().ToArray());
+			var confidences = Matrice.Compute(results[length - 1].AsTensor<float>().ToArray(), Maths.Exp);
 
 			// dispose
 			foreach (var result in results)

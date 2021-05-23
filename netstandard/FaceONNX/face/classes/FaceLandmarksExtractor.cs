@@ -1,10 +1,11 @@
-﻿using FaceONNX.Core;
-using Microsoft.ML.OnnxRuntime;
+﻿using Microsoft.ML.OnnxRuntime;
 using Microsoft.ML.OnnxRuntime.Tensors;
 using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
+using UMapx.Core;
+using UMapx.Imaging;
 
 namespace FaceONNX
 {
@@ -50,7 +51,7 @@ namespace FaceONNX
 			for (int i = 0; i < length; i++)
 			{
 				var rectangle = rectangles[i];
-				using var cropped = Imaging.Crop(image, rectangle);
+				using var cropped = BitmapTransform.Crop(image, rectangle);
 				var points = Forward(cropped);
 				var count = points.Length;
 
@@ -74,7 +75,7 @@ namespace FaceONNX
 		public Point[] Forward(Bitmap image)
 		{
 			var size = new Size(112, 112);
-			using var clone = Imaging.Resize(image, size);
+			using var clone = BitmapTransform.Resize(image, size);
 			int width = clone.Width;
 			int height = clone.Height;
 			var inputMeta = _session.InputMetadata;
@@ -83,11 +84,7 @@ namespace FaceONNX
 			// pre-processing
 			var dimentions = new int[] { 1, 3, height, width };
 			var tensors = clone.ToFloatTensor(true);
-			tensors.Operator(255.0f, Vector.Div);
-
-			// normalizers for mobilenet_se
-            //tensors.Operator(new float[] { 0.485f, 0.456f, 0.406f }, Vector.Sub);
-            //tensors.Operator(new float[] { 0.229f, 0.224f, 0.225f }, Vector.Div);
+			tensors.Compute(255.0f, Matrice.Div);
             var inputData = tensors.Merge(true);
 
 			// session run
@@ -125,7 +122,7 @@ namespace FaceONNX
 			var right = Landmarks.GetMeanPoint(points.GetRightEye());
 			var point = Landmarks.GetSupportedPoint(left, right);
 			var angle = Landmarks.GetAngle(left, right, point);
-			return Imaging.Rotate(image, angle, Color.Black);
+			return BitmapTransform.Rotate(image, angle, Color.Black);
 		}
 		#endregion
 

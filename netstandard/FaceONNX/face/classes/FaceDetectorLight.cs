@@ -1,10 +1,11 @@
-﻿using FaceONNX.Core;
-using Microsoft.ML.OnnxRuntime;
+﻿using Microsoft.ML.OnnxRuntime;
 using Microsoft.ML.OnnxRuntime.Tensors;
 using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
+using UMapx.Core;
+using UMapx.Imaging;
 
 namespace FaceONNX
 {
@@ -60,7 +61,7 @@ namespace FaceONNX
 		public Rectangle[] Forward(Bitmap image)
 		{
 			var size = new Size(320, 240);
-			using var clone = Imaging.Resize(image, size);
+			using var clone = BitmapTransform.Resize(image, size);
 			int width = clone.Width;
 			int height = clone.Height;
 			var inputMeta = _session.InputMetadata;
@@ -69,8 +70,8 @@ namespace FaceONNX
 			// pre-processing
 			var dimentions = new int[] { 1, 3, height, width };
 			var tensors = clone.ToFloatTensor(true);
-			tensors.Operator(new float[] { 127.0f, 127.0f, 127.0f }, Vector.Sub);
-			tensors.Operator(128, Vector.Div);
+			tensors.Compute(new float[] { 127.0f, 127.0f, 127.0f }, Matrice.Sub);
+			tensors.Compute(128, Matrice.Div);
 			var inputData = tensors.Merge(true);
 
 			// session run

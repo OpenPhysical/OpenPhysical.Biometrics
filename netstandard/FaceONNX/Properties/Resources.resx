@@ -145,6 +145,9 @@
   <data name="landmarks_68_pfld" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\models\landmarks_68_pfld.onnx;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </data>
+  <data name="mask_googlenet_slim" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\models\mask_googlenet_slim.onnx;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </data>
   <data name="race_googlenet" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\models\race_googlenet.onnx;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </data>

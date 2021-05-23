@@ -1,10 +1,11 @@
-﻿using FaceONNX.Core;
-using Microsoft.ML.OnnxRuntime;
+﻿using Microsoft.ML.OnnxRuntime;
 using Microsoft.ML.OnnxRuntime.Tensors;
 using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
+using UMapx.Core;
+using UMapx.Imaging;
 
 namespace FaceONNX
 {
@@ -50,7 +51,7 @@ namespace FaceONNX
             for (int i = 0; i < length; i++)
             {
                 var rectangle = rectangles[i];
-                using var cropped = Imaging.Crop(image, rectangle);
+                using var cropped = BitmapTransform.Crop(image, rectangle);
                 vector[i] = Forward(cropped);
             }
 
@@ -64,7 +65,7 @@ namespace FaceONNX
         public float[][,] Forward(Bitmap image)
         {
             var size = new Size(512, 512);
-            using var clone = Imaging.Resize(image, size);
+            using var clone = BitmapTransform.Resize(image, size);
             int width = clone.Width;
             int height = clone.Height;
             var inputMeta = _session.InputMetadata;
@@ -73,9 +74,9 @@ namespace FaceONNX
             // pre-processing
             var dimentions = new int[] { 1, 3, height, width };
             var tensors = clone.ToFloatTensor(true);
-            tensors.Operator(255.0f, Vector.Div);
-            tensors.Operator(new float[] { 0.5f, 0.5f, 0.5f }, Vector.Sub);
-            tensors.Operator(new float[] { 0.5f, 0.5f, 0.5f }, Vector.Div);
+            tensors.Compute(255.0f, Matrice.Div);
+            tensors.Compute(new float[] { 0.5f, 0.5f, 0.5f }, Matrice.Sub);
+            tensors.Compute(new float[] { 0.5f, 0.5f, 0.5f }, Matrice.Div);
             var inputData = tensors.Merge(true);
 
             // session run
@@ -89,7 +90,7 @@ namespace FaceONNX
             var max = confidences.Max();
             var min = confidences.Min();
 
-            var probabilities = Vector.Div(Vector.Sub(confidences, min), max - min);
+            var probabilities = Matrice.Div(Matrice.Sub(confidences, min), max - min);
             var outputSize = 19;
             var array = new float[outputSize][,];
 
@@ -125,7 +126,7 @@ namespace FaceONNX
             int height = masks[0].GetLength(0);
             int width = masks[0].GetLength(1);
             var bitmap = new Bitmap(width, height);
-            var bitmapData = Imaging.Lock24bpp(bitmap);
+            var bitmapData = BitmapFormat.Lock32bpp(bitmap);
 
             byte* p = (byte*)bitmapData.Scan0.ToPointer();
             int stride = bitmapData.Stride;
@@ -157,7 +158,7 @@ namespace FaceONNX
                 }
             }
 
-            Imaging.Unlock(bitmap, bitmapData);
+            BitmapFormat.Unlock(bitmap, bitmapData);
             return bitmap;
         }
         /// <summary>

@@ -153,6 +153,16 @@ namespace FaceONNX.Properties {
         /// <summary>
         ///   Looks up a localized resource of type System.Byte[].
         /// </summary>
+        internal static byte[] mask_googlenet_slim {
+            get {
+                object obj = ResourceManager.GetObject("mask_googlenet_slim", resourceCulture);
+                return ((byte[])(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Byte[].
+        /// </summary>
         internal static byte[] race_googlenet {
             get {
                 object obj = ResourceManager.GetObject("race_googlenet", resourceCulture);
