@@ -3,6 +3,9 @@ using UMapx.Core;
 
 namespace FaceONNX
 {
+    /// <summary>
+    /// Using for operations with points.
+    /// </summary>
     internal static class PointsExtensions
     {
         /// <summary>
