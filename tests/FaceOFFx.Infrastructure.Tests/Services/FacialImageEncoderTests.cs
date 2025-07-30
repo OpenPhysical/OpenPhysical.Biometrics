@@ -1,5 +1,4 @@
 using AwesomeAssertions;
-using CSharpFunctionalExtensions;
 using FaceOFFx.Core.Domain.Transformations;
 using FaceOFFx.Infrastructure.Services;
 using FaceOFFx.Tests.Common;
@@ -8,10 +7,10 @@ using NUnit.Framework;
 namespace FaceOFFx.Infrastructure.Tests.Services;
 
 /// <summary>
-/// Tests for the FaceProcessor API
+/// Tests for the FacialImageEncoder API
 /// </summary>
 [TestFixture]
-public class FaceProcessorTests : IntegrationTestBase
+public class FacialImageEncoderTests : IntegrationTestBase
 {
     private byte[] _validImageData = null!;
     private byte[] _invalidImageData = null!;
@@ -42,19 +41,14 @@ public class FaceProcessorTests : IntegrationTestBase
     [Test]
     public async Task ProcessAsync_WithDefaultOptions_ReturnsValidResult()
     {
-        var result = await FaceProcessor.ProcessAsync(_validImageData);
+        var result = await FacialImageEncoder.ProcessAsync(_validImageData);
 
-        if (result.IsFailure)
-        {
-            Console.WriteLine($"Processing failed with error: {result.Error}");
-        }
-
-        result.IsSuccess.Should().BeTrue();
-        result.Value.ImageData.Should().NotBeEmpty();
-        result.Value.Metadata.FileSize.Should().BeGreaterThan(0);
-        result.Value.Metadata.OutputDimensions.Width.Should().Be(420);
-        result.Value.Metadata.OutputDimensions.Height.Should().Be(560);
-        result.Value.Metadata.CompressionRate.Should().BeGreaterThan(0);
+        result.Should().NotBeNull();
+        result.ImageData.Should().NotBeEmpty();
+        result.Metadata.FileSize.Should().BeGreaterThan(0);
+        result.Metadata.OutputDimensions.Width.Should().Be(420);
+        result.Metadata.OutputDimensions.Height.Should().Be(560);
+        result.Metadata.CompressionRate.Should().BeGreaterThan(0);
     }
 
     /// <summary>
@@ -65,11 +59,11 @@ public class FaceProcessorTests : IntegrationTestBase
     {
         var customOptions = ProcessingOptions.PivHigh with { MinFaceConfidence = 0.9f };
 
-        var result = await FaceProcessor.ProcessAsync(_validImageData, customOptions);
+        var result = await FacialImageEncoder.ProcessAsync(_validImageData, customOptions);
 
-        result.IsSuccess.Should().BeTrue();
-        result.Value.Metadata.TargetSize.HasValue.Should().BeTrue();
-        result.Value.Metadata.TargetSize.Value.Should().Be(30000); // PivHigh target
+        result.Should().NotBeNull();
+        result.Metadata.TargetSize.Should().HaveValue();
+        result.Metadata.TargetSize!.Value.Should().Be(30000); // PivHigh target
     }
 
     /// <summary>
@@ -78,12 +72,12 @@ public class FaceProcessorTests : IntegrationTestBase
     [Test]
     public async Task ProcessForTwicAsync_TargetsCorrectSize()
     {
-        var result = await FaceProcessor.ProcessForTwicAsync(_validImageData);
+        var result = await FacialImageEncoder.ProcessForTwicAsync(_validImageData);
 
-        result.IsSuccess.Should().BeTrue();
-        (result.Value.Metadata.FileSize <= 14000).Should().BeTrue();
-        result.Value.Metadata.TargetSize.HasValue.Should().BeTrue();
-        result.Value.Metadata.TargetSize.Value.Should().Be(14000);
+        result.Should().NotBeNull();
+        (result.Metadata.FileSize <= 14000).Should().BeTrue();
+        result.Metadata.TargetSize.HasValue.Should().BeTrue();
+        result.Metadata.TargetSize!.Value.Should().Be(14000);
     }
 
     /// <summary>
@@ -92,11 +86,11 @@ public class FaceProcessorTests : IntegrationTestBase
     [Test]
     public async Task ProcessForPivAsync_TargetsCorrectSize()
     {
-        var result = await FaceProcessor.ProcessForPivAsync(_validImageData);
+        var result = await FacialImageEncoder.ProcessForPivAsync(_validImageData);
 
-        result.IsSuccess.Should().BeTrue();
-        result.Value.Metadata.TargetSize.HasValue.Should().BeTrue();
-        result.Value.Metadata.TargetSize.Value.Should().Be(20000);
+        result.Should().NotBeNull();
+        result.Metadata.TargetSize.HasValue.Should().BeTrue();
+        result.Metadata.TargetSize!.Value.Should().Be(20000);
     }
 
     /// <summary>
@@ -106,12 +100,12 @@ public class FaceProcessorTests : IntegrationTestBase
     public async Task ProcessToSizeAsync_WithCustomSize_TargetsSize()
     {
         var targetSize = 25000;
-        var result = await FaceProcessor.ProcessToSizeAsync(_validImageData, targetSize);
+        var result = await FacialImageEncoder.ProcessToSizeAsync(_validImageData, targetSize);
 
-        result.IsSuccess.Should().BeTrue();
-        (result.Value.Metadata.FileSize <= targetSize).Should().BeTrue();
-        result.Value.Metadata.TargetSize.HasValue.Should().BeTrue();
-        result.Value.Metadata.TargetSize.Value.Should().Be(targetSize);
+        result.Should().NotBeNull();
+        (result.Metadata.FileSize <= targetSize).Should().BeTrue();
+        result.Metadata.TargetSize.HasValue.Should().BeTrue();
+        result.Metadata.TargetSize!.Value.Should().Be(targetSize);
     }
 
     /// <summary>
@@ -121,35 +115,33 @@ public class FaceProcessorTests : IntegrationTestBase
     public async Task ProcessWithRateAsync_WithCustomRate_UsesRate()
     {
         var compressionRate = 1.5f;
-        var result = await FaceProcessor.ProcessWithRateAsync(_validImageData, compressionRate);
+        var result = await FacialImageEncoder.ProcessWithRateAsync(_validImageData, compressionRate);
 
-        result.IsSuccess.Should().BeTrue();
-        result.Value.Metadata.CompressionRate.Should().Be(compressionRate);
-        result.Value.Metadata.TargetSize.HasValue.Should().BeFalse(); // No target size for fixed rate
+        result.Should().NotBeNull();
+        result.Metadata.CompressionRate.Should().Be(compressionRate);
+        result.Metadata.TargetSize.HasValue.Should().BeFalse(); // No target size for fixed rate
     }
 
     /// <summary>
     /// Tests ProcessAsync fails gracefully with invalid image data
     /// </summary>
     [Test]
-    public async Task ProcessAsync_WithInvalidImageData_ReturnsFailure()
+    public async Task ProcessAsync_WithInvalidImageData_ThrowsException()
     {
-        var result = await FaceProcessor.ProcessAsync(_invalidImageData);
+        var action = () => FacialImageEncoder.ProcessAsync(_invalidImageData);
 
-        result.IsFailure.Should().BeTrue();
-        result.Error.Should().NotBeEmpty();
+        await action.Should().ThrowAsync<ArgumentException>();
     }
 
     /// <summary>
     /// Tests ProcessAsync fails gracefully with empty image data
     /// </summary>
     [Test]
-    public async Task ProcessAsync_WithEmptyImageData_ReturnsFailure()
+    public async Task ProcessAsync_WithEmptyImageData_ThrowsException()
     {
-        var result = await FaceProcessor.ProcessAsync(Array.Empty<byte>());
+        var action = () => FacialImageEncoder.ProcessAsync(Array.Empty<byte>());
 
-        result.IsFailure.Should().BeTrue();
-        result.Error.Should().NotBeEmpty();
+        await action.Should().ThrowAsync<ArgumentException>();
     }
 
     /// <summary>
@@ -158,7 +150,7 @@ public class FaceProcessorTests : IntegrationTestBase
     [Test]
     public async Task ProcessAsync_WithNullImageData_ThrowsArgumentException()
     {
-        await AssertThrowsAsync<ArgumentNullException>(() => FaceProcessor.ProcessAsync(null!));
+        await AssertThrowsAsync<ArgumentNullException>(() => FacialImageEncoder.ProcessAsync(null!));
     }
 
     /// <summary>
@@ -167,11 +159,11 @@ public class FaceProcessorTests : IntegrationTestBase
     [Test]
     public async Task ProcessAsync_ValidImage_ReturnsCompleteMetadata()
     {
-        var result = await FaceProcessor.ProcessAsync(_validImageData, ProcessingOptions.Archival);
+        var result = await FacialImageEncoder.ProcessAsync(_validImageData, ProcessingOptions.Archival);
 
-        result.IsSuccess.Should().BeTrue();
+        result.Should().NotBeNull();
 
-        var metadata = result.Value.Metadata;
+        var metadata = result.Metadata;
         metadata.OutputDimensions.Width.Should().Be(420);
         metadata.OutputDimensions.Height.Should().Be(560);
         metadata.FaceConfidence.Should().BeGreaterThan(0);
@@ -188,25 +180,25 @@ public class FaceProcessorTests : IntegrationTestBase
     [Test]
     public async Task ProcessAsync_DifferentPresets_ProduceDifferentSizes()
     {
-        var fastResult = await FaceProcessor.ProcessAsync(_validImageData, ProcessingOptions.Fast);
-        var standardResult = await FaceProcessor.ProcessAsync(
+        var fastResult = await FacialImageEncoder.ProcessAsync(_validImageData, ProcessingOptions.Fast);
+        var standardResult = await FacialImageEncoder.ProcessAsync(
             _validImageData,
             ProcessingOptions.PivBalanced
         );
-        var archivalResult = await FaceProcessor.ProcessAsync(
+        var archivalResult = await FacialImageEncoder.ProcessAsync(
             _validImageData,
             ProcessingOptions.Archival
         );
 
-        fastResult.IsSuccess.Should().BeTrue();
-        standardResult.IsSuccess.Should().BeTrue();
-        archivalResult.IsSuccess.Should().BeTrue();
+        fastResult.Should().NotBeNull();
+        standardResult.Should().NotBeNull();
+        archivalResult.Should().NotBeNull();
 
         // Generally, archival should be largest, standard medium, fast smallest
         // But due to target size strategies, this might not always hold
-        fastResult.Value.Metadata.FileSize.Should().BeGreaterThan(0);
-        standardResult.Value.Metadata.FileSize.Should().BeGreaterThan(0);
-        archivalResult.Value.Metadata.FileSize.Should().BeGreaterThan(0);
+        fastResult.Metadata.FileSize.Should().BeGreaterThan(0);
+        standardResult.Metadata.FileSize.Should().BeGreaterThan(0);
+        archivalResult.Metadata.FileSize.Should().BeGreaterThan(0);
     }
 
     /// <summary>
@@ -215,10 +207,10 @@ public class FaceProcessorTests : IntegrationTestBase
     [Test]
     public async Task ProcessToSizeAsync_WithVerySmallTarget_ReturnsFailure()
     {
-        var result = await FaceProcessor.ProcessToSizeAsync(_validImageData, 1000); // Very small
+        var action = () => FacialImageEncoder.ProcessToSizeAsync(_validImageData, 1000); // Very small
 
-        result.IsFailure.Should().BeTrue();
-        result.Error.Should().Contain("Cannot compress");
+        await action.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*Cannot compress*");
     }
 
     /// <summary>
@@ -227,9 +219,9 @@ public class FaceProcessorTests : IntegrationTestBase
     [Test]
     public async Task ProcessWithRateAsync_WithInvalidRate_ReturnsFailure()
     {
-        var result = await FaceProcessor.ProcessWithRateAsync(_validImageData, -1.0f); // Invalid rate
+        var action = () => FacialImageEncoder.ProcessWithRateAsync(_validImageData, -1.0f); // Invalid rate
 
-        result.IsFailure.Should().BeTrue();
+        await action.Should().ThrowAsync<ArgumentOutOfRangeException>();
     }
 
     /// <summary>
@@ -250,11 +242,11 @@ public class FaceProcessorTests : IntegrationTestBase
 
         foreach (var preset in presets)
         {
-            var result = await FaceProcessor.ProcessAsync(_validImageData, preset);
+            var result = await FacialImageEncoder.ProcessAsync(_validImageData, preset);
 
-            result.IsSuccess.Should().BeTrue($"Preset {preset} should succeed");
-            result.Value.Metadata.OutputDimensions.Width.Should().Be(420);
-            result.Value.Metadata.OutputDimensions.Height.Should().Be(560);
+            result.Should().NotBeNull($"Preset {preset} should succeed");
+            result.Metadata.OutputDimensions.Width.Should().Be(420);
+            result.Metadata.OutputDimensions.Height.Should().Be(560);
         }
     }
 }
