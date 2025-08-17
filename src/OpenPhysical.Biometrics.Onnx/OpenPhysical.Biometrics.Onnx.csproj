@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <Description>ONNX models for OpenPhysical Biometrics library</Description>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Resources\*.onnx" />
+  </ItemGroup>
+  <ItemGroup>
+    <None
+      Include="..\..\icon.png"
+      Pack="true"
+      PackagePath="\"
+      Condition="Exists('..\..\icon.png')"
+    />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="JetBrains.Annotations" Version="2025.2.0" />
+  </ItemGroup>
+</Project>

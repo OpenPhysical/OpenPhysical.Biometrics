@@ -1,0 +1,24 @@
+using OpenPhysical.Biometrics.Core.Domain.Detection;
+using JetBrains.Annotations;
+using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.PixelFormats;
+
+namespace OpenPhysical.Biometrics.Core.Abstractions;
+
+/// <summary>
+/// Simple interface for face detection services
+/// </summary>
+[PublicAPI]
+public interface IFaceDetector
+{
+    /// <summary>
+    /// Detects faces in an image
+    /// </summary>
+    /// <param name="image">Image as ImageSharp Image</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>List of detected faces</returns>
+    Task<Result<IReadOnlyList<DetectedFace>>> DetectFacesAsync(
+        Image<Rgba32> image,
+        CancellationToken cancellationToken = default
+    );
+}

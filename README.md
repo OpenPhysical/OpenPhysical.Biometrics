@@ -1,9 +1,6 @@
-# FaceOFFx – PIV-Compatible Facial Processing for .NET
+# OpenPhysical.Biometrics – Comprehensive Biometric Processing for .NET
 
-![FaceOFFx ROI Visualization](https://raw.githubusercontent.com/mistial-dev/FaceOFFx/master/docs/samples/roi/generic_guy_roi_300w.jpg)
-
-*"I want to take his face... off."*
-— Castor Troy, *Face/Off* (1997)
+![OpenPhysical.Biometrics](https://raw.githubusercontent.com/openphysical/biometrics/master/docs/samples/roi/generic_guy_roi_300w.jpg)
 
 [Quick Start](#quick-start) • [Installation](#installation) • [Samples](#sample-gallery) • [API](#api-reference) • [CLI](#cli-usage) • [Configuration](#configuration)
 
@@ -11,12 +8,22 @@
 
 ## About
 
-FaceOFFx is a specialized, high-performance facial processing library for .NET, focused on **PIV (Personal Identity
-Verification)**
-compatibility for issuing credentials that follow government standards (FIPS 201). Derived from the excellent *
-*[FaceONNX](https://github.com/FaceONNX/FaceONNX)** library,
-FaceOFFx extends its capabilities with PIV-specific transformations, FIPS 201-3 compatibility features, and advanced JPEG
-2000 ROI encoding.
+OpenPhysical.Biometrics is a composable biometric processing ecosystem for .NET that provides:
+
+- **Core Library** - Standards-agnostic face detection, quality assessment, and image processing
+- **Plugin Architecture** - Add only the standards you need (PIV, TWIC, ICAO, custom)
+- **CBEFF Support** - Common Biometric Exchange Formats Framework encoding/decoding
+- **Multi-Modal Ready** - Designed for facial, fingerprint, and iris biometric data
+- **JPEG 2000 ROI Encoding** - Smart compression with exact target size limits
+
+### Architecture
+
+```
+OpenPhysical.Biometrics (Core Library) - Face detection, quality assessment
+    + OpenPhysical.Piv (Optional) - PIV/TWIC/CAC standards
+    + OpenPhysical.Icao (Future) - Passport photo standards
+    + Your Custom Standard - Implement IDocumentStandard
+```
 
 ### Key Features
 
@@ -26,6 +33,7 @@ FaceOFFx extends its capabilities with PIV-specific transformations, FIPS 201-3 
 - **High Performance** - Direct ONNX Runtime integration
 - **Cross-Platform** - Windows, Linux, macOS via .NET 8
 - **Self-Contained** - Embedded models, no external dependencies
+- **Pre-trained Models Only** - Uses existing RetinaFace and PFLD models, no training performed
 
 ## Quick Start
 
@@ -34,7 +42,7 @@ FaceOFFx extends its capabilities with PIV-specific transformations, FIPS 201-3 
 The new v2.0 API provides automatic service management with standard .NET error handling:
 
 ```csharp
-using FaceOFFx.Infrastructure.Services;
+using OpenPhysical.Biometrics.Infrastructure.Services;
 
 // Simplest: Default PIV processing (20KB target)
 byte[] imageData = File.ReadAllBytes("photo.jpg");
@@ -99,14 +107,80 @@ For 420×560 images:
 dotnet tool install --global FaceOFFx.Cli
 
 # Update to latest version
-dotnet tool update --global FaceOFFx.Cli
+dotnet tool update --global OpenPhysical.Biometrics.Tool
+```
+
+## Using as a Library
+
+### Basic Library Usage (No Standards)
+
+```csharp
+using Microsoft.Extensions.DependencyInjection;
+using OpenPhysical.Biometrics.Core.Abstractions;
+
+// Configure services
+var services = new ServiceCollection();
+services.AddBiometrics();
+
+var provider = services.BuildServiceProvider();
+
+// Use face detection directly
+var detector = provider.GetRequiredService<IFaceDetector>();
+var faces = await detector.DetectFacesAsync(imageData);
+
+// Use quality assessment
+var assessor = provider.GetRequiredService<IQualityAssessor>();
+var quality = await assessor.AssessAsync(imageData);
+```
+
+### With PIV Standards
+
+```csharp
+// Add PIV support
+services.AddBiometrics();
+services.AddPivStandards(); // From OpenPhysical.Piv package
+
+var registry = provider.GetRequiredService<IStandardRegistry>();
+var pivStandard = registry.GetStandard(DocumentStandardId.Piv);
+
+// Process for PIV compliance
+var processor = pivStandard.CreateProcessor();
+var result = await processor.ProcessAsync(imageData, pivStandard.DefaultProcessingOptions);
+```
+
+### Custom Standard Implementation
+
+```csharp
+public class EmployeeBadgeStandard : IDocumentStandard
+{
+    public DocumentStandardId Id => new("EMPLOYEE_BADGE");
+    public string Name => "Employee Badge Photo";
+    public ImageDimensions RequiredDimensions => new(300, 400);
+    
+    public IImageProcessor CreateProcessor()
+    {
+        return new CustomImageProcessor(RequiredDimensions);
+    }
+    
+    public async Task<Result<ComplianceValidation>> ValidateAsync(byte[] imageData)
+    {
+        // Implement your validation logic
+    }
+}
+
+// Register your standard
+services.AddSingleton<IDocumentStandard, EmployeeBadgeStandard>();
 ```
 
 ### As a Library (NuGet Package)
 
 ```bash
-# Package Manager
-dotnet add package FaceOFFx
+# Core library only (no standards)
+dotnet add package OpenPhysical.Biometrics
+
+# With PIV/TWIC/CAC support
+dotnet add package OpenPhysical.Biometrics
+dotnet add package OpenPhysical.Piv
 
 # Package Manager Console
 Install-Package FaceOFFx

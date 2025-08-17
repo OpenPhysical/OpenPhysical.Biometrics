@@ -1,0 +1,43 @@
+namespace OpenPhysical.Biometrics.Core.Cbeff;
+
+using CSharpFunctionalExtensions;
+using OpenPhysical.Domains.Cbeff;
+using System.Security.Cryptography.X509Certificates;
+
+/// <summary>
+/// Interface for signing CBEFF payloads.
+/// </summary>
+public interface ICbeffSigner
+{
+    /// <summary>
+    /// Signs a CBEFF payload using CMS (Cryptographic Message Syntax).
+    /// </summary>
+    /// <param name="payload">The CBEFF payload to sign</param>
+    /// <param name="signingCertificate">The certificate to use for signing</param>
+    /// <param name="includeCardUuid">Optional card UUID to include in signature attributes</param>
+    /// <returns>Result containing the signed CBEFF payload or error</returns>
+    Task<Result<CbeffPayload>> SignAsync(
+        CbeffPayload payload,
+        X509Certificate2 signingCertificate,
+        Maybe<Guid> includeCardUuid = default);
+
+    /// <summary>
+    /// Creates a detached CMS signature for CBEFF data.
+    /// </summary>
+    /// <param name="dataToSign">The data to sign (CBEFF header + BDB)</param>
+    /// <param name="signingCertificate">The certificate to use for signing</param>
+    /// <param name="includeCardUuid">Optional card UUID to include in signature attributes</param>
+    /// <returns>Result containing the CMS signature bytes or error</returns>
+    Result<byte[]> CreateDetachedSignature(
+        byte[] dataToSign,
+        X509Certificate2 signingCertificate,
+        Maybe<Guid> includeCardUuid = default);
+
+    /// <summary>
+    /// Calculates the signature size for a given certificate.
+    /// This is needed for pre-allocating space in the CBEFF header.
+    /// </summary>
+    /// <param name="signingCertificate">The certificate that will be used for signing</param>
+    /// <returns>Estimated signature size in bytes</returns>
+    ushort EstimateSignatureSize(X509Certificate2 signingCertificate);
+}

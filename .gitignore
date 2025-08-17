@@ -375,3 +375,14 @@ FodyWeavers.xsd
 appsettings.local.json
 
 megalinter-reports/
+
+# Dataset directories (for validation testing)
+dataset/
+processed_*/
+
+# Demo and human-in-the-loop directories
+demo/
+
+# FaceOFFx automated testing directory
+.faceoffx-test/
+datasets/
