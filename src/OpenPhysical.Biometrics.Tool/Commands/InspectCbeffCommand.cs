@@ -3,6 +3,7 @@ namespace OpenPhysical.Biometrics.Tool.Commands;
 using Spectre.Console;
 using Spectre.Console.Cli;
 using System;
+using System.Collections.Immutable;
 using System.ComponentModel;
 using System.IO;
 using System.Linq;
@@ -14,6 +15,8 @@ using OpenPhysical.Biometrics.Core.Cbeff.Formats;
 using OpenPhysical.Biometrics.Infrastructure.Cbeff;
 using OpenPhysical.Domains.Cbeff;
 using OpenPhysical.Domains.Cbeff.Formats.Incits385;
+using OpenPhysical.Domains.Images;
+using OpenPhysical.Biometrics.Core.Abstractions.Metadata;
 
 /// <summary>
 /// Command to inspect CBEFF data object files and display their structure.
@@ -21,35 +24,72 @@ using OpenPhysical.Domains.Cbeff.Formats.Incits385;
 public sealed class InspectCbeffCommand : AsyncCommand<InspectCbeffCommand.Settings>
 {
     private readonly IServiceProvider _serviceProvider;
+    private readonly IJpegMetadataExtractor _jpegExtractor;
+    private readonly IMetadataTransformer _metadataTransformer;
 
-    public InspectCbeffCommand(IServiceProvider serviceProvider)
+    /// <summary>
+    /// Initializes a new instance of the <see cref="InspectCbeffCommand"/> class.
+    /// </summary>
+    /// <param name="serviceProvider">The service provider for dependency injection.</param>
+    /// <param name="jpegExtractor">The JPEG metadata extractor.</param>
+    /// <param name="metadataTransformer">The metadata transformer.</param>
+    public InspectCbeffCommand(
+        IServiceProvider serviceProvider,
+        IJpegMetadataExtractor jpegExtractor,
+        IMetadataTransformer metadataTransformer)
     {
         _serviceProvider = serviceProvider;
+        _jpegExtractor = jpegExtractor;
+        _metadataTransformer = metadataTransformer;
     }
 
+    /// <summary>
+    /// Settings for the inspect CBEFF command.
+    /// </summary>
     public sealed class Settings : CommandSettings
     {
+        /// <summary>
+        /// Gets the path to the CBEFF data file to inspect.
+        /// </summary>
         [Description("Path to the CBEFF data file to inspect")]
         [CommandArgument(0, "<FILE>")]
         public string FilePath { get; init; } = string.Empty;
 
+        /// <summary>
+        /// Gets a value indicating whether to show raw hex dump of data sections.
+        /// </summary>
         [Description("Show raw hex dump of data sections")]
         [CommandOption("--hex")]
         public bool ShowHex { get; init; }
 
+        /// <summary>
+        /// Gets a value indicating whether to verify signature if present.
+        /// </summary>
         [Description("Verify signature if present")]
         [CommandOption("--verify")]
         public bool VerifySignature { get; init; }
 
+        /// <summary>
+        /// Gets the path to signer certificate for verification.
+        /// </summary>
         [Description("Path to signer certificate for verification")]
         [CommandOption("--cert")]
         public string? CertificatePath { get; init; }
 
+        /// <summary>
+        /// Gets the path to extract biometric data to file.
+        /// </summary>
         [Description("Extract biometric data to file")]
         [CommandOption("--extract")]
         public string? ExtractPath { get; init; }
     }
 
+    /// <summary>
+    /// Executes the inspect CBEFF command asynchronously.
+    /// </summary>
+    /// <param name="context">The command context.</param>
+    /// <param name="settings">The command settings.</param>
+    /// <returns>A task representing the asynchronous operation, with exit code 0 for success or 1 for failure.</returns>
     public override async Task<int> ExecuteAsync(CommandContext context, Settings settings)
     {
         try
@@ -272,7 +312,7 @@ public sealed class InspectCbeffCommand : AsyncCommand<InspectCbeffCommand.Setti
         
         // Header information
         var headerNode = parent.AddNode("[cyan]Facial Record Header[/]");
-        headerNode.AddNode($"Format: {record.Header.FormatIdentifier} v{record.Header.VersionNumber}");
+        headerNode.AddNode($"Format: {EscapeString(record.Header.FormatIdentifier)} v{EscapeString(record.Header.VersionNumber)}");
         headerNode.AddNode($"Record Length: {record.Header.RecordLength:N0} bytes");
         headerNode.AddNode($"Number of Facial Records: {record.Header.NumberOfFaces}");
         
@@ -313,6 +353,21 @@ public sealed class InspectCbeffCommand : AsyncCommand<InspectCbeffCommand.Setti
         
         // Image data
         imageNode.AddNode($"Image Data: {record.ImageData.Length:N0} bytes");
+        
+        // Extract and display metadata if JPEG
+        if (record.ImageInfo.ImageDataType == 0) // JPEG
+        {
+            var metadataResult = ((IImageMetadataExtractor)_jpegExtractor).Extract(record.ImageData);
+            if (metadataResult.IsSuccess)
+            {
+                var treeResult = _metadataTransformer.TransformToTree(metadataResult.Value);
+                if (treeResult.IsSuccess)
+                {
+                    var spectreNode = ConvertToSpectreTree(treeResult.Value);
+                    parent.AddNode(spectreNode);
+                }
+            }
+        }
     }
     
     private string GetGenderName(byte gender) => gender switch
@@ -451,13 +506,15 @@ public sealed class InspectCbeffCommand : AsyncCommand<InspectCbeffCommand.Setti
         }
     }
 
-    private async Task VerifySignature(CbeffPayloadExtended payload, Settings settings)
+    private Task VerifySignature(CbeffPayloadExtended payload, Settings settings)
     {
         AnsiConsole.WriteLine();
         AnsiConsole.MarkupLine("[yellow]Signature Verification[/]");
         
         // TODO: Implement signature verification using the verifier service
         AnsiConsole.MarkupLine("[dim]Signature verification not yet implemented[/]");
+        
+        return Task.CompletedTask;
     }
 
     private string GetHexDump(byte[] data, int maxBytes)
@@ -508,9 +565,10 @@ public sealed class InspectCbeffCommand : AsyncCommand<InspectCbeffCommand.Setti
 
     private string GetQualityDescription(sbyte quality) => quality switch
     {
-        -2 => "Permanently unusable (254 as byte)",
-        -1 => "Temporarily unusable (255 as byte)",
-        >= 0 and <= 100 => $"{quality}%",
+        -2 => "Permanently unusable (254 as byte) [yellow]⚠ INCITS 385-2004 requires 0[/]",
+        -1 => "Temporarily unusable (255 as byte) [yellow]⚠ INCITS 385-2004 requires 0[/]",
+        0 => "Unspecified (compliant with INCITS 385-2004)",
+        >= 1 and <= 100 => $"{quality}% [yellow]⚠ INCITS 385-2004 requires 0 (SP 800-76-2 permits 0-100)[/]",
         _ => "Invalid"
     };
 
@@ -533,4 +591,26 @@ public sealed class InspectCbeffCommand : AsyncCommand<InspectCbeffCommand.Setti
         0x01 => "JPEG 2000",
         _ => "Unknown"
     };
+    
+    private static string EscapeString(string value)
+    {
+        return value.Replace("\0", "\\0");
+    }
+    
+    private TreeNode ConvertToSpectreTree(MetadataTreeNode metadataNode)
+    {
+        var spectreNode = new TreeNode(new Markup($"[cyan]{metadataNode.Label}[/]"));
+        foreach (var child in metadataNode.Children)
+        {
+            if (child.Children.Count > 0)
+            {
+                spectreNode.AddNode(ConvertToSpectreTree(child));
+            }
+            else
+            {
+                spectreNode.AddNode(new Markup(child.Label));
+            }
+        }
+        return spectreNode;
+    }
 }

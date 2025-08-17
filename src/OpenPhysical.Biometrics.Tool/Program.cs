@@ -1,7 +1,9 @@
 using OpenPhysical.Biometrics.Tool.Commands;
 using OpenPhysical.Biometrics.Infrastructure.Extensions;
 using OpenPhysical.Biometrics.Infrastructure.Cbeff;
+using OpenPhysical.Biometrics.Infrastructure.Standards.Incits385;
 using OpenPhysical.Biometrics.Core.Cbeff;
+using OpenPhysical.Biometrics.Core.Standards.Incits385;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Spectre.Console;
@@ -48,15 +50,18 @@ services.AddScoped<ICbeffEncoder, CbeffEncoderService>();
 services.AddScoped<ICbeffDecoder, CbeffDecoderService>();
 services.AddScoped<ICbeffSigner, CbeffSignerService>();
 services.AddScoped<ICbeffVerifier, CbeffVerifierService>();
+services.AddScoped<ICbeffBuilder, CbeffBuilderService>();
+
+// Register INCITS 385 services
+services.AddSingleton<IIncits385Writer, Incits385WriterService>();
+
+// Register metadata services
+services.AddMetadataServices();
 
 // Register CLI commands
 services.AddScoped<InspectCbeffCommand>();
-
-// Display banner
-AnsiConsole.Write(new FigletText("FaceOFFx").LeftJustified().Color(Color.Blue));
-
-AnsiConsole.MarkupLine("[grey]\"I want to take his face... off.\"[/] - Face/Off (1997)");
-AnsiConsole.WriteLine();
+services.AddScoped<ExtractCbeffCommand>();
+services.AddScoped<CreateCbeffCommand>();
 
 // Create the CLI app with dependency injection
 using var registrar = new DependencyInjectionRegistrar(services);
@@ -64,7 +69,7 @@ var app = new CommandApp(registrar);
 
 app.Configure(config =>
 {
-    config.SetApplicationName("faceoffx");
+    config.SetApplicationName("biotool");
     config.SetApplicationVersion(
         typeof(Program).Assembly.GetName().Version?.ToString() ?? "Unknown"
     );
@@ -141,12 +146,30 @@ app.Configure(config =>
     
     // CBEFF Commands - Inspect and work with CBEFF data
     config
-        .AddCommand<InspectCbeffCommand>("cbeff")
-        .WithDescription("Inspect CBEFF biometric data object files")
-        .WithExample("cbeff", "facial_image.bin")
-        .WithExample("cbeff", "facial_image.bin", "--hex")
-        .WithExample("cbeff", "fingerprint.bin", "--extract", "minutiae.dat")
-        .WithExample("cbeff", "signed_cbeff.bin", "--verify", "--cert", "signer.crt");
+        .AddBranch("cbeff", cbeff =>
+        {
+            cbeff.SetDescription("CBEFF biometric data commands");
+            
+            cbeff.AddCommand<InspectCbeffCommand>("inspect")
+                .WithDescription("Inspect CBEFF biometric data object files")
+                .WithExample("cbeff", "inspect", "facial_image.bin")
+                .WithExample("cbeff", "inspect", "facial_image.bin", "--hex")
+                .WithExample("cbeff", "inspect", "fingerprint.bin", "--extract", "minutiae.dat")
+                .WithExample("cbeff", "inspect", "signed_cbeff.bin", "--verify", "--cert", "signer.crt");
+                
+            cbeff.AddCommand<ExtractCbeffCommand>("extract")
+                .WithDescription("Extract images from CBEFF containers")
+                .WithExample("cbeff", "extract", "facial_image.cbeff")
+                .WithExample("cbeff", "extract", "facial_image.cbeff", "--output", "face.jpg")
+                .WithExample("cbeff", "extract", "facial_image.cbeff", "--save-metadata");
+                
+            cbeff.AddCommand<CreateCbeffCommand>("create")
+                .WithDescription("Create CBEFF containers from facial images")
+                .WithExample("cbeff", "create", "face.jpg")
+                .WithExample("cbeff", "create", "face.jp2", "--standard", "PIV", "--quality", "90")
+                .WithExample("cbeff", "create", "face.jpg", "--piv-wrap", "--fascn", "0123456789ABCDEF...")
+                .WithExample("cbeff", "create", "face.jpg", "--gender", "M", "--eye-color", "brown");
+        });
 
     /*
     // Test Commands - Automated testing and calibration
