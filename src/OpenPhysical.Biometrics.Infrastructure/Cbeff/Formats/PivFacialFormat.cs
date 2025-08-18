@@ -47,7 +47,7 @@ public sealed class PivFacialFormat : ICbeffFormat
             .GetValueOrDefault(Result.Success());
     }
     
-    private static Result<FacialImageRecord> ParseIncits385Record(ImmutableArray<byte> data)
+    public static Result<FacialImageRecord> ParseIncits385Record(ImmutableArray<byte> data)
     {
         if (data.IsDefaultOrEmpty)
             return Result.Failure<FacialImageRecord>("Biometric data is empty");
@@ -70,10 +70,10 @@ public sealed class PivFacialFormat : ICbeffFormat
         if (offset + 14 > data.Length)
             return Result.Failure<FacialRecordHeader>("Insufficient data for facial record header");
             
-        var formatId = ReadUInt32BigEndian(data, offset);
+        var formatIdBytes = ReadUInt32BigEndian(data, offset);
         offset += 4;
         
-        var version = ReadUInt32BigEndian(data, offset);
+        var versionBytes = ReadUInt32BigEndian(data, offset);
         offset += 4;
         
         var recordLength = ReadUInt32BigEndian(data, offset);
@@ -82,7 +82,7 @@ public sealed class PivFacialFormat : ICbeffFormat
         var numberOfFaces = ReadUInt16BigEndian(data, offset);
         offset += 2;
         
-        return FacialRecordHeader.Create(formatId, version, recordLength, numberOfFaces);
+        return FacialRecordHeader.CreateFromBytes(formatIdBytes, versionBytes, recordLength, numberOfFaces);
     }
     
     private static Result<FacialInformation> ParseFacialInformation(ImmutableArray<byte> data, ref int offset)
@@ -168,8 +168,8 @@ public sealed class PivFacialFormat : ICbeffFormat
         var sourceType = data[offset++];
         var deviceType = ReadUInt16BigEndian(data, offset);
         offset += 2;
-        var quality = ReadUInt16BigEndian(data, offset);
-        offset += 2;
+        var quality = data[offset++]; // Quality is 1 byte per INCITS 385
+        var qualityPadding = data[offset++]; // 1 byte padding
         
         return ImageInformation.Create(
             facialImageType,
@@ -204,8 +204,8 @@ public sealed class PivFacialFormat : ICbeffFormat
         var buffer = new List<byte>();
         
         // Serialize header
-        buffer.AddRange(GetBytes(record.Header.FormatIdentifier));
-        buffer.AddRange(GetBytes(record.Header.VersionNumber));
+        buffer.AddRange(GetBytesFromAscii(record.Header.FormatIdentifier));
+        buffer.AddRange(GetBytesFromAscii(record.Header.VersionNumber));
         buffer.AddRange(GetBytes(record.Header.RecordLength));
         buffer.AddRange(GetBytes(record.Header.NumberOfFaces));
         
@@ -292,5 +292,13 @@ public sealed class PivFacialFormat : ICbeffFormat
             (byte)(value >> 8),
             (byte)value
         };
+    }
+    
+    private static byte[] GetBytesFromAscii(string value)
+    {
+        if (value.Length != 4)
+            throw new ArgumentException("ASCII string must be exactly 4 characters", nameof(value));
+            
+        return System.Text.Encoding.ASCII.GetBytes(value);
     }
 }

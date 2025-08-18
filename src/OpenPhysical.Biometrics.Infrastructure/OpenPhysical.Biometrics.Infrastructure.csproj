@@ -13,6 +13,8 @@
     <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.20.1" />
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.7" />
     <PackageReference Include="Microsoft.Extensions.Options" Version="9.0.7" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="9.0.7" />
+    <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="9.0.7" />
     <PackageReference Include="MetadataExtractor" Version="2.8.1" />
     <PackageReference Update="PolySharp" Version="1.15.0">
       <PrivateAssets>all</PrivateAssets>
@@ -24,5 +26,8 @@
   </ItemGroup>
   <ItemGroup>
     <InternalsVisibleTo Include="OpenPhysical.Biometrics.Infrastructure.Tests" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Certificates\Resources\*.crt" />
   </ItemGroup>
 </Project>

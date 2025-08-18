@@ -1,4 +1,4 @@
-using OpenPhysical.Biometrics.Models;
+using OpenPhysical.Biometrics.Onnx;
 using JetBrains.Annotations;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;

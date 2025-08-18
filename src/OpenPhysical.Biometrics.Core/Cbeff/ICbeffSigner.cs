@@ -2,7 +2,7 @@ namespace OpenPhysical.Biometrics.Core.Cbeff;
 
 using CSharpFunctionalExtensions;
 using OpenPhysical.Domains.Cbeff;
-using System.Security.Cryptography.X509Certificates;
+using Org.BouncyCastle.X509;
 
 /// <summary>
 /// Interface for signing CBEFF payloads.
@@ -18,7 +18,7 @@ public interface ICbeffSigner
     /// <returns>Result containing the signed CBEFF payload or error</returns>
     Task<Result<CbeffPayload>> SignAsync(
         CbeffPayload payload,
-        X509Certificate2 signingCertificate,
+        X509Certificate signingCertificate,
         Maybe<Guid> includeCardUuid = default);
 
     /// <summary>
@@ -30,7 +30,7 @@ public interface ICbeffSigner
     /// <returns>Result containing the CMS signature bytes or error</returns>
     Result<byte[]> CreateDetachedSignature(
         byte[] dataToSign,
-        X509Certificate2 signingCertificate,
+        X509Certificate signingCertificate,
         Maybe<Guid> includeCardUuid = default);
 
     /// <summary>
@@ -39,5 +39,5 @@ public interface ICbeffSigner
     /// </summary>
     /// <param name="signingCertificate">The certificate that will be used for signing</param>
     /// <returns>Estimated signature size in bytes</returns>
-    ushort EstimateSignatureSize(X509Certificate2 signingCertificate);
+    ushort EstimateSignatureSize(X509Certificate signingCertificate);
 }

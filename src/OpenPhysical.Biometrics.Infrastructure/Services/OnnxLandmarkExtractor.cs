@@ -1,3 +1,4 @@
+using OpenPhysical.Biometrics.Onnx;
 using JetBrains.Annotations;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
@@ -34,7 +35,7 @@ public sealed class OnnxLandmarkExtractor : ILandmarkExtractor, IDisposable
             };
 
             // Load model from embedded resources
-            var modelBytes = Models.ModelRegistry.GetModel(Models.ModelRegistry.FaceLandmarks68);
+            var modelBytes = ModelRegistry.GetModel(ModelRegistry.FaceLandmarks68);
             _session = new InferenceSession(modelBytes, sessionOptions);
 
             // Get input/output names from the model

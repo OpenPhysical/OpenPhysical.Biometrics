@@ -1,6 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFramework>net9.0</TargetFramework>
+    <RootNamespace>OpenPhysical.Biometrics.Onnx</RootNamespace>
     <Description>ONNX models for OpenPhysical Biometrics library</Description>
     <IsPackable>false</IsPackable>
   </PropertyGroup>

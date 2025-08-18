@@ -1,140 +1,116 @@
 namespace OpenPhysical.Biometrics.Tool.Commands;
 
-using Spectre.Console;
-using Spectre.Console.Cli;
-using System;
-using System.Collections.Immutable;
 using System.ComponentModel;
-using System.IO;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using System.Diagnostics.CodeAnalysis;
 using Microsoft.Extensions.DependencyInjection;
 using OpenPhysical.Biometrics.Core.Cbeff;
-using OpenPhysical.Biometrics.Core.Cbeff.Formats;
+using OpenPhysical.Biometrics.Core.Certificates;
 using OpenPhysical.Biometrics.Infrastructure.Cbeff;
 using OpenPhysical.Domains.Cbeff;
-using OpenPhysical.Domains.Cbeff.Formats.Incits385;
-using OpenPhysical.Domains.Images;
-using OpenPhysical.Biometrics.Core.Abstractions.Metadata;
+using Spectre.Console;
+using Spectre.Console.Cli;
+using System.Text;
+using Org.BouncyCastle.Cms;
+using Org.BouncyCastle.Asn1.Cms;
+using System.Collections.Generic;
+using System.Linq;
+using Org.BouncyCastle.X509;
+using Org.BouncyCastle.Utilities.Collections;
 
 /// <summary>
-/// Command to inspect CBEFF data object files and display their structure.
+/// Command to inspect CBEFF files and display their structure with detailed CMS analysis.
 /// </summary>
 public sealed class InspectCbeffCommand : AsyncCommand<InspectCbeffCommand.Settings>
 {
     private readonly IServiceProvider _serviceProvider;
-    private readonly IJpegMetadataExtractor _jpegExtractor;
-    private readonly IMetadataTransformer _metadataTransformer;
+    private readonly ICbeffSerializerExtended _serializer;
+    private readonly IAnsiConsole _console;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="InspectCbeffCommand"/> class.
     /// </summary>
-    /// <param name="serviceProvider">The service provider for dependency injection.</param>
-    /// <param name="jpegExtractor">The JPEG metadata extractor.</param>
-    /// <param name="metadataTransformer">The metadata transformer.</param>
-    public InspectCbeffCommand(
-        IServiceProvider serviceProvider,
-        IJpegMetadataExtractor jpegExtractor,
-        IMetadataTransformer metadataTransformer)
+    public InspectCbeffCommand(IServiceProvider serviceProvider, ICbeffSerializerExtended serializer, IAnsiConsole console)
     {
         _serviceProvider = serviceProvider;
-        _jpegExtractor = jpegExtractor;
-        _metadataTransformer = metadataTransformer;
+        _serializer = serializer;
+        _console = console;
     }
 
     /// <summary>
-    /// Settings for the inspect CBEFF command.
+    /// Settings for the inspect command.
     /// </summary>
     public sealed class Settings : CommandSettings
     {
         /// <summary>
-        /// Gets the path to the CBEFF data file to inspect.
+        /// Gets or sets the path to the CBEFF file to inspect.
         /// </summary>
-        [Description("Path to the CBEFF data file to inspect")]
-        [CommandArgument(0, "<FILE>")]
-        public string FilePath { get; init; } = string.Empty;
+        [CommandArgument(0, "<file>")]
+        [Description("Path to the CBEFF file to inspect")]
+        public string FilePath { get; set; } = string.Empty;
 
         /// <summary>
-        /// Gets a value indicating whether to show raw hex dump of data sections.
+        /// Gets or sets a value indicating whether to show hex dumps.
         /// </summary>
-        [Description("Show raw hex dump of data sections")]
         [CommandOption("--hex")]
-        public bool ShowHex { get; init; }
+        [Description("Show hex dumps of binary data")]
+        public bool ShowHex { get; set; }
 
         /// <summary>
-        /// Gets a value indicating whether to verify signature if present.
+        /// Gets or sets the output path for extracted data.
         /// </summary>
-        [Description("Verify signature if present")]
-        [CommandOption("--verify")]
-        public bool VerifySignature { get; init; }
+        [CommandOption("--extract <path>")]
+        [Description("Extract biometric data to specified path")]
+        public string? ExtractPath { get; set; }
 
         /// <summary>
-        /// Gets the path to signer certificate for verification.
+        /// Gets or sets the certificate path for signature verification.
         /// </summary>
-        [Description("Path to signer certificate for verification")]
-        [CommandOption("--cert")]
-        public string? CertificatePath { get; init; }
-
-        /// <summary>
-        /// Gets the path to extract biometric data to file.
-        /// </summary>
-        [Description("Extract biometric data to file")]
-        [CommandOption("--extract")]
-        public string? ExtractPath { get; init; }
+        [CommandOption("--cert <path>")]
+        [Description("Certificate file for signature verification")]
+        public string? CertificatePath { get; set; }
     }
 
     /// <summary>
-    /// Executes the inspect CBEFF command asynchronously.
+    /// Executes the inspect command.
     /// </summary>
-    /// <param name="context">The command context.</param>
-    /// <param name="settings">The command settings.</param>
-    /// <returns>A task representing the asynchronous operation, with exit code 0 for success or 1 for failure.</returns>
-    public override async Task<int> ExecuteAsync(CommandContext context, Settings settings)
+    public override async Task<int> ExecuteAsync([NotNull] CommandContext context, [NotNull] Settings settings)
     {
+        if (!File.Exists(settings.FilePath))
+        {
+            _console.MarkupLine($"[red]File not found:[/] {settings.FilePath}");
+            return 1;
+        }
+
         try
         {
-            if (!File.Exists(settings.FilePath))
+            var data = await File.ReadAllBytesAsync(settings.FilePath);
+            _console.MarkupLine($"[green]Inspecting CBEFF file:[/] {settings.FilePath} ({data.Length:N0} bytes)");
+            _console.WriteLine();
+
+            var result = _serializer.DeserializeAutoExtended(data);
+            if (result.IsFailure)
             {
-                AnsiConsole.MarkupLine($"[red]File not found:[/] {settings.FilePath}");
+                _console.MarkupLine($"[red]Failed to parse CBEFF:[/] {result.Error}");
                 return 1;
             }
 
-            var cbeffData = await File.ReadAllBytesAsync(settings.FilePath);
-            AnsiConsole.MarkupLine($"[green]Reading CBEFF file:[/] {settings.FilePath}");
-            AnsiConsole.MarkupLine($"[dim]File size: {cbeffData.Length:N0} bytes[/]");
-            AnsiConsole.WriteLine();
-
-            // Decode the CBEFF data with format registry support
-            var serializer = _serviceProvider.GetRequiredService<ICbeffSerializerExtended>();
-            var decodeResult = serializer.DeserializeAutoExtended(cbeffData);
-
-            if (decodeResult.IsFailure)
-            {
-                AnsiConsole.MarkupLine($"[red]Failed to decode CBEFF data:[/] {decodeResult.Error}");
-                return 1;
-            }
-
-            var payload = decodeResult.Value;
+            var payload = result.Value;
             DisplayCbeffStructure(payload, settings);
 
-            // Extract biometric data if requested
+            // Extract data if requested
             if (!string.IsNullOrEmpty(settings.ExtractPath))
             {
-                await ExtractBiometricData(payload, settings.ExtractPath);
+                await ExtractBiometricData(payload, settings);
             }
 
-            // Verify signature if requested
-            if (settings.VerifySignature && payload.Signature.HasValue)
-            {
-                await VerifySignature(payload, settings);
-            }
+            // Verify signature if present
+            await VerifySignature(payload, settings);
 
             return 0;
         }
         catch (Exception ex)
         {
-            AnsiConsole.WriteException(ex);
+            _console.MarkupLine($"[red]Error:[/] {ex.Message}");
             return 1;
         }
     }
@@ -143,423 +119,96 @@ public sealed class InspectCbeffCommand : AsyncCommand<InspectCbeffCommand.Setti
     {
         var tree = new Tree("[yellow]CBEFF Structure[/]");
 
-        // Header section
-        var headerNode = tree.AddNode("[green]Header[/] (88 bytes)");
+        // Header information
+        var headerNode = tree.AddNode("[green]CBEFF Header[/]");
         var header = payload.Header;
-        
-        headerNode.AddNode($"Patron Header Version: 0x{header.PatronHeaderVersion:X2}");
-        headerNode.AddNode($"Security Options: 0x{header.SbhSecurityOptions:X2} ({GetSecurityOptionsDescription(header.SbhSecurityOptions)})");
+
+        headerNode.AddNode($"Patron Header Version: {header.PatronHeaderVersion:X2}");
+        headerNode.AddNode($"SBH Security Options: {header.SbhSecurityOptions:X2}");
+        headerNode.AddNode($"BDB Format Owner: {header.BdbFormatOwner:X4} ({GetFormatOwnerName(header.BdbFormatOwner)})");
+        headerNode.AddNode($"BDB Format Type: {header.BdbFormatType:X4} ({GetFormatTypeName(header.BdbFormatType)})");
+        headerNode.AddNode($"Creation Date: {header.CreationDate:yyyy-MM-dd HH:mm:ss}");
+        headerNode.AddNode($"Validity Not Before: {header.ValidityNotBefore:yyyy-MM-dd HH:mm:ss}");
+        headerNode.AddNode($"Validity Not After: {header.ValidityNotAfter:yyyy-MM-dd HH:mm:ss}");
+        headerNode.AddNode($"Creator: {System.Text.Encoding.UTF8.GetString(header.GetCreator()).TrimEnd('\0')}");
+        headerNode.AddNode($"FASC-N: {Convert.ToHexString(header.GetFascN())}");
+        headerNode.AddNode($"Biometric Type: {header.BiometricType}");
+        headerNode.AddNode($"Biometric Subtype: {header.BiometricSubtype}");
+        headerNode.AddNode($"Quality: {header.Quality} ({GetQualityDescription(header.Quality)})");
         headerNode.AddNode($"BDB Length: {header.BdbLength:N0} bytes");
         headerNode.AddNode($"SB Length: {header.SbLength:N0} bytes");
-        headerNode.AddNode($"BDB Format Owner: 0x{header.BdbFormatOwner:X4} ({GetFormatOwnerName(header.BdbFormatOwner)})");
-        headerNode.AddNode($"BDB Format Type: 0x{header.BdbFormatType:X4} ({GetFormatTypeName(header.BdbFormatOwner, header.BdbFormatType)})");
-        
-        // Dates
-        var datesNode = headerNode.AddNode("[cyan]Dates[/]");
-        datesNode.AddNode($"Creation: {header.CreationDate:yyyy-MM-dd HH:mm:ss}");
-        datesNode.AddNode($"Valid From: {header.ValidityNotBefore:yyyy-MM-dd HH:mm:ss}");
-        datesNode.AddNode($"Valid To: {header.ValidityNotAfter:yyyy-MM-dd HH:mm:ss}");
-        
-        // Biometric info
-        var bioNode = headerNode.AddNode("[cyan]Biometric Info[/]");
-        bioNode.AddNode($"Type: 0x{header.BiometricType:X8} ({GetBiometricTypeName(header.BiometricType)})");
-        bioNode.AddNode($"Subtype: 0x{header.BiometricSubtype:X2}");
-        bioNode.AddNode($"Quality: {header.Quality} ({GetQualityDescription(header.Quality)})");
-        
-        // Creator and FASC-N
-        var metaNode = headerNode.AddNode("[cyan]Metadata[/]");
-        metaNode.AddNode($"Creator: {GetCreatorString(header.Creator)}");
-        metaNode.AddNode($"FASC-N: {BitConverter.ToString(header.FascN).Replace("-", "")}");
 
-        // Biometric Data Block
+        // Biometric data block information
         var bdbNode = tree.AddNode($"[green]Biometric Data Block[/] ({payload.BiometricDataBlock.Length:N0} bytes)");
-        
-        if (settings.ShowHex)
-        {
-            var hexDump = GetHexDump(payload.BiometricDataBlock.ToArray(), 32);
-            bdbNode.AddNode($"[dim]{hexDump}[/]");
-        }
-        else
-        {
-            AnalyzeBiometricData(bdbNode, payload);
-        }
 
-        // Signature Block
-        if (payload.Signature.HasValue)
-        {
-            var sigNode = tree.AddNode($"[green]Signature Block[/] ({payload.Signature.Value.SignatureSize:N0} bytes)");
-            sigNode.AddNode($"Type: {payload.Signature.Value.SignatureType}");
-            
-            if (settings.ShowHex)
-            {
-                var hexDump = GetHexDump(payload.Signature.Value.SignatureData.ToArray(), 32);
-                sigNode.AddNode($"[dim]{hexDump}[/]");
-            }
-        }
-        else
-        {
-            tree.AddNode("[dim]No Signature[/]");
-        }
-
-        AnsiConsole.Write(tree);
-    }
-
-    private void AnalyzeBiometricData(TreeNode parent, CbeffPayloadExtended payload)
-    {
-        // Check if we have parsed data from the format registry
+        // If we have parsed biometric record, show detailed information
         if (payload.ParsedBiometricRecord.HasValue)
         {
             var record = payload.ParsedBiometricRecord.Value;
+            var recordNode = bdbNode.AddNode($"[cyan]Parsed Biometric Record[/] ({record.GetType().Name})");
             
-            // Display format-specific parsed data
-            if (record is OpenPhysical.Biometrics.Infrastructure.Cbeff.Formats.Incits385BiometricRecord incits385)
+            // Use reflection to display properties
+            var properties = record.GetType().GetProperties();
+            foreach (var prop in properties)
             {
-                DisplayParsedFacialImage(parent, incits385.FacialRecord);
+                try
+                {
+                    var value = prop.GetValue(record);
+                    if (value != null)
+                    {
+                        recordNode.AddNode($"{prop.Name}: {value}");
+                    }
+                }
+                catch
+                {
+                    // Skip properties that can't be read
+                }
             }
-            else
-            {
-                // Generic display for other record types
-                parent.AddNode($"[green]Parsed {record.GetType().Name}[/]");
-            }
+        }
+
+        // Show hex dump if requested
+        if (settings.ShowHex)
+        {
+            var hexNode = bdbNode.AddNode("[dim]Raw Data (first 256 bytes):[/]");
+            var hexDump = GetHexDump(payload.BiometricDataBlock.Take(256).ToArray(), 16);
+            hexNode.AddNode($"[dim]{hexDump}[/]");
+        }
+
+        // Signature information
+        if (payload.Signature.HasValue)
+        {
+            AnalyzeSignatureBlock(tree.AddNode(""), payload.Signature.Value, settings);
         }
         else
         {
-            // Fall back to basic analysis if no parser available
-            var header = payload.Header;
-            var data = payload.BiometricDataBlock.ToArray();
-            
-            if (header.BdbFormatOwner == 0x001B && header.BdbFormatType == 0x0501)
-            {
-                // INCITS 385 Facial Image
-                AnalyzeFacialImage(parent, data);
-            }
-            else if (header.BdbFormatOwner == 0x001B && header.BdbFormatType == 0x0201)
-            {
-                // INCITS 378 Fingerprint Template
-                AnalyzeFingerprintTemplate(parent, data);
-            }
-            else
-            {
-                parent.AddNode("[dim]Unknown biometric format[/]");
-            }
+            tree.AddNode("[red]No Digital Signature[/]");
         }
+
+        _console.Write(tree);
     }
 
-    private void AnalyzeFacialImage(TreeNode parent, byte[] data)
+    private static string GetFormatOwnerName(ushort owner) => owner switch
     {
-        try
-        {
-            var offset = 0;
-            
-            // Read format identifier (4 bytes)
-            var formatId = Encoding.ASCII.GetString(data, offset, 4);
-            offset += 4;
-            
-            // Read version (4 bytes)
-            var version = Encoding.ASCII.GetString(data, offset, 4);
-            offset += 4;
-            
-            // Read record length (4 bytes, big-endian)
-            var recordLength = (data[offset] << 24) | (data[offset + 1] << 16) | 
-                              (data[offset + 2] << 8) | data[offset + 3];
-            offset += 4;
-            
-            // Read number of facial records (2 bytes, big-endian)
-            var numRecords = (data[offset] << 8) | data[offset + 1];
-            offset += 2;
-            
-            parent.AddNode($"Format: {formatId.TrimEnd('\0')} v{version.TrimEnd('\0')}");
-            parent.AddNode($"Record Length: {recordLength:N0} bytes");
-            parent.AddNode($"Number of Facial Records: {numRecords}");
-            
-            // For each facial record...
-            for (int i = 0; i < numRecords && offset < data.Length - 20; i++)
-            {
-                var facialNode = parent.AddNode($"[cyan]Facial Record {i + 1}[/]");
-                
-                // Facial block length (4 bytes)
-                var blockLength = (data[offset] << 24) | (data[offset + 1] << 16) | 
-                                 (data[offset + 2] << 8) | data[offset + 3];
-                offset += 4;
-                
-                facialNode.AddNode($"Block Length: {blockLength:N0} bytes");
-                
-                // Skip facial information details for brevity
-                offset += 16; // Skip to image info
-                
-                if (offset + 9 < data.Length)
-                {
-                    var imageType = data[offset];
-                    var dataType = data[offset + 1];
-                    var width = (data[offset + 2] << 8) | data[offset + 3];
-                    var height = (data[offset + 4] << 8) | data[offset + 5];
-                    
-                    facialNode.AddNode($"Image Type: {GetImageTypeName(imageType)}");
-                    facialNode.AddNode($"Data Type: {GetDataTypeName(dataType)}");
-                    facialNode.AddNode($"Dimensions: {width}×{height}");
-                }
-            }
-        }
-        catch
-        {
-            parent.AddNode("[red]Error parsing facial image data[/]");
-        }
-    }
-
-    private void DisplayParsedFacialImage(TreeNode parent, FacialImageRecord record)
-    {
-        parent.AddNode($"[green]INCITS 385 Facial Image Record[/]");
-        
-        // Header information
-        var headerNode = parent.AddNode("[cyan]Facial Record Header[/]");
-        headerNode.AddNode($"Format: {EscapeString(record.Header.FormatIdentifier)} v{EscapeString(record.Header.VersionNumber)}");
-        headerNode.AddNode($"Record Length: {record.Header.RecordLength:N0} bytes");
-        headerNode.AddNode($"Number of Facial Records: {record.Header.NumberOfFaces}");
-        
-        // Facial information
-        var facialNode = parent.AddNode("[cyan]Facial Information[/]");
-        facialNode.AddNode($"Block Length: {record.FacialInfo.FaceImageBlockLength:N0} bytes");
-        facialNode.AddNode($"Number of Feature Points: {record.FacialInfo.NumberOfFeaturePoints}");
-        facialNode.AddNode($"Gender: {GetGenderName(record.FacialInfo.Gender)}");
-        facialNode.AddNode($"Eye Color: {GetEyeColorName(record.FacialInfo.EyeColor)}");
-        facialNode.AddNode($"Hair Color: {GetHairColorName(record.FacialInfo.HairColor)}");
-        facialNode.AddNode($"Feature Mask: 0x{record.FacialInfo.FeatureMask:X6}");
-        facialNode.AddNode($"Expression: {GetExpressionName(record.FacialInfo.Expression)}");
-        facialNode.AddNode($"Pose Angle: 0x{record.FacialInfo.PoseAngle:X6}");
-        facialNode.AddNode($"Pose Angle Uncertainty: 0x{record.FacialInfo.PoseAngleUncertainty:X6}");
-        
-        // Feature points
-        if (record.FeaturePoints.Length > 0)
-        {
-            var featuresNode = parent.AddNode($"[cyan]Feature Points ({record.FeaturePoints.Length})[/]");
-            foreach (var point in record.FeaturePoints.Take(5)) // Show first 5
-            {
-                featuresNode.AddNode($"Type: {GetFeatureTypeName(point.FeatureType)}, X: {point.HorizontalPosition}, Y: {point.VerticalPosition}");
-            }
-            if (record.FeaturePoints.Length > 5)
-            {
-                featuresNode.AddNode($"[dim]... and {record.FeaturePoints.Length - 5} more[/]");
-            }
-        }
-        
-        // Image information
-        var imageNode = parent.AddNode("[cyan]Image Information[/]");
-        imageNode.AddNode($"Type: {GetImageTypeName(record.ImageInfo.FacialImageType)}");
-        imageNode.AddNode($"Data Type: {GetDataTypeName(record.ImageInfo.ImageDataType)}");
-        imageNode.AddNode($"Dimensions: {record.ImageInfo.Width}×{record.ImageInfo.Height}");
-        imageNode.AddNode($"Color Space: {GetColorSpaceName(record.ImageInfo.ImageColorSpace)}");
-        imageNode.AddNode($"Source Type: {GetSourceTypeName(record.ImageInfo.SourceType)}");
-        imageNode.AddNode($"Quality: {record.ImageInfo.Quality}");
-        
-        // Image data
-        imageNode.AddNode($"Image Data: {record.ImageData.Length:N0} bytes");
-        
-        // Extract and display metadata if JPEG
-        if (record.ImageInfo.ImageDataType == 0) // JPEG
-        {
-            var metadataResult = ((IImageMetadataExtractor)_jpegExtractor).Extract(record.ImageData);
-            if (metadataResult.IsSuccess)
-            {
-                var treeResult = _metadataTransformer.TransformToTree(metadataResult.Value);
-                if (treeResult.IsSuccess)
-                {
-                    var spectreNode = ConvertToSpectreTree(treeResult.Value);
-                    parent.AddNode(spectreNode);
-                }
-            }
-        }
-    }
-    
-    private string GetGenderName(byte gender) => gender switch
-    {
-        0x00 => "Unspecified",
-        0x01 => "Male",
-        0x02 => "Female",
-        0xFF => "Unknown",
-        _ => $"Invalid ({gender})"
-    };
-    
-    private string GetEyeColorName(byte color) => color switch
-    {
-        0x00 => "Unspecified",
-        0x01 => "Blue",
-        0x02 => "Brown",
-        0x03 => "Gray",
-        0x04 => "Green",
-        0x05 => "Hazel",
-        0x06 => "Maroon",
-        0x07 => "Pink",
-        0x08 => "Multi-colored",
-        0xFF => "Unknown",
-        _ => $"Invalid ({color})"
-    };
-    
-    private string GetHairColorName(byte color) => color switch
-    {
-        0x00 => "Unspecified",
-        0x01 => "Bald",
-        0x02 => "Black",
-        0x03 => "Blonde",
-        0x04 => "Brown",
-        0x05 => "Gray",
-        0x06 => "Red",
-        0x07 => "Blue",
-        0x08 => "Green",
-        0xFF => "Unknown",
-        _ => $"Invalid ({color})"
-    };
-    
-    private string GetExpressionName(ushort expression) => expression switch
-    {
-        0x0000 => "Unspecified",
-        0x0001 => "Neutral",
-        0x0002 => "Smile - closed mouth",
-        0x0003 => "Smile - open mouth",
-        0x0004 => "Raised eyebrows",
-        0x0005 => "Eyes looking away",
-        0x0006 => "Squinting",
-        0x0007 => "Frowning",
-        _ => $"Unknown ({expression})"
-    };
-    
-    private string GetColorSpaceName(byte colorSpace) => colorSpace switch
-    {
-        0x00 => "Unspecified",
-        0x01 => "24-bit RGB",
-        0x02 => "YUV422",
-        0x03 => "8-bit grayscale",
-        0x04 => "Other",
-        _ => $"Unknown ({colorSpace})"
-    };
-    
-    private string GetSourceTypeName(byte sourceType) => sourceType switch
-    {
-        0x00 => "Unspecified",
-        0x01 => "Static photograph - unknown source",
-        0x02 => "Static photograph - digital camera",
-        0x03 => "Static photograph - scanner",
-        0x04 => "Video frame - unknown source",
-        0x05 => "Video frame - analog camera",
-        0x06 => "Video frame - digital camera",
-        0x07 => "Unknown",
-        _ => $"Invalid ({sourceType})"
-    };
-    
-    private string GetFeatureTypeName(byte type) => type switch
-    {
-        0x01 => "Right eye center",
-        0x02 => "Left eye center",
-        0x03 => "Nose tip",
-        0x04 => "Nose center",
-        0x05 => "Mouth center",
-        0x06 => "Right mouth corner",
-        0x07 => "Left mouth corner",
-        _ => $"Type {type}"
-    };
-
-    private void AnalyzeFingerprintTemplate(TreeNode parent, byte[] data)
-    {
-        try
-        {
-            var offset = 0;
-            
-            // Read format identifier (4 bytes)
-            var formatId = Encoding.ASCII.GetString(data, offset, 4);
-            offset += 4;
-            
-            // Read version (4 bytes)
-            var version = Encoding.ASCII.GetString(data, offset, 4);
-            offset += 4;
-            
-            parent.AddNode($"Format: {formatId.TrimEnd('\0')} v{version.TrimEnd('\0')}");
-            
-            // Skip to number of finger records
-            offset = 24;
-            if (offset < data.Length)
-            {
-                var numFingers = data[offset];
-                parent.AddNode($"Number of Finger Records: {numFingers}");
-                
-                // Check if this is an empty template
-                if (data.Length == 38 && numFingers == 2)
-                {
-                    parent.AddNode("[yellow]Empty template (individual cannot be fingerprinted)[/]");
-                }
-            }
-        }
-        catch
-        {
-            parent.AddNode("[red]Error parsing fingerprint template data[/]");
-        }
-    }
-
-    private async Task ExtractBiometricData(CbeffPayloadExtended payload, string outputPath)
-    {
-        try
-        {
-            await File.WriteAllBytesAsync(outputPath, payload.BiometricDataBlock.ToArray());
-            AnsiConsole.MarkupLine($"[green]Extracted biometric data to:[/] {outputPath}");
-        }
-        catch (Exception ex)
-        {
-            AnsiConsole.MarkupLine($"[red]Failed to extract data:[/] {ex.Message}");
-        }
-    }
-
-    private Task VerifySignature(CbeffPayloadExtended payload, Settings settings)
-    {
-        AnsiConsole.WriteLine();
-        AnsiConsole.MarkupLine("[yellow]Signature Verification[/]");
-        
-        // TODO: Implement signature verification using the verifier service
-        AnsiConsole.MarkupLine("[dim]Signature verification not yet implemented[/]");
-        
-        return Task.CompletedTask;
-    }
-
-    private string GetHexDump(byte[] data, int maxBytes)
-    {
-        var bytes = data.Take(maxBytes).ToArray();
-        var hex = BitConverter.ToString(bytes).Replace("-", " ");
-        if (data.Length > maxBytes)
-        {
-            hex += " ...";
-        }
-        return hex;
-    }
-
-    private string GetSecurityOptionsDescription(byte options) => options switch
-    {
-        0x00 => "No security",
-        0x08 => "Integrity",
-        0x0C => "Integrity and confidentiality",
-        0x0D => "Signed plaintext",
+        0x001B => "INCITS M1 (Biometrics)",
+        0x0021 => "NIST",
+        0x0001 => "Identix",
+        0x0002 => "Digital Persona",
         _ => "Unknown"
     };
 
-    private string GetFormatOwnerName(ushort owner) => owner switch
+    private static string GetFormatTypeName(ushort type) => type switch
     {
-        0x001B => "INCITS TC M1",
-        0x0101 => "PIV Patron Format",
+        0x0101 => "Facial Image",
+        0x0201 => "Fingerprint Minutiae",
+        0x0301 => "Iris Image",
         _ => "Unknown"
     };
 
-    private string GetFormatTypeName(ushort owner, ushort type) => (owner, type) switch
+    private static string GetPatronFormatName(byte format) => format switch
     {
-        (0x001B, 0x0501) => "Facial Image (INCITS 385)",
-        (0x001B, 0x0201) => "Fingerprint Minutiae (INCITS 378)",
-        (0x0101, 0x0008) => "PIV Patron Format A",
-        (0x0101, 0x0009) => "PIV Patron Format B",
-        _ => "Unknown"
-    };
-
-    private string GetBiometricTypeName(uint type) => (type & 0xFF) switch
-    {
-        0x02 => "Face",
-        0x08 => "Fingerprint",
-        0x10 => "Iris",
-        0x20 => "Voice",
-        0x40 => "Signature",
+        0x03 => "PIV",
+        0x04 => "PIV-I",
+        0x05 => "CAC",
         _ => "Unknown"
     };
 
@@ -572,45 +221,400 @@ public sealed class InspectCbeffCommand : AsyncCommand<InspectCbeffCommand.Setti
         _ => "Invalid"
     };
 
-    private string GetCreatorString(byte[] creator)
+    private static string GetHexDump(byte[] data, int bytesPerLine = 16)
     {
-        var str = Encoding.ASCII.GetString(creator).TrimEnd('\0');
-        return string.IsNullOrWhiteSpace(str) ? "<empty>" : str;
-    }
-
-    private string GetImageTypeName(byte type) => type switch
-    {
-        0x01 => "Full frontal",
-        0x02 => "Token frontal",
-        _ => "Unknown"
-    };
-
-    private string GetDataTypeName(byte type) => type switch
-    {
-        0x00 => "JPEG",
-        0x01 => "JPEG 2000",
-        _ => "Unknown"
-    };
-    
-    private static string EscapeString(string value)
-    {
-        return value.Replace("\0", "\\0");
-    }
-    
-    private TreeNode ConvertToSpectreTree(MetadataTreeNode metadataNode)
-    {
-        var spectreNode = new TreeNode(new Markup($"[cyan]{metadataNode.Label}[/]"));
-        foreach (var child in metadataNode.Children)
+        var sb = new StringBuilder();
+        for (int i = 0; i < data.Length; i += bytesPerLine)
         {
-            if (child.Children.Count > 0)
+            var hex = string.Join(" ", data.Skip(i).Take(bytesPerLine).Select(b => $"{b:X2}"));
+            var ascii = string.Join("", data.Skip(i).Take(bytesPerLine).Select(b => b >= 32 && b <= 126 ? (char)b : '.'));
+            sb.AppendLine($"{i:X8}: {hex,-47} |{ascii}|");
+        }
+        return sb.ToString();
+    }
+
+    private async Task ExtractBiometricData(CbeffPayloadExtended payload, Settings settings)
+    {
+        try
+        {
+            var outputPath = settings.ExtractPath!;
+            await File.WriteAllBytesAsync(outputPath, payload.BiometricDataBlock.ToArray());
+            _console.MarkupLine($"[green]Extracted biometric data to:[/] {outputPath}");
+        }
+        catch (Exception ex)
+        {
+            _console.MarkupLine($"[red]Failed to extract data:[/] {ex.Message}");
+        }
+    }
+
+    private void AnalyzeSignatureBlock(TreeNode parentTree, CbeffSignature signature, Settings settings)
+    {
+        var sigNode = parentTree.AddNode($"[green]Signature Block[/] ({signature.SignatureSize:N0} bytes)");
+        sigNode.AddNode($"Type: {signature.SignatureType}");
+        
+        try
+        {
+            // Parse the CMS SignedData structure
+            var cmsSignedData = new CmsSignedData(signature.SignatureData.ToArray());
+            AnalyzeCmsSignedData(sigNode, cmsSignedData, settings);
+        }
+        catch (Exception ex)
+        {
+            sigNode.AddNode($"[red]CMS Parse Error:[/] {ex.Message}");
+        }
+    }
+
+    private void AnalyzeCmsSignedData(TreeNode sigNode, CmsSignedData cmsSignedData, Settings settings)
+    {
+        // Content info
+        var contentInfo = cmsSignedData.SignedContent;
+        if (contentInfo != null)
+        {
+            var contentNode = sigNode.AddNode("[cyan]Content Info[/]");
+            contentNode.AddNode($"Content Type: {cmsSignedData.SignedContentType}");
+        }
+
+        // Digest algorithms - using signed data properties directly
+        var signedData = cmsSignedData.SignedData;
+        if (signedData.DigestAlgorithms.Count > 0)
+        {
+            var digestNode = sigNode.AddNode($"[cyan]Digest Algorithms[/] ({signedData.DigestAlgorithms.Count})");
+            foreach (var algo in signedData.DigestAlgorithms)
             {
-                spectreNode.AddNode(ConvertToSpectreTree(child));
+                try
+                {
+                    var algorithmId = Org.BouncyCastle.Asn1.X509.AlgorithmIdentifier.GetInstance(algo);
+                    var algoName = GetDigestAlgorithmName(algorithmId.Algorithm.Id);
+                    digestNode.AddNode($"{algoName} ({algorithmId.Algorithm.Id})");
+                }
+                catch (Exception ex)
+                {
+                    digestNode.AddNode($"[red]Parse Error:[/] {ex.Message}");
+                }
+            }
+        }
+
+        // Certificates
+        var certificates = cmsSignedData.GetCertificates();
+        var certList = new List<Org.BouncyCastle.X509.X509Certificate>(certificates.EnumerateMatches(null));
+        if (certList.Count > 0)
+        {
+            var certsNode = sigNode.AddNode($"[cyan]Certificates[/] ({certList.Count})");
+            for (int i = 0; i < certList.Count; i++)
+            {
+                AnalyzeCertificate(certsNode, certList[i], i, settings);
+            }
+        }
+
+        // Signers
+        var signers = cmsSignedData.GetSignerInfos();
+        var signerList = new List<SignerInformation>(signers.GetSigners());
+        if (signerList.Count > 0)
+        {
+            var signersNode = sigNode.AddNode($"[cyan]Signers[/] ({signerList.Count})");
+            for (int i = 0; i < signerList.Count; i++)
+            {
+                AnalyzeSignerInformation(signersNode, signerList[i], i, settings);
+            }
+        }
+        
+        // Show hex dump if requested
+        if (settings.ShowHex)
+        {
+            var rawData = cmsSignedData.GetEncoded();
+            var hexDump = GetHexDump(rawData.Take(256).ToArray(), 16);
+            sigNode.AddNode($"[dim]Encoded Data (first 256 bytes):[/]");
+            sigNode.AddNode($"[dim]{hexDump}[/]");
+        }
+    }
+
+    private void AnalyzeCertificate(TreeNode certsNode, Org.BouncyCastle.X509.X509Certificate cert, int index, Settings settings)
+    {
+        var certNode = certsNode.AddNode($"[cyan]Certificate {index}[/]");
+        
+        // Basic certificate info
+        certNode.AddNode($"Subject: {cert.SubjectDN}");
+        certNode.AddNode($"Issuer: {cert.IssuerDN}");
+        certNode.AddNode($"Serial: {cert.SerialNumber}");
+        certNode.AddNode($"Valid From: {cert.NotBefore:yyyy-MM-dd HH:mm:ss} UTC");
+        certNode.AddNode($"Valid To: {cert.NotAfter:yyyy-MM-dd HH:mm:ss} UTC");
+        
+        // Check if certificate is currently valid
+        var now = DateTime.UtcNow;
+        var isValid = now >= cert.NotBefore && now <= cert.NotAfter;
+        certNode.AddNode($"Currently Valid: {(isValid ? "[green]Yes[/]" : "[red]No[/]")}");
+        
+        // Algorithm info
+        certNode.AddNode($"Signature Algorithm: {GetSignatureAlgorithmName(cert.SigAlgOid)} ({cert.SigAlgOid})");
+        
+        // Public key info
+        var publicKey = cert.GetPublicKey();
+        if (publicKey is Org.BouncyCastle.Crypto.Parameters.RsaKeyParameters rsaKey)
+        {
+            certNode.AddNode($"Public Key Algorithm: RSA");
+            certNode.AddNode($"Key Size: {rsaKey.Modulus.BitLength} bits");
+        }
+        else if (publicKey is Org.BouncyCastle.Crypto.Parameters.ECPublicKeyParameters ecKey)
+        {
+            certNode.AddNode($"Public Key Algorithm: Elliptic Curve");
+            certNode.AddNode($"Curve: {ecKey.Parameters.Curve}");
+        }
+        else
+        {
+            certNode.AddNode($"Public Key Algorithm: {publicKey.GetType().Name}");
+        }
+        
+        // Show certificate hex if requested
+        if (settings.ShowHex)
+        {
+            var certBytes = cert.GetEncoded();
+            var hexDump = GetHexDump(certBytes.Take(256).ToArray(), 16);
+            certNode.AddNode($"[dim]Certificate Data (first 256 bytes):[/]");
+            certNode.AddNode($"[dim]{hexDump}[/]");
+        }
+    }
+
+    private void AnalyzeSignerInformation(TreeNode signersNode, SignerInformation signer, int index, Settings settings)
+    {
+        var signerNode = signersNode.AddNode($"[yellow]Signer {index}[/]");
+        
+        // Signer identity
+        var signerId = signer.SignerID;
+        signerNode.AddNode($"Issuer: {signerId.Issuer}");
+        signerNode.AddNode($"Serial Number: {signerId.SerialNumber}");
+        if (signerId.SubjectKeyIdentifier != null)
+        {
+            signerNode.AddNode($"Subject Key ID: {Convert.ToHexString(signerId.SubjectKeyIdentifier)}");
+        }
+        
+        // Algorithms
+        signerNode.AddNode($"Digest Algorithm: {GetDigestAlgorithmName(signer.DigestAlgorithmID.Algorithm.Id)} ({signer.DigestAlgorithmID.Algorithm.Id})");
+        signerNode.AddNode($"Encryption Algorithm: {GetEncryptionAlgorithmName(signer.EncryptionAlgorithmID.Algorithm.Id)} ({signer.EncryptionAlgorithmID.Algorithm.Id})");
+        
+        // Signed attributes
+        var signedAttrs = signer.SignedAttributes;
+        if (signedAttrs != null && signedAttrs.Count > 0)
+        {
+            var signedAttrsNode = signerNode.AddNode($"[green]Signed Attributes[/] ({signedAttrs.Count})");
+            foreach (Org.BouncyCastle.Asn1.Cms.Attribute attr in signedAttrs.ToAsn1EncodableVector())
+            {
+                AnalyzeAttribute(signedAttrsNode, attr);
+            }
+        }
+        
+        // Unsigned attributes
+        var unsignedAttrs = signer.UnsignedAttributes;
+        if (unsignedAttrs != null && unsignedAttrs.Count > 0)
+        {
+            var unsignedAttrsNode = signerNode.AddNode($"[cyan]Unsigned Attributes[/] ({unsignedAttrs.Count})");
+            foreach (Org.BouncyCastle.Asn1.Cms.Attribute attr in unsignedAttrs.ToAsn1EncodableVector())
+            {
+                AnalyzeAttribute(unsignedAttrsNode, attr);
+            }
+        }
+    }
+
+    private void AnalyzeAttribute(TreeNode attrsNode, Org.BouncyCastle.Asn1.Cms.Attribute attr)
+    {
+        var oid = attr.AttrType.Id;
+        var name = GetAttributeName(oid);
+        var attrNode = attrsNode.AddNode($"{name} ({oid})");
+        
+        foreach (var value in attr.AttrValues)
+        {
+            try
+            {
+                var attrValue = GetAttributeValue(value.ToAsn1Object());
+                attrNode.AddNode($"Value: {attrValue}");
+            }
+            catch (Exception ex)
+            {
+                attrNode.AddNode($"[red]Parse Error:[/] {ex.Message}");
+            }
+        }
+    }
+
+    private async Task VerifySignature(CbeffPayloadExtended payload, Settings settings)
+    {
+        _console.WriteLine();
+        _console.MarkupLine("[yellow]Signature Verification[/]");
+        
+        if (!payload.Signature.HasValue)
+        {
+            _console.MarkupLine("[red]No signature present[/]");
+            return;
+        }
+
+        try
+        {
+            var verifier = _serviceProvider.GetRequiredService<ICbeffVerifier>();
+            var certificateStore = _serviceProvider.GetRequiredService<ITrustedCertificateStore>();
+            
+            // Get trusted certificates from the store
+            IStore<X509Certificate> trustedCerts;
+            
+            // If a certificate path was provided, load it
+            if (!string.IsNullOrEmpty(settings.CertificatePath))
+            {
+                if (File.Exists(settings.CertificatePath))
+                {
+                    var certBytes = File.ReadAllBytes(settings.CertificatePath);
+                    var cert = new X509Certificate(certBytes);
+                    var certList = new List<X509Certificate> { cert };
+                    trustedCerts = CollectionUtilities.CreateStore(certList);
+                    _console.MarkupLine($"[green]Loaded certificate:[/] {cert.SubjectDN}");
+                }
+                else
+                {
+                    _console.MarkupLine($"[red]Certificate file not found:[/] {settings.CertificatePath}");
+                    return;
+                }
             }
             else
             {
-                spectreNode.AddNode(new Markup(child.Label));
+                // Use certificates from the trusted store
+                var storeResult = certificateStore.GetTrustedCertificates();
+                if (storeResult.IsFailure)
+                {
+                    _console.MarkupLine($"[red]Failed to get trusted certificates:[/] {storeResult.Error}");
+                    return;
+                }
+                
+                trustedCerts = storeResult.Value;
+                var certCount = trustedCerts.EnumerateMatches(null).Count();
+                _console.MarkupLine($"[green]Using {certCount} certificates from trusted store[/]");
+                
+                // Show certificate subjects for debugging
+                foreach (var cert in trustedCerts.EnumerateMatches(null))
+                {
+                    _console.MarkupLine($"[dim]  - {cert.SubjectDN}[/]");
+                    _console.MarkupLine($"[dim]    Serial: {cert.SerialNumber}[/]");
+                }
+            }
+
+            // Convert CbeffPayloadExtended to CbeffPayload for verification
+            var basicPayloadResult = payload.ToBasicPayload();
+            if (basicPayloadResult.IsFailure)
+            {
+                _console.MarkupLine($"[red]Failed to convert payload:[/] {basicPayloadResult.Error}");
+                return;
+            }
+            var basicPayload = basicPayloadResult.Value;
+
+            var verificationResult = await verifier.VerifyAsync(basicPayload, trustedCerts);
+            
+            if (verificationResult.IsSuccess)
+            {
+                var result = verificationResult.Value;
+                
+                if (result.IsValid)
+                {
+                    _console.MarkupLine("[green]✓ Signature verification PASSED[/]");
+                    
+                    if (result.SignerCertificate.HasValue)
+                    {
+                        _console.MarkupLine($"[green]Signer:[/] {result.SignerCertificate.Value.SubjectDN}");
+                    }
+                    
+                    if (result.SigningTime.HasValue)
+                    {
+                        _console.MarkupLine($"[green]Signing Time:[/] {result.SigningTime.Value:yyyy-MM-dd HH:mm:ss} UTC");
+                    }
+                    
+                    if (result.CardUuid.HasValue)
+                    {
+                        _console.MarkupLine($"[green]Card UUID:[/] {result.CardUuid.Value}");
+                    }
+                }
+                else
+                {
+                    _console.MarkupLine("[red]✗ Signature verification FAILED[/]");
+                    
+                    foreach (var error in result.ValidationErrors)
+                    {
+                        _console.MarkupLine($"[red]Error:[/] {error}");
+                    }
+                }
+            }
+            else
+            {
+                _console.MarkupLine($"[red]Verification failed:[/] {verificationResult.Error}");
             }
         }
-        return spectreNode;
+        catch (Exception ex)
+        {
+            _console.MarkupLine($"[red]Verification error:[/] {ex.Message}");
+        }
     }
+
+    private string GetDigestAlgorithmName(string oid) => oid switch
+    {
+        "2.16.840.1.101.3.4.2.1" => "SHA-256",
+        "2.16.840.1.101.3.4.2.2" => "SHA-384",
+        "2.16.840.1.101.3.4.2.3" => "SHA-512",
+        "1.3.14.3.2.26" => "SHA-1",
+        "1.2.840.113549.2.5" => "MD5",
+        _ => $"Unknown ({oid})"
+    };
+
+    private string GetEncryptionAlgorithmName(string oid) => oid switch
+    {
+        "1.2.840.113549.1.1.1" => "RSA",
+        "1.2.840.113549.1.1.11" => "RSA with SHA-256",
+        "1.2.840.113549.1.1.12" => "RSA with SHA-384",
+        "1.2.840.113549.1.1.13" => "RSA with SHA-512",
+        "1.2.840.10045.2.1" => "ECDSA",
+        "1.2.840.10045.4.3.2" => "ECDSA with SHA-256",
+        "1.2.840.10045.4.3.3" => "ECDSA with SHA-384",
+        "1.2.840.10045.4.3.4" => "ECDSA with SHA-512",
+        _ => $"Unknown ({oid})"
+    };
+
+    private string GetAttributeName(string oid) => oid switch
+    {
+        "1.2.840.113549.1.9.3" => "Content Type",
+        "1.2.840.113549.1.9.4" => "Message Digest",
+        "1.2.840.113549.1.9.5" => "Signing Time",
+        "1.2.840.113549.1.9.6" => "Counter Signature",
+        "1.2.840.113549.1.9.16.2.12" => "Signing Certificate",
+        "1.2.840.113549.1.9.16.2.47" => "Signing Certificate V2",
+        "2.16.840.1.101.3.6.9.1" => "Card UUID",
+        _ => $"Unknown ({oid})"
+    };
+
+    private string GetAttributeValue(Org.BouncyCastle.Asn1.Asn1Object attributeValue)
+    {
+        try
+        {
+            return attributeValue switch
+            {
+                Org.BouncyCastle.Asn1.DerOctetString octetString => Convert.ToHexString(octetString.GetOctets()),
+                Org.BouncyCastle.Asn1.DerUtf8String utf8String => utf8String.GetString(),
+                Org.BouncyCastle.Asn1.DerPrintableString printableString => printableString.GetString(),
+                Org.BouncyCastle.Asn1.DerIA5String ia5String => ia5String.GetString(),
+                Org.BouncyCastle.Asn1.DerInteger integer => integer.Value.ToString(),
+                Org.BouncyCastle.Asn1.DerUtcTime utcTime => utcTime.ToDateTime().ToString("yyyy-MM-dd HH:mm:ss UTC"),
+                Org.BouncyCastle.Asn1.DerGeneralizedTime genTime => genTime.ToDateTime().ToString("yyyy-MM-dd HH:mm:ss UTC"),
+                _ => $"[{attributeValue.GetType().Name}] {Convert.ToHexString(attributeValue.GetEncoded())}"
+            };
+        }
+        catch
+        {
+            return "[Parse Error]"; 
+        }
+    }
+
+    private string GetSignatureAlgorithmName(string oid) => oid switch
+    {
+        "1.2.840.113549.1.1.1" => "RSA",
+        "1.2.840.113549.1.1.5" => "RSA with SHA-1",
+        "1.2.840.113549.1.1.11" => "RSA with SHA-256",
+        "1.2.840.113549.1.1.12" => "RSA with SHA-384",
+        "1.2.840.113549.1.1.13" => "RSA with SHA-512",
+        "1.2.840.10045.4.1" => "ECDSA with SHA-1",
+        "1.2.840.10045.4.3.2" => "ECDSA with SHA-256",
+        "1.2.840.10045.4.3.3" => "ECDSA with SHA-384",
+        "1.2.840.10045.4.3.4" => "ECDSA with SHA-512",
+        _ => $"Unknown ({oid})"
+    };
 }

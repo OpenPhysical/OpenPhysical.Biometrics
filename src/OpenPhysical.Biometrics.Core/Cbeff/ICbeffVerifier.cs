@@ -2,7 +2,8 @@ namespace OpenPhysical.Biometrics.Core.Cbeff;
 
 using CSharpFunctionalExtensions;
 using OpenPhysical.Domains.Cbeff;
-using System.Security.Cryptography.X509Certificates;
+using Org.BouncyCastle.Utilities.Collections;
+using Org.BouncyCastle.X509;
 
 /// <summary>
 /// Interface for verifying CBEFF signatures.
@@ -13,23 +14,23 @@ public interface ICbeffVerifier
     /// Verifies the signature on a signed CBEFF payload.
     /// </summary>
     /// <param name="payload">The CBEFF payload to verify</param>
-    /// <param name="trustedCertificates">Collection of trusted certificates for verification</param>
+    /// <param name="trustedCertificates">Store of trusted certificates for verification</param>
     /// <returns>Result containing verification status and details</returns>
     Task<Result<CbeffVerificationResult>> VerifyAsync(
         CbeffPayload payload,
-        X509Certificate2Collection trustedCertificates);
+        IStore<X509Certificate> trustedCertificates);
 
     /// <summary>
     /// Verifies a detached CMS signature for CBEFF data.
     /// </summary>
     /// <param name="data">The data that was signed</param>
     /// <param name="signature">The detached CMS signature</param>
-    /// <param name="trustedCertificates">Collection of trusted certificates for verification</param>
+    /// <param name="trustedCertificates">Store of trusted certificates for verification</param>
     /// <returns>Result containing verification status and details</returns>
     Result<CbeffVerificationResult> VerifyDetachedSignature(
         byte[] data,
         byte[] signature,
-        X509Certificate2Collection trustedCertificates);
+        IStore<X509Certificate> trustedCertificates);
 }
 
 /// <summary>
@@ -42,7 +43,7 @@ public interface ICbeffVerifier
 /// <param name="ValidationErrors">Any validation errors encountered</param>
 public sealed record CbeffVerificationResult(
     bool IsValid,
-    Maybe<X509Certificate2> SignerCertificate,
+    Maybe<X509Certificate> SignerCertificate,
     Maybe<DateTime> SigningTime,
     Maybe<Guid> CardUuid,
     string[] ValidationErrors);

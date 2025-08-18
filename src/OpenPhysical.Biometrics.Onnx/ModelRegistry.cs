@@ -1,6 +1,6 @@
 using JetBrains.Annotations;
 
-namespace OpenPhysical.Biometrics.Models;
+namespace OpenPhysical.Biometrics.Onnx;
 
 /// <summary>
 /// Registry of ONNX models used in PIV processing pipeline.
@@ -10,12 +10,12 @@ public static class ModelRegistry
     /// <summary>
     /// RetinaFace model for face detection.
     /// </summary>
-    public const string FaceDetector = "OpenPhysical.Biometrics.Models.Resources.FaceDetector.onnx";
+    public const string FaceDetector = "OpenPhysical.Biometrics.Onnx.Resources.FaceDetector.onnx";
 
     /// <summary>
     /// PFLD model for 68-point facial landmark detection.
     /// </summary>
-    public const string FaceLandmarks68 = "OpenPhysical.Biometrics.Models.Resources.landmarks_68_pfld.onnx";
+    public const string FaceLandmarks68 = "OpenPhysical.Biometrics.Onnx.Resources.landmarks_68_pfld.onnx";
 
     /// <summary>
     /// Gets a model as a byte array from embedded resources

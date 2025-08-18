@@ -58,6 +58,12 @@ services.AddSingleton<IIncits385Writer, Incits385WriterService>();
 // Register metadata services
 services.AddMetadataServices();
 
+// Register certificate store
+services.AddCertificateStore();
+
+// Register console
+services.AddSingleton<IAnsiConsole>(AnsiConsole.Console);
+
 // Register CLI commands
 services.AddScoped<InspectCbeffCommand>();
 services.AddScoped<ExtractCbeffCommand>();
@@ -155,7 +161,7 @@ app.Configure(config =>
                 .WithExample("cbeff", "inspect", "facial_image.bin")
                 .WithExample("cbeff", "inspect", "facial_image.bin", "--hex")
                 .WithExample("cbeff", "inspect", "fingerprint.bin", "--extract", "minutiae.dat")
-                .WithExample("cbeff", "inspect", "signed_cbeff.bin", "--verify", "--cert", "signer.crt");
+                .WithExample("cbeff", "inspect", "signed_cbeff.bin", "--cert", "signer.crt");
                 
             cbeff.AddCommand<ExtractCbeffCommand>("extract")
                 .WithDescription("Extract images from CBEFF containers")
