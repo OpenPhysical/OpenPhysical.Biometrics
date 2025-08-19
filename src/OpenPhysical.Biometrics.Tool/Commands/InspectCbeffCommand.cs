@@ -152,26 +152,26 @@ public sealed class InspectCbeffCommand : AsyncCommand<InspectCbeffCommand.Setti
         var headerNode = tree.AddNode("[green]CBEFF Header[/]");
         var header = payload.Header;
 
-        headerNode.AddNode($"Patron Header Version: {header.PatronHeaderVersion:X2}");
-        headerNode.AddNode($"SBH Security Options: {header.SbhSecurityOptions:X2}");
-        headerNode.AddNode($"BDB Format Owner: {header.BdbFormatOwner:X4} ({GetFormatOwnerName(header.BdbFormatOwner)})");
-        headerNode.AddNode($"BDB Format Type: {header.BdbFormatType:X4} ({GetFormatTypeName(header.BdbFormatType)})");
-        headerNode.AddNode($"Creation Date: {header.CreationDate:yyyy-MM-dd HH:mm:ss}");
-        headerNode.AddNode($"Validity Not Before: {header.ValidityNotBefore:yyyy-MM-dd HH:mm:ss}");
-        headerNode.AddNode($"Validity Not After: {header.ValidityNotAfter:yyyy-MM-dd HH:mm:ss}");
-        headerNode.AddNode($"Creator: {System.Text.Encoding.UTF8.GetString(header.GetCreator()).TrimEnd('\0')}");
+        headerNode.AddNode($"Patron Header Version: [yellow]{header.PatronHeaderVersion:X2}[/]");
+        headerNode.AddNode($"SBH Security Options: [yellow]{header.SbhSecurityOptions:X2}[/]");
+        headerNode.AddNode($"BDB Format Owner: [yellow]{header.BdbFormatOwner:X4}[/] [cyan]({GetFormatOwnerName(header.BdbFormatOwner)})[/]");
+        headerNode.AddNode($"BDB Format Type: [yellow]{header.BdbFormatType:X4}[/] [cyan]({GetFormatTypeName(header.BdbFormatOwner, header.BdbFormatType)})[/]");
+        headerNode.AddNode($"Creation Date: [yellow]{header.CreationDate:yyyy-MM-dd HH:mm:ss}[/]");
+        headerNode.AddNode($"Validity Not Before: [yellow]{header.ValidityNotBefore:yyyy-MM-dd HH:mm:ss}[/]");
+        headerNode.AddNode($"Validity Not After: [yellow]{header.ValidityNotAfter:yyyy-MM-dd HH:mm:ss}[/]");
+        headerNode.AddNode($"Creator: [yellow]{System.Text.Encoding.UTF8.GetString(header.GetCreator()).TrimEnd('\0')}[/]");
         var fascnBytes = header.GetFascN();
         var fascnHex = Convert.ToHexString(fascnBytes);
-        var fascnNode = headerNode.AddNode($"FASC-N: {fascnHex}");
+        var fascnNode = headerNode.AddNode($"FASC-N: [yellow]{fascnHex}[/]");
         DisplayFascNTree(fascnNode, fascnBytes);
-        headerNode.AddNode($"Biometric Type: {header.BiometricType}");
+        headerNode.AddNode($"Biometric Type: [yellow]{header.BiometricType}[/]");
         
         // Store header FASC-N for comparison with signature
         _headerFascN = fascnBytes;
-        headerNode.AddNode($"Biometric Subtype: {header.BiometricSubtype}");
-        headerNode.AddNode($"Quality: {header.Quality} ({GetQualityDescription(header.Quality)})");
-        headerNode.AddNode($"BDB Length: {header.BdbLength:N0} bytes");
-        headerNode.AddNode($"SB Length: {header.SbLength:N0} bytes");
+        headerNode.AddNode($"Biometric Subtype: [yellow]{header.BiometricSubtype}[/]");
+        headerNode.AddNode($"Quality: [yellow]{header.Quality}[/] ({GetQualityDescription(header.Quality)})");
+        headerNode.AddNode($"BDB Length: [yellow]{header.BdbLength:N0}[/] bytes");
+        headerNode.AddNode($"SB Length: [yellow]{header.SbLength:N0}[/] bytes");
 
         // Biometric data block information
         var bdbNode = tree.AddNode($"[green]Biometric Data Block[/] ({payload.BiometricDataBlock.Length:N0} bytes)");
@@ -180,7 +180,7 @@ public sealed class InspectCbeffCommand : AsyncCommand<InspectCbeffCommand.Setti
         if (payload.ParsedBiometricRecord.HasValue)
         {
             var record = payload.ParsedBiometricRecord.Value;
-            var recordNode = bdbNode.AddNode($"[cyan]Parsed Biometric Record[/] ({record.GetType().Name})");
+            var recordNode = bdbNode.AddNode($"[green]Parsed Biometric Record[/] [cyan]({record.GetType().Name})[/]");
             
             // Use reflection to display properties
             var properties = record.GetType().GetProperties();
@@ -191,7 +191,7 @@ public sealed class InspectCbeffCommand : AsyncCommand<InspectCbeffCommand.Setti
                     var value = prop.GetValue(record);
                     if (value != null)
                     {
-                        recordNode.AddNode($"{prop.Name}: {value}");
+                        recordNode.AddNode($"{prop.Name}: [yellow]{value}[/]");
                     }
                 }
                 catch
@@ -231,13 +231,29 @@ public sealed class InspectCbeffCommand : AsyncCommand<InspectCbeffCommand.Setti
         _ => "Unknown"
     };
 
-    private static string GetFormatTypeName(ushort type) => type switch
+    private static string GetFormatTypeName(ushort owner, ushort type)
     {
-        0x0101 => "Facial Image",
-        0x0201 => "Fingerprint Minutiae",
-        0x0301 => "Iris Image",
-        _ => "Unknown"
-    };
+        // INCITS M1 (0x001B) formats
+        if (owner == 0x001B)
+        {
+            return type switch
+            {
+                0x0501 => "INCITS 385 Facial Image",
+                0x0201 => "INCITS 378 Fingerprint Minutiae",
+                0x0301 => "INCITS Iris Image",
+                _ => $"INCITS {type:X4}"
+            };
+        }
+        
+        // Default formats
+        return type switch
+        {
+            0x0101 => "Facial Image",
+            0x0201 => "Fingerprint Minutiae",
+            0x0301 => "Iris Image",
+            _ => "Unknown"
+        };
+    }
 
     private static string GetPatronFormatName(byte format) => format switch
     {
@@ -313,14 +329,14 @@ public sealed class InspectCbeffCommand : AsyncCommand<InspectCbeffCommand.Setti
         var signedData = cmsSignedData.SignedData;
         if (signedData.DigestAlgorithms.Count > 0)
         {
-            var digestNode = sigNode.AddNode($"[cyan]Digest Algorithms[/] ({signedData.DigestAlgorithms.Count})");
+            var digestNode = sigNode.AddNode($"[green]Digest Algorithms[/] ({signedData.DigestAlgorithms.Count})");
             foreach (var algo in signedData.DigestAlgorithms)
             {
                 try
                 {
                     var algorithmId = Org.BouncyCastle.Asn1.X509.AlgorithmIdentifier.GetInstance(algo);
                     var algoName = GetDigestAlgorithmName(algorithmId.Algorithm.Id);
-                    digestNode.AddNode($"{algoName} ({algorithmId.Algorithm.Id})");
+                    digestNode.AddNode($"[yellow]{algoName}[/] [cyan]({algorithmId.Algorithm.Id})[/]");
                 }
                 catch (Exception ex)
                 {
@@ -346,7 +362,7 @@ public sealed class InspectCbeffCommand : AsyncCommand<InspectCbeffCommand.Setti
         var signerList = new List<SignerInformation>(signers.GetSigners());
         if (signerList.Count > 0)
         {
-            var signersNode = sigNode.AddNode($"[cyan]Signers[/] ({signerList.Count})");
+            var signersNode = sigNode.AddNode($"[green]Signers[/] ({signerList.Count})");
             for (int i = 0; i < signerList.Count; i++)
             {
                 AnalyzeSignerInformation(signersNode, signerList[i], i, settings);
@@ -380,7 +396,7 @@ public sealed class InspectCbeffCommand : AsyncCommand<InspectCbeffCommand.Setti
         certNode.AddNode($"Currently Valid: {(isValid ? "[green]Yes[/]" : "[red]No[/]")}");
         
         // Algorithm info
-        certNode.AddNode($"Signature Algorithm: {GetSignatureAlgorithmName(cert.SigAlgOid)} ({cert.SigAlgOid})");
+        certNode.AddNode($"Signature Algorithm: [yellow]{GetSignatureAlgorithmName(cert.SigAlgOid)}[/] [cyan]({cert.SigAlgOid})[/]");
         
         // Public key info
         var publicKey = cert.GetPublicKey();
@@ -411,21 +427,21 @@ public sealed class InspectCbeffCommand : AsyncCommand<InspectCbeffCommand.Setti
 
     private void AnalyzeSignerInformation(TreeNode signersNode, SignerInformation signer, int index, Settings settings)
     {
-        var signerNode = signersNode.AddNode($"[yellow]Signer {index}[/]");
+        var signerNode = signersNode.AddNode($"[green]Signer {index}[/]");
         
         // Signer identity
         var signerId = signer.SignerID;
-        signerNode.AddNode($"Issuer: {signerId.Issuer}");
-        signerNode.AddNode($"Serial Number: {signerId.SerialNumber}");
+        signerNode.AddNode($"Issuer: [yellow]{signerId.Issuer}[/]");
+        signerNode.AddNode($"Serial Number: [yellow]{signerId.SerialNumber}[/]");
         if (signerId.SubjectKeyIdentifier != null)
         {
-            signerNode.AddNode($"Subject Key ID: {Convert.ToHexString(signerId.SubjectKeyIdentifier)}");
+            signerNode.AddNode($"Subject Key ID: [yellow]{Convert.ToHexString(signerId.SubjectKeyIdentifier)}[/]");
         }
         
         // Algorithms
         var digestAlgoOid = signer.DigestAlgorithmID.Algorithm.Id;
-        signerNode.AddNode($"Digest Algorithm: {GetDigestAlgorithmName(digestAlgoOid)} ({digestAlgoOid})");
-        signerNode.AddNode($"Signature Algorithm: {GetEncryptionAlgorithmName(signer.SignatureAlgorithm.Algorithm.Id)} ({signer.SignatureAlgorithm.Algorithm.Id})");
+        signerNode.AddNode($"Digest Algorithm: [yellow]{GetDigestAlgorithmName(digestAlgoOid)}[/] [cyan]({digestAlgoOid})[/]");
+        signerNode.AddNode($"Signature Algorithm: [yellow]{GetEncryptionAlgorithmName(signer.SignatureAlgorithm.Algorithm.Id)}[/] [cyan]({signer.SignatureAlgorithm.Algorithm.Id})[/]");
         
         // Verify message digest if we have raw CBEFF data
         if (_rawCbeffData != null)
@@ -460,7 +476,7 @@ public sealed class InspectCbeffCommand : AsyncCommand<InspectCbeffCommand.Setti
     {
         var oid = attr.AttrType.Id;
         var name = GetAttributeName(oid);
-        var attrNode = attrsNode.AddNode($"{name} ({oid})");
+        var attrNode = attrsNode.AddNode($"{name} [cyan]({oid})[/]");
         
         foreach (var value in attr.AttrValues)
         {
@@ -474,7 +490,7 @@ public sealed class InspectCbeffCommand : AsyncCommand<InspectCbeffCommand.Setti
                 else
                 {
                     var attrValue = GetAttributeValue(value.ToAsn1Object(), oid);
-                    attrNode.AddNode($"Value: {attrValue}");
+                    attrNode.AddNode($"Value: [yellow]{attrValue}[/]");
                 }
             }
             catch (Exception ex)
@@ -844,7 +860,7 @@ public sealed class InspectCbeffCommand : AsyncCommand<InspectCbeffCommand.Setti
             Org.BouncyCastle.Asn1.DerUtcTime utcTime => utcTime.ToDateTime().ToString("yyyy-MM-dd HH:mm:ss UTC"),
             Org.BouncyCastle.Asn1.DerGeneralizedTime genTime => genTime.ToDateTime().ToString("yyyy-MM-dd HH:mm:ss UTC"),
             Org.BouncyCastle.Asn1.Asn1UtcTime asn1UtcTime => asn1UtcTime.ToDateTime().ToString("yyyy-MM-dd HH:mm:ss UTC"),
-            Org.BouncyCastle.Asn1.DerObjectIdentifier oid => $"OID: {oid.Id} ({GetOidDescription(oid.Id)})",
+            Org.BouncyCastle.Asn1.DerObjectIdentifier oid => $"OID: [cyan]{oid.Id}[/] [yellow]({GetOidDescription(oid.Id)})[/]",
             _ => $"[[{attributeValue.GetType().Name.EscapeMarkup()}]] {Convert.ToHexString(attributeValue.GetEncoded())}"
         };
     }
@@ -1000,11 +1016,11 @@ public sealed class InspectCbeffCommand : AsyncCommand<InspectCbeffCommand.Setti
 
         var fascn = result.Value;
         
-        fascnNode.AddNode($"Credential: {fascn.CredentialNumber:D6} (Series: {fascn.CredentialSeries}, Issue: {fascn.IndividualCredentialIssue})");
-        fascnNode.AddNode($"Agency/System: {fascn.AgencyCode:D4} / {fascn.SystemCode:D4}");
-        fascnNode.AddNode($"Person ID: {fascn.PersonIdentifier:D10}");
-        fascnNode.AddNode($"Organization: {fascn.OrganizationalIdentifier:D4} ({fascn.GetCategoryDescription()})");
-        fascnNode.AddNode($"Association: {fascn.GetAffiliationDescription()}");
+        fascnNode.AddNode($"Credential: [yellow]{fascn.CredentialNumber:D6}[/] (Series: [yellow]{fascn.CredentialSeries}[/], Issue: [yellow]{fascn.IndividualCredentialIssue}[/])");
+        fascnNode.AddNode($"Agency/System: [yellow]{fascn.AgencyCode:D4}[/] / [yellow]{fascn.SystemCode:D4}[/]");
+        fascnNode.AddNode($"Person ID: [yellow]{fascn.PersonIdentifier:D10}[/]");
+        fascnNode.AddNode($"Organization: [yellow]{fascn.OrganizationalIdentifier:D4}[/] [cyan]({fascn.GetCategoryDescription()})[/]");
+        fascnNode.AddNode($"Association: [cyan]{fascn.GetAffiliationDescription()}[/]");
     }
 
     private void ParseAndDisplayPivFascN(TreeNode parentNode, Org.BouncyCastle.Asn1.Asn1Object attributeValue)
@@ -1017,22 +1033,24 @@ public sealed class InspectCbeffCommand : AsyncCommand<InspectCbeffCommand.Setti
                 var fascnHex = Convert.ToHexString(fascnBytes);
                 
                 // Compare with header FASC-N if available
-                string comparisonResult = "";
                 if (_headerFascN != null)
                 {
                     if (fascnBytes.SequenceEqual(_headerFascN))
                     {
-                        comparisonResult = " [green]✓ Matches CBEFF header[/]";
+                        parentNode.AddNode($"Value: {fascnHex} [green]✓ Matches CBEFF header[/]");
                     }
                     else
                     {
-                        comparisonResult = " [red]✗ MISMATCH with CBEFF header[/]";
+                        parentNode.AddNode($"Value: {fascnHex} [red]✗ MISMATCH with CBEFF header[/]");
+                        DisplayFascNTree(parentNode, fascnBytes);
                         _console.MarkupLine("[yellow]WARNING:[/] FASC-N in signature does not match FASC-N in CBEFF header!");
                     }
                 }
-                
-                var fascnNode = parentNode.AddNode($"Value: {fascnHex}{comparisonResult}");
-                DisplayFascNTree(fascnNode, fascnBytes);
+                else
+                {
+                    parentNode.AddNode($"Value: [yellow]{fascnHex}[/]");
+                    DisplayFascNTree(parentNode, fascnBytes);
+                }
             }
             else
             {
@@ -1138,10 +1156,10 @@ public sealed class InspectCbeffCommand : AsyncCommand<InspectCbeffCommand.Setti
             }
             
             // Compare digests
-            var digestNode = signerNode.AddNode("[cyan]Message Digest Verification[/]");
-            digestNode.AddNode($"Algorithm: {GetDigestAlgorithmName(digestAlgoOid)}");
-            digestNode.AddNode($"Expected: {Convert.ToHexString(expectedDigest)}");
-            digestNode.AddNode($"Calculated: {Convert.ToHexString(calculatedDigest)}");
+            var digestNode = signerNode.AddNode("[green]Message Digest Verification[/]");
+            digestNode.AddNode($"Algorithm: [yellow]{GetDigestAlgorithmName(digestAlgoOid)}[/]");
+            digestNode.AddNode($"Expected: [yellow]{Convert.ToHexString(expectedDigest)}[/]");
+            digestNode.AddNode($"Calculated: [yellow]{Convert.ToHexString(calculatedDigest)}[/]");
             
             if (expectedDigest.SequenceEqual(calculatedDigest))
             {
