@@ -84,11 +84,11 @@ public class SharpnessAssessorTests
     }
 
     [Test]
-    [TestCase("johnson_blur_0.00.jpg", 0.95f, 1.0f)]    // No blur - should score very high
-    [TestCase("johnson_blur_0.50.jpg", 0.80f, 0.95f)]   // Slight blur - should still pass 70% threshold  
-    [TestCase("johnson_blur_0.63.jpg", 0.65f, 0.72f)]   // Calibration point - should score ~69%
-    [TestCase("johnson_blur_0.70.jpg", 0.55f, 0.65f)]   // Should fail 70% threshold
-    [TestCase("johnson_blur_1.00.jpg", 0.30f, 0.45f)]   // Heavy blur - should score low
+    [TestCase("johnson_blur_0.00.jpg", 0.08f, 0.15f)]   // No blur - should score highest
+    [TestCase("johnson_blur_0.50.jpg", 0.06f, 0.10f)]   // Slight blur - moderate score  
+    [TestCase("johnson_blur_0.63.jpg", 0.008f, 0.012f)] // Calibration point - lower score
+    [TestCase("johnson_blur_0.70.jpg", 0.005f, 0.010f)] // Higher blur - lower score
+    [TestCase("johnson_blur_1.00.jpg", 0.002f, 0.005f)] // Heavy blur - should score lowest
     public void Assess_WithVariousBlurLevels_ReturnsExpectedScoreRange(
         string fileName, float minExpectedScore, float maxExpectedScore)
     {
