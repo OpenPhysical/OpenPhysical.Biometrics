@@ -31,6 +31,14 @@ public static class CbeffServiceExtensions
                 pivFacialFormat.BdbFormatType,
                 pivFacialFormat);
             
+            // Register PIV fingerprint format
+            var pivFingerprintFormat = new PivFingerprintFormat();
+            registry.RegisterFormat(
+                pivFingerprintFormat.PatronFormat,
+                pivFingerprintFormat.BdbFormatOwner,
+                pivFingerprintFormat.BdbFormatType,
+                pivFingerprintFormat);
+            
             // Add other formats here as they are implemented
             
             return registry;
@@ -41,6 +49,13 @@ public static class CbeffServiceExtensions
         
         // Register extended serializer
         services.AddSingleton<ICbeffSerializerExtended, CbeffSerializerExtended>();
+        
+        // Register CBEFF services
+        services.AddScoped<ICbeffEncoder, CbeffEncoderService>();
+        services.AddScoped<ICbeffDecoder, CbeffDecoderService>();
+        services.AddScoped<ICbeffSigner, CbeffSignerService>();
+        services.AddScoped<ICbeffVerifier, CbeffVerifierService>();
+        services.AddScoped<ICbeffBuilder, CbeffBuilderService>();
         
         return services;
     }

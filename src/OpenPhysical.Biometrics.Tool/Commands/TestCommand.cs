@@ -24,7 +24,7 @@ using System.ComponentModel;
 using Spectre.Console;
 using Spectre.Console.Cli;
 
-namespace OpenPhysical.Biometrics.Cli.Commands;
+namespace OpenPhysical.Biometrics.Tool.Commands;
 
 /// <summary>
 /// Base command for automated testing features

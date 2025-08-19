@@ -1,22 +1,22 @@
-using OpenPhysical.Biometrics.Cli.Commands;
+using OpenPhysical.Biometrics.Tool.Commands;
 using OpenPhysical.Biometrics.Core.Abstractions;
 using OpenPhysical.Biometrics.Infrastructure.Services;
 using JetBrains.Annotations;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
-namespace OpenPhysical.Biometrics.Cli;
+namespace OpenPhysical.Biometrics.Tool;
 
 /// <summary>
-/// Extension methods for registering FaceOFFx CLI services
+/// Extension methods for registering Biometrics Tool services
 /// </summary>
 public static class ServiceCollectionExtensions
 {
     /// <summary>
-    /// Registers all FaceOFFx services.
+    /// Registers all Biometrics Tool services.
     /// </summary>
     [UsedImplicitly]
-    public static IServiceCollection AddFaceOffxCli(this IServiceCollection services)
+    public static IServiceCollection AddBiometricsTool(this IServiceCollection services)
     {
         // Note: Cannot log during service registration as services aren't built yet
 

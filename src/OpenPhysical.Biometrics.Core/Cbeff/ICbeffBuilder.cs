@@ -6,6 +6,7 @@ using OpenPhysical.Domains.Cbeff;
 using System;
 using System.Threading.Tasks;
 using Org.BouncyCastle.X509;
+using Org.BouncyCastle.Crypto;
 
 /// <summary>
 /// Interface for building CBEFF containers from biometric data.
@@ -34,6 +35,7 @@ public interface ICbeffBuilder
     /// <param name="format">The biometric format specification</param>
     /// <param name="metadata">CBEFF metadata including FASC-N and dates</param>
     /// <param name="signingCertificate">Certificate for signing</param>
+    /// <param name="privateKey">The private key corresponding to the signing certificate</param>
     /// <param name="includeCardUuid">Optional card UUID to include in signature</param>
     /// <returns>Result containing the signed CBEFF payload or error</returns>
     Task<Result<CbeffPayload>> BuildSignedAsync(
@@ -42,5 +44,6 @@ public interface ICbeffBuilder
         BiometricFormat format,
         CbeffMetadata metadata,
         X509Certificate signingCertificate,
+        AsymmetricKeyParameter privateKey,
         Maybe<Guid> includeCardUuid = default);
 }

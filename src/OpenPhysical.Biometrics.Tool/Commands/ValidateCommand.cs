@@ -19,7 +19,7 @@ using Spectre.Console;
 using Spectre.Console.Cli;
 using ImageSharpColor = SixLabors.ImageSharp.Color;
 
-namespace OpenPhysical.Biometrics.Cli.Commands;
+namespace OpenPhysical.Biometrics.Tool.Commands;
 
 /// <summary>
 /// Quick compliance validation command - returns pass/fail without processing

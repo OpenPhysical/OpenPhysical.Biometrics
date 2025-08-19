@@ -24,7 +24,7 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.Text;
 using System.Text.Json;
-using OpenPhysical.Biometrics.Cli.Services;
+using OpenPhysical.Biometrics.Tool.Services;
 using OpenPhysical.Biometrics.Core.Abstractions;
 using OpenPhysical.Biometrics.Core.Domain.Standards;
 using OpenPhysical.Biometrics.Core.Domain.Transformations;
@@ -39,7 +39,7 @@ using SixLabors.ImageSharp.Drawing.Processing;
 using Spectre.Console;
 using Spectre.Console.Cli;
 
-namespace OpenPhysical.Biometrics.Cli.Commands;
+namespace OpenPhysical.Biometrics.Tool.Commands;
 
 /// <summary>
 /// Validates and processes an entire dataset of images

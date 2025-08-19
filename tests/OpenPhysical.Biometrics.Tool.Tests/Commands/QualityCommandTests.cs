@@ -1,5 +1,5 @@
 using System.Text.Json;
-using OpenPhysical.Biometrics.Cli.Commands;
+using OpenPhysical.Biometrics.Tool.Commands;
 using OpenPhysical.Biometrics.Core.Domain.Quality;
 using OpenPhysical.Biometrics.Tests.Common;
 using FluentAssertions;
@@ -15,7 +15,7 @@ using Spectre.Console.Cli;
 using Spectre.Console.Cli.Extensions.DependencyInjection;
 using Spectre.Console.Testing;
 
-namespace OpenPhysical.Biometrics.Cli.Tests.Commands;
+namespace OpenPhysical.Biometrics.Tool.Tests.Commands;
 
 [TestFixture]
 public class QualityCommandTests : UnitTestBase
@@ -216,7 +216,7 @@ public class QualityCommandTests : UnitTestBase
     private (CommandApp app, TestConsole console) CreateApplication()
     {
         var services = new ServiceCollection();
-        services.AddFaceOffxCli();
+        services.AddBiometricsTool();
         services.AddLogging(builder => builder.AddSimpleConsole());
         
         var registrar = new DependencyInjectionRegistrar(services);

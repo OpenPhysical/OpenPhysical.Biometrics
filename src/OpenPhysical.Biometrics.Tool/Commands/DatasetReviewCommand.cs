@@ -27,7 +27,7 @@ using System.Text.Json;
 using Spectre.Console;
 using Spectre.Console.Cli;
 
-namespace OpenPhysical.Biometrics.Cli.Commands;
+namespace OpenPhysical.Biometrics.Tool.Commands;
 
 /// <summary>
 /// Reviews failed images from dataset validation and allows manual override

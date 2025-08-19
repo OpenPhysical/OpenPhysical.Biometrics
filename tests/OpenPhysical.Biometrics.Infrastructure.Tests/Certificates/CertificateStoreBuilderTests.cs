@@ -137,7 +137,7 @@ public class CertificateStoreBuilderTests
     }
 
     [Test]
-    public void RemoveCertificate_ShouldRemoveFromStore()
+    public void RemoveCertificate_ShouldReturnFailureForImmutableStore()
     {
         var store = new CertificateStoreBuilder(_logger)
             .WithAllTestCertificates()
@@ -147,15 +147,15 @@ public class CertificateStoreBuilderTests
         var initialResult = store.GetTrustedCertificates();
         initialResult.Value.EnumerateMatches(null).Count().Should().Be(3);
 
-        // Remove the intermediate certificate (serial number 2)
+        // Attempt to remove the intermediate certificate should fail for immutable store
         var removeResult = store.RemoveCertificate("2");
-        removeResult.IsSuccess.Should().BeTrue();
+        removeResult.IsFailure.Should().BeTrue();
+        removeResult.Error.Should().Contain("immutable");
 
-        // Verify we now have 2 certificates
+        // Verify we still have 3 certificates (no mutation occurred)
         var finalResult = store.GetTrustedCertificates();
         var remaining = finalResult.Value.EnumerateMatches(null).ToList();
-        remaining.Should().HaveCount(2);
-        remaining.Should().NotContain(c => c.SerialNumber.Equals(BigInteger.Two));
+        remaining.Should().HaveCount(3);
     }
 
     [Test]
@@ -175,5 +175,54 @@ public class CertificateStoreBuilderTests
         var serials = certificates.Select(c => c.SerialNumber).OrderBy(s => s).ToList();
         serials[0].Should().Be(BigInteger.One);   // Root CA
         serials[1].Should().Be(BigInteger.Three); // Content Signer
+    }
+
+    [Test]
+    public void CreateWithCertificate_ShouldCreateNewImmutableInstance()
+    {
+        var originalStore = new CertificateStoreBuilder(_logger)
+            .WithTestRootCA()
+            .Build() as InMemoryTrustedCertificateStore;
+
+        originalStore.Should().NotBeNull();
+
+        // Add a certificate using immutable method
+        var addResult = originalStore!.CreateWithCertificate(TestCertificates.IntermediateCA);
+        addResult.IsSuccess.Should().BeTrue();
+        
+        var newStore = addResult.Value;
+        
+        // Original store should be unchanged
+        var originalCerts = originalStore.GetTrustedCertificates().Value.EnumerateMatches(null).ToList();
+        originalCerts.Should().HaveCount(1);
+        
+        // New store should have both certificates
+        var newCerts = newStore.GetTrustedCertificates().Value.EnumerateMatches(null).ToList();
+        newCerts.Should().HaveCount(2);
+    }
+
+    [Test]
+    public void CreateWithoutCertificate_ShouldCreateNewImmutableInstance()
+    {
+        var originalStore = new CertificateStoreBuilder(_logger)
+            .WithAllTestCertificates()
+            .Build() as InMemoryTrustedCertificateStore;
+
+        originalStore.Should().NotBeNull();
+
+        // Remove a certificate using immutable method
+        var removeResult = originalStore!.CreateWithoutCertificate("2"); // Intermediate CA serial number
+        removeResult.IsSuccess.Should().BeTrue();
+        
+        var newStore = removeResult.Value;
+        
+        // Original store should be unchanged
+        var originalCerts = originalStore.GetTrustedCertificates().Value.EnumerateMatches(null).ToList();
+        originalCerts.Should().HaveCount(3);
+        
+        // New store should have one less certificate
+        var newCerts = newStore.GetTrustedCertificates().Value.EnumerateMatches(null).ToList();
+        newCerts.Should().HaveCount(2);
+        newCerts.Should().NotContain(c => c.SerialNumber.Equals(BigInteger.Two));
     }
 }

@@ -30,7 +30,7 @@ using SixLabors.ImageSharp.PixelFormats;
 using SixLabors.ImageSharp.Processing;
 using SixLabors.ImageSharp.Drawing.Processing.Processors.Drawing;
 
-namespace OpenPhysical.Biometrics.Cli.Services;
+namespace OpenPhysical.Biometrics.Tool.Services;
 
 /// <summary>
 /// Provides visualization services for quality assessment results.

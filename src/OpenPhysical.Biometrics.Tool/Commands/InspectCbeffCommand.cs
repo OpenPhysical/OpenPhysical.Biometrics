@@ -5,7 +5,9 @@ using System.Diagnostics.CodeAnalysis;
 using Microsoft.Extensions.DependencyInjection;
 using OpenPhysical.Biometrics.Core.Cbeff;
 using OpenPhysical.Biometrics.Core.Certificates;
+using OpenPhysical.Biometrics.Core.Services;
 using OpenPhysical.Biometrics.Infrastructure.Cbeff;
+using OpenPhysical.Biometrics.Infrastructure.Utilities;
 using OpenPhysical.Domains.Cbeff;
 using Spectre.Console;
 using Spectre.Console.Cli;
@@ -25,6 +27,8 @@ public sealed class InspectCbeffCommand : AsyncCommand<InspectCbeffCommand.Setti
     private readonly IServiceProvider _serviceProvider;
     private readonly ICbeffSerializerExtended _serializer;
     private readonly IAnsiConsole _console;
+    private byte[]? _headerFascN = null;
+    private byte[]? _rawCbeffData = null;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="InspectCbeffCommand"/> class.
@@ -87,6 +91,9 @@ public sealed class InspectCbeffCommand : AsyncCommand<InspectCbeffCommand.Setti
             _console.MarkupLine($"[green]Inspecting CBEFF file:[/] {settings.FilePath} ({data.Length:N0} bytes)");
             _console.WriteLine();
 
+            // Store raw data for digest verification
+            _rawCbeffData = data;
+
             var result = _serializer.DeserializeAutoExtended(data);
             if (result.IsFailure)
             {
@@ -131,8 +138,14 @@ public sealed class InspectCbeffCommand : AsyncCommand<InspectCbeffCommand.Setti
         headerNode.AddNode($"Validity Not Before: {header.ValidityNotBefore:yyyy-MM-dd HH:mm:ss}");
         headerNode.AddNode($"Validity Not After: {header.ValidityNotAfter:yyyy-MM-dd HH:mm:ss}");
         headerNode.AddNode($"Creator: {System.Text.Encoding.UTF8.GetString(header.GetCreator()).TrimEnd('\0')}");
-        headerNode.AddNode($"FASC-N: {Convert.ToHexString(header.GetFascN())}");
+        var fascnBytes = header.GetFascN();
+        var fascnHex = Convert.ToHexString(fascnBytes);
+        var fascnNode = headerNode.AddNode($"FASC-N: {fascnHex}");
+        DisplayFascNTree(fascnNode, fascnBytes);
         headerNode.AddNode($"Biometric Type: {header.BiometricType}");
+        
+        // Store header FASC-N for comparison with signature
+        _headerFascN = fascnBytes;
         headerNode.AddNode($"Biometric Subtype: {header.BiometricSubtype}");
         headerNode.AddNode($"Quality: {header.Quality} ({GetQualityDescription(header.Quality)})");
         headerNode.AddNode($"BDB Length: {header.BdbLength:N0} bytes");
@@ -260,7 +273,7 @@ public sealed class InspectCbeffCommand : AsyncCommand<InspectCbeffCommand.Setti
         }
         catch (Exception ex)
         {
-            sigNode.AddNode($"[red]CMS Parse Error:[/] {ex.Message}");
+            sigNode.AddNode($"[red]CMS Parse Error:[/] {ex.Message.EscapeMarkup()}");
         }
     }
 
@@ -289,7 +302,7 @@ public sealed class InspectCbeffCommand : AsyncCommand<InspectCbeffCommand.Setti
                 }
                 catch (Exception ex)
                 {
-                    digestNode.AddNode($"[red]Parse Error:[/] {ex.Message}");
+                    digestNode.AddNode($"[red]Parse Error:[/] {ex.Message.EscapeMarkup()}");
                 }
             }
         }
@@ -388,8 +401,15 @@ public sealed class InspectCbeffCommand : AsyncCommand<InspectCbeffCommand.Setti
         }
         
         // Algorithms
-        signerNode.AddNode($"Digest Algorithm: {GetDigestAlgorithmName(signer.DigestAlgorithmID.Algorithm.Id)} ({signer.DigestAlgorithmID.Algorithm.Id})");
-        signerNode.AddNode($"Encryption Algorithm: {GetEncryptionAlgorithmName(signer.EncryptionAlgorithmID.Algorithm.Id)} ({signer.EncryptionAlgorithmID.Algorithm.Id})");
+        var digestAlgoOid = signer.DigestAlgorithmID.Algorithm.Id;
+        signerNode.AddNode($"Digest Algorithm: {GetDigestAlgorithmName(digestAlgoOid)} ({digestAlgoOid})");
+        signerNode.AddNode($"Signature Algorithm: {GetEncryptionAlgorithmName(signer.SignatureAlgorithm.Algorithm.Id)} ({signer.SignatureAlgorithm.Algorithm.Id})");
+        
+        // Verify message digest if we have raw CBEFF data
+        if (_rawCbeffData != null)
+        {
+            VerifyMessageDigest(signerNode, signer, digestAlgoOid);
+        }
         
         // Signed attributes
         var signedAttrs = signer.SignedAttributes;
@@ -424,12 +444,20 @@ public sealed class InspectCbeffCommand : AsyncCommand<InspectCbeffCommand.Setti
         {
             try
             {
-                var attrValue = GetAttributeValue(value.ToAsn1Object());
-                attrNode.AddNode($"Value: {attrValue}");
+                // Special handling for FASC-N to add tree structure
+                if (oid == "2.16.840.1.101.3.6.6")
+                {
+                    ParseAndDisplayPivFascN(attrNode, value.ToAsn1Object());
+                }
+                else
+                {
+                    var attrValue = GetAttributeValue(value.ToAsn1Object(), oid);
+                    attrNode.AddNode($"Value: {attrValue}");
+                }
             }
             catch (Exception ex)
             {
-                attrNode.AddNode($"[red]Parse Error:[/] {ex.Message}");
+                attrNode.AddNode($"[red]Parse Error:[/] {ex.Message.EscapeMarkup()}");
             }
         }
     }
@@ -482,13 +510,19 @@ public sealed class InspectCbeffCommand : AsyncCommand<InspectCbeffCommand.Setti
                 
                 trustedCerts = storeResult.Value;
                 var certCount = trustedCerts.EnumerateMatches(null).Count();
-                _console.MarkupLine($"[green]Using {certCount} certificates from trusted store[/]");
+                _console.MarkupLine($"[green]Loaded {certCount} certificates from trusted store[/]");
                 
                 // Show certificate subjects for debugging
                 foreach (var cert in trustedCerts.EnumerateMatches(null))
                 {
                     _console.MarkupLine($"[dim]  - {cert.SubjectDN}[/]");
                     _console.MarkupLine($"[dim]    Serial: {cert.SerialNumber}[/]");
+                }
+                
+                // If we have the extended store, show additional info
+                if (certificateStore is ITrustedCertificateStoreExtended extendedStore)
+                {
+                    _console.MarkupLine($"[dim]  Total unique certificates: {extendedStore.CertificateCount}[/]");
                 }
             }
 
@@ -572,35 +606,136 @@ public sealed class InspectCbeffCommand : AsyncCommand<InspectCbeffCommand.Setti
 
     private string GetAttributeName(string oid) => oid switch
     {
+        // PKCS#9 attributes
         "1.2.840.113549.1.9.3" => "Content Type",
         "1.2.840.113549.1.9.4" => "Message Digest",
         "1.2.840.113549.1.9.5" => "Signing Time",
         "1.2.840.113549.1.9.6" => "Counter Signature",
+        
+        // PIV-specific attributes (NIST SP 800-73-4)
+        "2.16.840.1.101.3.6.5" => "pivSigner-DN",
+        "2.16.840.1.101.3.6.6" => "pivFASC-N",
+        
+        // UUID/GUID attributes
+        "1.3.6.1.1.16.4" => "UUID",
         "1.2.840.113549.1.9.16.2.12" => "Signing Certificate",
         "1.2.840.113549.1.9.16.2.47" => "Signing Certificate V2",
         "2.16.840.1.101.3.6.9.1" => "Card UUID",
         _ => $"Unknown ({oid})"
     };
 
-    private string GetAttributeValue(Org.BouncyCastle.Asn1.Asn1Object attributeValue)
+    private string GetAttributeValue(Org.BouncyCastle.Asn1.Asn1Object attributeValue, string oid = "")
     {
         try
         {
-            return attributeValue switch
+            // Handle PIV-specific OIDs with special parsing
+            return oid switch
             {
-                Org.BouncyCastle.Asn1.DerOctetString octetString => Convert.ToHexString(octetString.GetOctets()),
-                Org.BouncyCastle.Asn1.DerUtf8String utf8String => utf8String.GetString(),
-                Org.BouncyCastle.Asn1.DerPrintableString printableString => printableString.GetString(),
-                Org.BouncyCastle.Asn1.DerIA5String ia5String => ia5String.GetString(),
-                Org.BouncyCastle.Asn1.DerInteger integer => integer.Value.ToString(),
-                Org.BouncyCastle.Asn1.DerUtcTime utcTime => utcTime.ToDateTime().ToString("yyyy-MM-dd HH:mm:ss UTC"),
-                Org.BouncyCastle.Asn1.DerGeneralizedTime genTime => genTime.ToDateTime().ToString("yyyy-MM-dd HH:mm:ss UTC"),
-                _ => $"[{attributeValue.GetType().Name}] {Convert.ToHexString(attributeValue.GetEncoded())}"
+                "2.16.840.1.101.3.6.5" => ParsePivSignerDn(attributeValue), // pivSigner-DN
+                "2.16.840.1.101.3.6.6" => ParsePivFascN(attributeValue),    // pivFASC-N
+                "1.3.6.1.1.16.4" => ParseUuid(attributeValue),              // UUID
+                _ => ParseStandardAttributeValue(attributeValue)
             };
+        }
+        catch (Exception ex)
+        {
+            return $"[Parse Error: {ex.Message.EscapeMarkup()}]"; 
+        }
+    }
+
+    private string ParseStandardAttributeValue(Org.BouncyCastle.Asn1.Asn1Object attributeValue)
+    {
+        return attributeValue switch
+        {
+            Org.BouncyCastle.Asn1.DerOctetString octetString => Convert.ToHexString(octetString.GetOctets()),
+            Org.BouncyCastle.Asn1.DerUtf8String utf8String => utf8String.GetString(),
+            Org.BouncyCastle.Asn1.DerPrintableString printableString => printableString.GetString(),
+            Org.BouncyCastle.Asn1.DerIA5String ia5String => ia5String.GetString(),
+            Org.BouncyCastle.Asn1.DerInteger integer => integer.Value.ToString(),
+            Org.BouncyCastle.Asn1.DerUtcTime utcTime => utcTime.ToDateTime().ToString("yyyy-MM-dd HH:mm:ss UTC"),
+            Org.BouncyCastle.Asn1.DerGeneralizedTime genTime => genTime.ToDateTime().ToString("yyyy-MM-dd HH:mm:ss UTC"),
+            Org.BouncyCastle.Asn1.Asn1UtcTime asn1UtcTime => asn1UtcTime.ToDateTime().ToString("yyyy-MM-dd HH:mm:ss UTC"),
+            Org.BouncyCastle.Asn1.DerObjectIdentifier oid => $"OID: {oid.Id} ({GetOidDescription(oid.Id)})",
+            _ => $"[[{attributeValue.GetType().Name.EscapeMarkup()}]] {Convert.ToHexString(attributeValue.GetEncoded())}"
+        };
+    }
+
+    private string ParsePivSignerDn(Org.BouncyCastle.Asn1.Asn1Object attributeValue)
+    {
+        try
+        {
+            // The pivSigner-DN should be an X.501 Name (constructed ASN.1)
+            if (attributeValue is Org.BouncyCastle.Asn1.Asn1Sequence sequence)
+            {
+                var x500Name = Org.BouncyCastle.Asn1.X509.X509Name.GetInstance(sequence);
+                return x500Name.ToString();
+            }
+            else if (attributeValue is Org.BouncyCastle.Asn1.DerOctetString octetString)
+            {
+                // Sometimes the DN is wrapped in an OCTET STRING
+                var innerBytes = octetString.GetOctets();
+                var innerObject = Org.BouncyCastle.Asn1.Asn1Object.FromByteArray(innerBytes);
+                if (innerObject is Org.BouncyCastle.Asn1.Asn1Sequence innerSequence)
+                {
+                    var x500Name = Org.BouncyCastle.Asn1.X509.X509Name.GetInstance(innerSequence);
+                    return x500Name.ToString();
+                }
+            }
+            
+            // Try parsing the raw bytes directly
+            var rawBytes = attributeValue.GetEncoded();
+            var parsedObject = Org.BouncyCastle.Asn1.Asn1Object.FromByteArray(rawBytes);
+            if (parsedObject is Org.BouncyCastle.Asn1.Asn1Sequence directSequence)
+            {
+                var x500Name = Org.BouncyCastle.Asn1.X509.X509Name.GetInstance(directSequence);
+                return x500Name.ToString();
+            }
+            
+            // Fallback to hex if we can't parse as X.501 Name
+            return $"[X.501 Name - could not parse] {Convert.ToHexString(attributeValue.GetEncoded())}";
+        }
+        catch (Exception ex)
+        {
+            return $"[X.501 Name parse error: {ex.Message.EscapeMarkup()}] {Convert.ToHexString(attributeValue.GetEncoded())}";
+        }
+    }
+
+    private string ParsePivFascN(Org.BouncyCastle.Asn1.Asn1Object attributeValue)
+    {
+        // Note: For tree display of FASC-N in attributes, use ParseAndDisplayPivFascN instead
+        try
+        {
+            if (attributeValue is Org.BouncyCastle.Asn1.DerOctetString octetString)
+            {
+                var fascnBytes = octetString.GetOctets();
+                return Convert.ToHexString(fascnBytes);
+            }
+            return $"[FASC-N] {Convert.ToHexString(attributeValue.GetEncoded())}";
         }
         catch
         {
-            return "[Parse Error]"; 
+            return $"[FASC-N parse error] {Convert.ToHexString(attributeValue.GetEncoded())}";
+        }
+    }
+
+    private string ParseUuid(Org.BouncyCastle.Asn1.Asn1Object attributeValue)
+    {
+        try
+        {
+            if (attributeValue is Org.BouncyCastle.Asn1.DerOctetString octetString)
+            {
+                var uuidBytes = octetString.GetOctets();
+                if (uuidBytes.Length == 16)
+                {
+                    var guid = new Guid(uuidBytes);
+                    return $"UUID: {guid}";
+                }
+            }
+            return $"[UUID] {Convert.ToHexString(attributeValue.GetEncoded())}";
+        }
+        catch
+        {
+            return $"[UUID parse error] {Convert.ToHexString(attributeValue.GetEncoded())}";
         }
     }
 
@@ -617,4 +752,225 @@ public sealed class InspectCbeffCommand : AsyncCommand<InspectCbeffCommand.Setti
         "1.2.840.10045.4.3.4" => "ECDSA with SHA-512",
         _ => $"Unknown ({oid})"
     };
+
+    private string GetOidDescription(string oid) => oid switch
+    {
+        // Common content types
+        "1.2.840.113549.1.7.1" => "PKCS #7 Data",
+        "1.2.840.113549.1.7.2" => "PKCS #7 Signed Data",
+        "1.2.840.113549.1.7.3" => "PKCS #7 Enveloped Data",
+        "1.2.840.113549.1.7.4" => "PKCS #7 Signed and Enveloped Data",
+        "1.2.840.113549.1.7.5" => "PKCS #7 Digested Data",
+        "1.2.840.113549.1.7.6" => "PKCS #7 Encrypted Data",
+        
+        // PIV content types
+        "2.16.840.1.101.3.6.2" => "PIV Biometric Object",
+        "2.16.840.1.101.3.6.3" => "PIV Security Object",
+        "2.16.840.1.101.3.6.4" => "PIV Content Signing",
+        
+        // NIST algorithms
+        "2.16.840.1.101.3.4.2.1" => "SHA-256",
+        "2.16.840.1.101.3.4.2.2" => "SHA-384", 
+        "2.16.840.1.101.3.4.2.3" => "SHA-512",
+        
+        // Encryption algorithms
+        "1.2.840.113549.1.1.1" => "RSA Encryption",
+        "1.2.840.113549.1.1.11" => "RSA with SHA-256",
+        "1.2.840.10045.2.1" => "Elliptic Curve Public Key",
+        
+        // Hash algorithms
+        "1.3.14.3.2.26" => "SHA-1",
+        "1.2.840.113549.2.5" => "MD5",
+        
+        _ => "Unknown OID"
+    };
+
+    private string DecodeFascN(byte[] fascnBytes)
+    {
+        if (fascnBytes == null || fascnBytes.Length == 0)
+            return "Invalid FASC-N";
+
+        var result = FascNCodec.Decode(fascnBytes);
+        return result.IsSuccess ? result.Value.ToString() : $"Parse error: {result.Error}";
+    }
+
+    private void DisplayFascNTree(TreeNode fascnNode, byte[] fascnBytes)
+    {
+        if (fascnBytes == null || fascnBytes.Length == 0)
+        {
+            fascnNode.AddNode("[red]Invalid FASC-N data[/]");
+            return;
+        }
+
+        var result = FascNCodec.Decode(fascnBytes);
+        if (result.IsFailure)
+        {
+            fascnNode.AddNode($"[red]Parse error:[/] {result.Error}");
+            return;
+        }
+
+        var fascn = result.Value;
+        
+        fascnNode.AddNode($"Agency Code: {fascn.AgencyCode:D4}");
+        fascnNode.AddNode($"System Code: {fascn.SystemCode:D4}");
+        fascnNode.AddNode($"Credential Number: {fascn.CredentialNumber:D6}");
+        fascnNode.AddNode($"Credential Series: {fascn.CredentialSeries}");
+        fascnNode.AddNode($"Credential Issue: {fascn.IndividualCredentialIssue}");
+        fascnNode.AddNode($"Person Identifier: {fascn.PersonIdentifier:D10}");
+        fascnNode.AddNode($"Organizational Category: {(int)fascn.Category} ({fascn.GetCategoryDescription()})");
+        fascnNode.AddNode($"Organizational Identifier: {fascn.OrganizationalIdentifier:D4}");
+        fascnNode.AddNode($"Person/Organization Association: {(int)fascn.Affiliation} ({fascn.GetAffiliationDescription()})");
+    }
+
+    private void ParseAndDisplayPivFascN(TreeNode parentNode, Org.BouncyCastle.Asn1.Asn1Object attributeValue)
+    {
+        try
+        {
+            if (attributeValue is Org.BouncyCastle.Asn1.DerOctetString octetString)
+            {
+                var fascnBytes = octetString.GetOctets();
+                var fascnHex = Convert.ToHexString(fascnBytes);
+                
+                // Compare with header FASC-N if available
+                string comparisonResult = "";
+                if (_headerFascN != null)
+                {
+                    if (fascnBytes.SequenceEqual(_headerFascN))
+                    {
+                        comparisonResult = " [green]✓ Matches CBEFF header[/]";
+                    }
+                    else
+                    {
+                        comparisonResult = " [red]✗ MISMATCH with CBEFF header[/]";
+                        _console.MarkupLine("[yellow]WARNING:[/] FASC-N in signature does not match FASC-N in CBEFF header!");
+                    }
+                }
+                
+                var fascnNode = parentNode.AddNode($"Value: {fascnHex}{comparisonResult}");
+                DisplayFascNTree(fascnNode, fascnBytes);
+            }
+            else
+            {
+                parentNode.AddNode($"[FASC-N] {Convert.ToHexString(attributeValue.GetEncoded())}");
+            }
+        }
+        catch (Exception ex)
+        {
+            parentNode.AddNode($"[FASC-N parse error: {ex.Message.EscapeMarkup()}] {Convert.ToHexString(attributeValue.GetEncoded())}");
+        }
+    }
+
+    private void VerifyMessageDigest(TreeNode signerNode, SignerInformation signer, string digestAlgoOid)
+    {
+        try
+        {
+            // Get the MessageDigest attribute from signed attributes
+            var messageDigestAttr = signer.SignedAttributes?[CmsAttributes.MessageDigest];
+            if (messageDigestAttr == null)
+            {
+                signerNode.AddNode("[red]✗ No MessageDigest attribute found[/]");
+                return;
+            }
+
+            var messageDigestValue = messageDigestAttr.AttrValues.GetEnumerator();
+            if (!messageDigestValue.MoveNext())
+            {
+                signerNode.AddNode("[red]✗ MessageDigest attribute has no value[/]");
+                return;
+            }
+
+            var expectedDigest = Org.BouncyCastle.Asn1.Asn1OctetString.GetInstance(messageDigestValue.Current).GetOctets();
+            
+            // Calculate the digest over the signed portion (header + BDB)
+            // The signature covers everything except the signature block itself
+            var cbeffData = _rawCbeffData!;
+            
+            // Parse to find where signature block starts
+            // CBEFF structure: PIV BC Tag (optional) + Header + BDB + Signature
+            // We need to hash: Header + BDB
+            
+            // First check if we have PIV BC tag
+            if (BerTlv.HasBerTag(cbeffData, 0xBC))
+            {
+                var extractResult = BerTlv.ExtractValueIfTagged(cbeffData, 0xBC);
+                if (extractResult.IsSuccess)
+                {
+                    cbeffData = extractResult.Value;
+                }
+            }
+            
+            // CBEFF Header is fixed 88 bytes
+            const int cbeffHeaderSize = 88;
+            if (cbeffData.Length < cbeffHeaderSize)
+            {
+                signerNode.AddNode("[red]✗ CBEFF data too short for header[/]");
+                return;
+            }
+            
+            // Get BDB length from header (bytes 2-5, big-endian)
+            int bdbLength = (cbeffData[2] << 24) | (cbeffData[3] << 16) | (cbeffData[4] << 8) | cbeffData[5];
+            
+            // Calculate signed portion length (header + BDB)
+            int signedPortionLength = cbeffHeaderSize + bdbLength;
+            if (cbeffData.Length < signedPortionLength)
+            {
+                signerNode.AddNode($"[red]✗ CBEFF data too short: expected {signedPortionLength}, got {cbeffData.Length}[/]");
+                return;
+            }
+            
+            // Extract the signed portion
+            var signedData = new byte[signedPortionLength];
+            Array.Copy(cbeffData, 0, signedData, 0, signedPortionLength);
+            
+            // Calculate digest based on algorithm
+            byte[] calculatedDigest;
+            switch (digestAlgoOid)
+            {
+                case "2.16.840.1.101.3.4.2.1": // SHA-256
+                    var sha256 = new Org.BouncyCastle.Crypto.Digests.Sha256Digest();
+                    sha256.BlockUpdate(signedData, 0, signedData.Length);
+                    calculatedDigest = new byte[sha256.GetDigestSize()];
+                    sha256.DoFinal(calculatedDigest, 0);
+                    break;
+                    
+                case "2.16.840.1.101.3.4.2.2": // SHA-384
+                    var sha384 = new Org.BouncyCastle.Crypto.Digests.Sha384Digest();
+                    sha384.BlockUpdate(signedData, 0, signedData.Length);
+                    calculatedDigest = new byte[sha384.GetDigestSize()];
+                    sha384.DoFinal(calculatedDigest, 0);
+                    break;
+                    
+                case "1.3.14.3.2.26": // SHA-1
+                    var sha1 = new Org.BouncyCastle.Crypto.Digests.Sha1Digest();
+                    sha1.BlockUpdate(signedData, 0, signedData.Length);
+                    calculatedDigest = new byte[sha1.GetDigestSize()];
+                    sha1.DoFinal(calculatedDigest, 0);
+                    break;
+                    
+                default:
+                    signerNode.AddNode($"[yellow]⚠ Unsupported digest algorithm: {digestAlgoOid}[/]");
+                    return;
+            }
+            
+            // Compare digests
+            var digestNode = signerNode.AddNode("[cyan]Message Digest Verification[/]");
+            digestNode.AddNode($"Algorithm: {GetDigestAlgorithmName(digestAlgoOid)}");
+            digestNode.AddNode($"Expected: {Convert.ToHexString(expectedDigest)}");
+            digestNode.AddNode($"Calculated: {Convert.ToHexString(calculatedDigest)}");
+            
+            if (expectedDigest.SequenceEqual(calculatedDigest))
+            {
+                digestNode.AddNode("[green]✓ Message digest is CORRECT[/]");
+            }
+            else
+            {
+                digestNode.AddNode("[red]✗ Message digest MISMATCH[/]");
+                digestNode.AddNode($"[red]Signed data length: {signedData.Length} bytes (header: {cbeffHeaderSize}, BDB: {bdbLength})[/]");
+            }
+        }
+        catch (Exception ex)
+        {
+            signerNode.AddNode($"[red]✗ Error verifying digest: {ex.Message}[/]");
+        }
+    }
 }

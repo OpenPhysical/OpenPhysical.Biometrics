@@ -74,14 +74,7 @@ public sealed class OnnxLandmarkExtractor : ILandmarkExtractor, IDisposable
 
             // Step 2: Resize to model input size (112x112) with padding to preserve aspect ratio
             faceImage.Mutate(static ctx =>
-                ctx.Resize(
-                    new ResizeOptions
-                    {
-                        Size = new Size(ModelInputSize, ModelInputSize),
-                        Mode = ResizeMode.Pad,
-                        PadColor = Color.Gray,
-                    }
-                )
+                ctx.Resize(ModelInputSize, ModelInputSize, KnownResamplers.Lanczos3)
             );
 
             // Step 3: Convert to tensor and normalize to [0, 1]

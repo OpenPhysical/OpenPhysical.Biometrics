@@ -1,10 +1,13 @@
 using OpenPhysical.Biometrics.Tool.Commands;
 using OpenPhysical.Biometrics.Infrastructure.Extensions;
 using OpenPhysical.Biometrics.Infrastructure.Cbeff;
+using PivFingerprintCbeffFormat = OpenPhysical.Biometrics.Infrastructure.Cbeff.PivFingerprintCbeffFormat;
 using OpenPhysical.Biometrics.Infrastructure.Standards.Incits385;
 using OpenPhysical.Biometrics.Core.Cbeff;
 using OpenPhysical.Biometrics.Core.Standards.Incits385;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.FileProviders;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Spectre.Console;
 using Spectre.Console.Cli;
@@ -12,6 +15,20 @@ using Spectre.Console.Cli.Extensions.DependencyInjection;
 
 // Configure services
 var services = new ServiceCollection();
+
+// Create hosting environment
+var environment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? 
+                  Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT") ??
+                  "Production";
+
+var hostEnvironment = new SimpleHostEnvironment
+{
+    EnvironmentName = environment,
+    ApplicationName = "biotool",
+    ContentRootPath = AppContext.BaseDirectory
+};
+
+services.AddSingleton<IHostEnvironment>(hostEnvironment);
 
 // Configure logging - check for --debug flag in args
 var hasDebugFlag = args.Contains("--debug");
@@ -41,8 +58,8 @@ services.AddLogging(builder =>
     });
 });
 
-// Register biometrics services
-// services.AddBiometrics();
+// Register biometrics services - functional approach
+services.AddBiometricServices();
 
 // Register CBEFF services
 services.AddCbeffServices();
@@ -55,19 +72,46 @@ services.AddScoped<ICbeffBuilder, CbeffBuilderService>();
 // Register INCITS 385 services
 services.AddSingleton<IIncits385Writer, Incits385WriterService>();
 
+// Register CBEFF format implementations
+services.AddSingleton<PivFingerprintCbeffFormat>();
+
 // Register metadata services
 services.AddMetadataServices();
 
-// Register certificate store
-services.AddCertificateStore();
+// Register certificate store based on environment
+services.AddCertificateStoreForEnvironment(hostEnvironment);
 
-// Register console
-services.AddSingleton<IAnsiConsole>(AnsiConsole.Console);
+// Register console - check for test/CI environment
+var isTestEnvironment = Environment.GetEnvironmentVariable("CI") == "true" ||
+                        Environment.GetEnvironmentVariable("TERM") == "dumb" ||
+                        Environment.GetEnvironmentVariable("NO_COLOR") == "1" ||
+                        args.Contains("--test-mode");
+
+if (isTestEnvironment)
+{
+    // Use plain console for tests and CI environments
+    var plainConsole = AnsiConsole.Create(new AnsiConsoleSettings
+    {
+        Ansi = AnsiSupport.No,
+        ColorSystem = ColorSystemSupport.NoColors,
+        Interactive = InteractionSupport.No,
+        Out = new AnsiConsoleOutput(Console.Out)
+    });
+    services.AddSingleton<IAnsiConsole>(plainConsole);
+}
+else
+{
+    services.AddSingleton<IAnsiConsole>(AnsiConsole.Console);
+}
 
 // Register CLI commands
 services.AddScoped<InspectCbeffCommand>();
 services.AddScoped<ExtractCbeffCommand>();
 services.AddScoped<CreateCbeffCommand>();
+services.AddScoped<SignCbeffCommand>();
+services.AddScoped<VerifyCbeffCommand>();
+services.AddScoped<ExtractChuidCertCommand>();
+services.AddScoped<ProcessCommand>();
 
 // Create the CLI app with dependency injection
 using var registrar = new DependencyInjectionRegistrar(services);
@@ -81,9 +125,7 @@ app.Configure(config =>
     );
     config.ValidateExamples();
 
-    // Commented out commands that are not yet implemented
-    /*
-    // PIV Commands - single clean command
+    // PIV Commands - single clean command with functional implementation
     config
         .AddCommand<ProcessCommand>("process")
         .WithDescription("Process images for PIV compliance (supports JP2, JPEG, PNG, TIFF output)")
@@ -97,6 +139,7 @@ app.Configure(config =>
         .WithExample("process", "photo.jpg", "--quality-gate", "0.8")
         .WithExample("process", "photo.jpg", "--quality-gate", "0.7", "--quality-report");
 
+    /*
     // ROI Commands - visualize facial region for JPEG 2000 encoding
     config
         .AddCommand<RoiCommand>("roi")
@@ -175,6 +218,32 @@ app.Configure(config =>
                 .WithExample("cbeff", "create", "face.jp2", "--standard", "PIV", "--quality", "90")
                 .WithExample("cbeff", "create", "face.jpg", "--piv-wrap", "--fascn", "0123456789ABCDEF...")
                 .WithExample("cbeff", "create", "face.jpg", "--gender", "M", "--eye-color", "brown");
+                
+            cbeff.AddCommand<SignCbeffCommand>("sign")
+                .WithDescription("Sign CBEFF files with digital signatures")
+                .WithExample("cbeff", "sign", "facial_image.cbeff", "--cert", "signer.p12", "--password", "secret")
+                .WithExample("cbeff", "sign", "facial_image.cbeff", "--cert", "signer.p12", "--output", "signed.cbeff")
+                .WithExample("cbeff", "sign", "facial_image.cbeff", "--cert", "signer.p12", "--card-uuid", "12345678-1234-5678-9abc-123456789abc");
+                
+            cbeff.AddCommand<VerifyCbeffCommand>("verify")
+                .WithDescription("Verify digital signatures on CBEFF files")
+                .WithExample("cbeff", "verify", "signed_facial_image.cbeff")
+                .WithExample("cbeff", "verify", "signed_facial_image.cbeff", "--cert", "trusted.crt")
+                .WithExample("cbeff", "verify", "signed_facial_image.cbeff", "--verbose", "--json")
+                .WithExample("cbeff", "verify", "signed_facial_image.cbeff", "--output", "verification_report.txt");
+        });
+
+    // PIV Commands - Extract certificates from PIV data objects
+    config
+        .AddBranch("piv", piv =>
+        {
+            piv.SetDescription("PIV data object commands");
+            
+            piv.AddCommand<ExtractChuidCertCommand>("extract-chuid-cert")
+                .WithDescription("Extract signing certificate from CHUID data (0x5FC1A4)")
+                .WithExample("piv", "extract-chuid-cert", "5FC1A4.dat")
+                .WithExample("piv", "extract-chuid-cert", "5FC1A4.dat", "--output", "./certs", "--analyze")
+                .WithExample("piv", "extract-chuid-cert", "golden_piv/01_Golden_PIV/5FC1A4.dat", "--analyze");
         });
 
     /*
@@ -216,4 +285,13 @@ catch (Exception ex)
 {
     AnsiConsole.WriteException(ex);
     return 1;
+}
+
+// Simple hosting environment implementation for console applications
+internal sealed class SimpleHostEnvironment : IHostEnvironment
+{
+    public string EnvironmentName { get; set; } = "Production";
+    public string ApplicationName { get; set; } = "biotool";
+    public string ContentRootPath { get; set; } = AppContext.BaseDirectory;
+    public IFileProvider ContentRootFileProvider { get; set; } = new NullFileProvider();
 }

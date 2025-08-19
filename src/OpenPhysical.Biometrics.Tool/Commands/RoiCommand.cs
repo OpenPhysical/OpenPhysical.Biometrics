@@ -1,6 +1,6 @@
 using System.ComponentModel;
 using CSharpFunctionalExtensions;
-using OpenPhysical.Biometrics.Cli.Services;
+using OpenPhysical.Biometrics.Tool.Services;
 using OpenPhysical.Biometrics.Core.Abstractions;
 using OpenPhysical.Biometrics.Core.Domain.Detection;
 using OpenPhysical.Biometrics.Core.Domain.Standards;
@@ -12,7 +12,7 @@ using SixLabors.ImageSharp.PixelFormats;
 using Spectre.Console;
 using Spectre.Console.Cli;
 
-namespace OpenPhysical.Biometrics.Cli.Commands;
+namespace OpenPhysical.Biometrics.Tool.Commands;
 
 /// <summary>
 /// CLI command for visualizing facial ROI (Region of Interest) Inner Region on PIV-processed images.

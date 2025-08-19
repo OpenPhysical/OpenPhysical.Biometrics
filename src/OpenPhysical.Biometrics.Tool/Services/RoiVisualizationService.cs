@@ -8,7 +8,7 @@ using SixLabors.ImageSharp.Drawing.Processing;
 using SixLabors.ImageSharp.PixelFormats;
 using SixLabors.ImageSharp.Processing;
 
-namespace OpenPhysical.Biometrics.Cli.Services;
+namespace OpenPhysical.Biometrics.Tool.Services;
 
 /// <summary>
 /// Provides visualization services for facial ROI Inner Region on images.

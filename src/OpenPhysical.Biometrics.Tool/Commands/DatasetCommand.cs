@@ -23,7 +23,7 @@
 using System.ComponentModel;
 using Spectre.Console.Cli;
 
-namespace OpenPhysical.Biometrics.Cli.Commands;
+namespace OpenPhysical.Biometrics.Tool.Commands;
 
 /// <summary>
 /// Parent command for dataset operations

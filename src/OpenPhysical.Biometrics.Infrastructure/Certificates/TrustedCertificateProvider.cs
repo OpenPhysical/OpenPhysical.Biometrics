@@ -42,8 +42,12 @@ public sealed class TrustedCertificateProvider : ITrustedCertificateProvider
             var certificateResources = new[]
             {
                 "icam-test-root-ca.crt",
-                "icam-test-signing-ca.crt",
-                "icam-test-content-signer.crt"
+                "icam-test-signing-ca.crt", 
+                "icam-test-content-signer.crt",
+                "icam-piv-root-ca-gen1-3.crt",
+                "icam-piv-signing-ca-gen3.crt",
+                "icam-piv-content-signer-gen3.crt",
+                "icam-piv-content-signer-gen1-2.crt"
             };
 
             foreach (var resourceName in certificateResources)

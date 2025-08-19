@@ -2,13 +2,13 @@ using System.ComponentModel;
 using System.Text.Json;
 using OpenPhysical.Biometrics.Core.Domain.Quality;
 using OpenPhysical.Biometrics.Infrastructure.Extensions;
-using OpenPhysical.Biometrics.Cli.Services;
+using OpenPhysical.Biometrics.Tool.Services;
 using Spectre.Console;
 using Spectre.Console.Cli;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
 
-namespace OpenPhysical.Biometrics.Cli.Commands;
+namespace OpenPhysical.Biometrics.Tool.Commands;
 
 /// <summary>
 /// Command for assessing facial image quality according to ISO/IEC 19794-5

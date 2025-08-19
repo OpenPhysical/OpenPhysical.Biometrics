@@ -1,5 +1,8 @@
 using JetBrains.Annotations;
 using OpenPhysical.Biometrics.Core.Abstractions.Pipeline;
+using OpenPhysical.Biometrics.Core.Domain.Quality;
+using OpenPhysical.Domains.Biometrics;
+using QualityScore = OpenPhysical.Biometrics.Core.Domain.Quality.QualityScore;
 
 namespace OpenPhysical.Biometrics.Core.Domain.Pipeline;
 

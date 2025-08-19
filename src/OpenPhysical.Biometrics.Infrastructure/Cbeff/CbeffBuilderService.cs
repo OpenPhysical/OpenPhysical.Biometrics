@@ -7,6 +7,7 @@ using OpenPhysical.Domains.Cbeff;
 using System;
 using System.Threading.Tasks;
 using Org.BouncyCastle.X509;
+using Org.BouncyCastle.Crypto;
 
 /// <summary>
 /// Service for building CBEFF containers from biometric data.
@@ -18,8 +19,8 @@ public sealed class CbeffBuilderService : ICbeffBuilder
     
     public CbeffBuilderService(ICbeffEncoder encoder, ICbeffSigner signer)
     {
-        _encoder = encoder ?? throw new ArgumentNullException(nameof(encoder));
-        _signer = signer ?? throw new ArgumentNullException(nameof(signer));
+        _encoder = encoder;
+        _signer = signer;
     }
     
     /// <summary>
@@ -31,18 +32,7 @@ public sealed class CbeffBuilderService : ICbeffBuilder
         BiometricFormat format,
         CbeffMetadata metadata)
     {
-        if (biometricData == null || biometricData.Length == 0)
-            return Result.Failure<CbeffPayload>("Biometric data cannot be null or empty");
-            
-        try
-        {
-            // Use the encoder to create the CBEFF payload
-            return await _encoder.EncodeAsync(biometricData, modality, format, metadata);
-        }
-        catch (Exception ex)
-        {
-            return Result.Failure<CbeffPayload>($"Error building CBEFF container: {ex.Message}");
-        }
+        return await _encoder.EncodeAsync(biometricData, modality, format, metadata);
     }
     
     /// <summary>
@@ -54,17 +44,12 @@ public sealed class CbeffBuilderService : ICbeffBuilder
         BiometricFormat format,
         CbeffMetadata metadata,
         X509Certificate signingCertificate,
+        AsymmetricKeyParameter privateKey,
         Maybe<Guid> includeCardUuid = default)
     {
-        if (signingCertificate == null)
-            return Result.Failure<CbeffPayload>("Signing certificate cannot be null");
-            
         // First build the unsigned CBEFF
         var buildResult = await BuildAsync(biometricData, modality, format, metadata);
-        if (buildResult.IsFailure)
-            return buildResult;
-            
-        // Then sign it
-        return await _signer.SignAsync(buildResult.Value, signingCertificate, includeCardUuid);
+        return await buildResult.Bind(payload => 
+            _signer.SignAsync(payload, signingCertificate, privateKey, includeCardUuid));
     }
 }

@@ -102,18 +102,27 @@ public class CertificateStoreBuilder
     public ITrustedCertificateStore Build()
     {
         var provider = new StaticCertificateProvider(_certificates.ToImmutableArray());
-        var store = new InMemoryTrustedCertificateStore(
+        var emptyStore = new InMemoryTrustedCertificateStore(
             _logger,
             new System.Lazy<ITrustedCertificateProvider>(() => provider),
             autoInitializeWithDefaults: false);
 
-        // Pre-populate the store with certificates
+        // Pre-populate the store with certificates using immutable pattern
+        var currentStore = emptyStore;
         foreach (var cert in _certificates)
         {
-            store.AddCertificate(cert);
+            var addResult = currentStore.CreateWithCertificate(cert);
+            if (addResult.IsSuccess)
+            {
+                currentStore = addResult.Value;
+            }
+            else
+            {
+                _logger.LogWarning("Failed to add certificate {Subject}: {Error}", cert.SubjectDN, addResult.Error);
+            }
         }
 
-        return store;
+        return currentStore;
     }
 
     /// <summary>

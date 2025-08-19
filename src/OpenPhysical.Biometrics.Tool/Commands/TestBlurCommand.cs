@@ -29,7 +29,7 @@ using SixLabors.ImageSharp.Processing;
 using Spectre.Console;
 using Spectre.Console.Cli;
 
-namespace OpenPhysical.Biometrics.Cli.Commands;
+namespace OpenPhysical.Biometrics.Tool.Commands;
 
 /// <summary>
 /// Command to generate blur progressions for testing

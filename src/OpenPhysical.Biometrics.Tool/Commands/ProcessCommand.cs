@@ -9,25 +9,29 @@ using JetBrains.Annotations;
 using Microsoft.Extensions.Logging;
 using Spectre.Console;
 using Spectre.Console.Cli;
+using CSharpFunctionalExtensions;
+using OpenPhysical.Biometrics.Core.Domain.Detection;
 
-namespace OpenPhysical.Biometrics.Cli.Commands;
+namespace OpenPhysical.Biometrics.Tool.Commands;
 
 /// <summary>
-/// Clean PIV command - just: input image → PIV compliant output
+/// Result containing both processing result and optional quality assessment
+/// </summary>
+internal record ProcessingResultWithQuality(
+    ProcessingResultDto ProcessingResult,
+    Iso19794Assessment? QualityAssessment
+);
+
+/// <summary>
+/// Clean PIV command - just: input image → PIV compliant output.
+/// Fully functional implementation using Result&lt;T&gt; pattern with no exceptions.
 /// </summary>
 /// <remarks>
-/// Processes an input image for PIV usage
+/// Processes an input image for PIV usage using functional programming principles
 /// </remarks>
-/// <param name="faceDetector"></param>
-/// <param name="landmarkExtractor"></param>
-/// <param name="jpeg2000Encoder"></param>
-/// <param name="logger"></param>
-/// <exception cref="ArgumentNullException"></exception>
 [Description("Process image for PIV compliance")]
 public sealed class ProcessCommand(
-    IFaceDetector faceDetector,
-    ILandmarkExtractor landmarkExtractor,
-    IJpeg2000Encoder jpeg2000Encoder,
+    IBiometricProcessingService processingService,
     ILogger<ProcessCommand> logger
 ) : AsyncCommand<ProcessCommand.Settings>
 {
@@ -184,332 +188,239 @@ public sealed class ProcessCommand(
         public bool Strict { get; set; }
     }
 
-    private readonly IFaceDetector _faceDetector =
-        faceDetector ?? throw new ArgumentNullException(nameof(faceDetector));
-    private readonly ILandmarkExtractor _landmarkExtractor =
-        landmarkExtractor ?? throw new ArgumentNullException(nameof(landmarkExtractor));
-    private readonly IJpeg2000Encoder _jpeg2000Encoder =
-        jpeg2000Encoder ?? throw new ArgumentNullException(nameof(jpeg2000Encoder));
-    private readonly ILogger<ProcessCommand> _logger =
-        logger ?? throw new ArgumentNullException(nameof(logger));
+    private readonly IBiometricProcessingService _processingService = processingService;
+    private readonly ILogger<ProcessCommand> _logger = logger;
 
     /// <inheritdoc />
     public override async Task<int> ExecuteAsync(CommandContext context, Settings settings)
     {
-        try
+        var validationResult = ValidateInputs(settings);
+        if (validationResult.IsFailure)
         {
-            // Validate input
-            if (!File.Exists(settings.InputPath))
-            {
-                _logger.LogError("Input file not found: {InputPath}", settings.InputPath);
-                AnsiConsole.MarkupLine(
-                    $"[red]Error: Input file '{settings.InputPath}' not found.[/]"
-                );
-                return 1;
-            }
+            _logger.LogError("Command execution failed: {Error}", validationResult.Error);
+            AnsiConsole.MarkupLine($"[red]✗ {validationResult.Error}[/]");
+            return 1;
+        }
 
-            // Validate quality gate
-            if (settings.QualityGate.HasValue && (settings.QualityGate.Value < 0.0f || settings.QualityGate.Value > 1.0f))
+        var processingResult = await ProcessImageWithSettings(validationResult.Value);
+        if (processingResult.IsFailure)
+        {
+            _logger.LogError("Command execution failed: {Error}", processingResult.Error);
+            AnsiConsole.MarkupLine($"[red]✗ {processingResult.Error}[/]");
+            return 1;
+        }
+
+        return 0;
+    }
+
+    private Result<Settings> ValidateInputs(Settings settings)
+    {
+        // Validate input file exists
+        if (!File.Exists(settings.InputPath))
+        {
+            _logger.LogError("Input file not found: {InputPath}", settings.InputPath);
+            return Result.Failure<Settings>($"Input file '{settings.InputPath}' not found.");
+        }
+
+        // Validate quality gate range
+        if (settings.QualityGate.HasValue && (settings.QualityGate.Value < 0.0f || settings.QualityGate.Value > 1.0f))
+        {
+            _logger.LogError("Invalid quality gate value: {QualityGate}. Must be between 0.0 and 1.0.", settings.QualityGate);
+            return Result.Failure<Settings>($"Invalid quality gate value '{settings.QualityGate}'. Must be between 0.0 and 1.0.");
+        }
+        
+        // Apply strict mode override
+        if (settings.Strict)
+        {
+            settings.QualityGate = 0.85f;
+            if (settings.Verbose)
             {
-                _logger.LogError("Invalid quality gate value: {QualityGate}. Must be between 0.0 and 1.0.", settings.QualityGate);
-                AnsiConsole.MarkupLine(
-                    $"[red]Error: Invalid quality gate value '{settings.QualityGate}'. Must be between 0.0 and 1.0.[/]"
-                );
-                return 1;
+                AnsiConsole.MarkupLine("[yellow]Strict mode enabled: quality gate set to 0.85[/]");
             }
-            
-            // Apply strict mode override
-            if (settings.Strict)
+        }
+        
+        // Validate output format
+        var validFormats = new[] { "jp2", "jpeg", "jpg", "png", "tiff", "tif" };
+        if (!validFormats.Contains(settings.Format, StringComparer.OrdinalIgnoreCase))
+        {
+            _logger.LogError(
+                "Invalid output format: {Format}. Must be one of: {ValidFormats}.",
+                settings.Format,
+                string.Join(", ", validFormats)
+            );
+            return Result.Failure<Settings>($"Invalid output format '{settings.Format}'. Must be one of: {string.Join(", ", validFormats)}.");
+        }
+
+        // Validate ROI requirements for non-JP2 formats
+        var isJp2Format = settings.Format.Equals("jp2", StringComparison.OrdinalIgnoreCase);
+        if (!isJp2Format && !settings.NoRoi)
+        {
+            _logger.LogError(
+                "ROI is not supported for {Format} format. Use --no-roi flag.",
+                settings.Format
+            );
+            return Result.Failure<Settings>($"ROI encoding is not supported for {settings.Format.ToUpperInvariant()} format. You must use the --no-roi flag.");
+        }
+
+        return Result.Success(settings);
+    }
+
+    private async Task<Result> ProcessImageWithSettings(Settings settings)
+    {
+        // Determine the output path
+        var outputPath = settings.OutputPath ?? GenerateOutputPath(settings.InputPath, settings.Format);
+        _logger.LogDebug("Output path determined: {OutputPath}", outputPath);
+
+        // Determine processing options based on parameters
+        var processingOptions = DetermineProcessingOptions(settings, _logger);
+
+        var imageResult = await LoadImageData(settings.InputPath);
+        if (imageResult.IsFailure)
+            return Result.Failure(imageResult.Error);
+
+        var processResult = await ProcessImage(imageResult.Value, processingOptions, settings);
+        if (processResult.IsFailure)
+            return Result.Failure(processResult.Error);
+
+        var saveResult = await SaveResult(processResult.Value.ProcessingResult, outputPath, settings, processResult.Value.QualityAssessment);
+        if (saveResult.IsFailure)
+            return Result.Failure(saveResult.Error);
+
+        _logger.LogInformation("Image processing completed successfully");
+        AnsiConsole.MarkupLine("[green]✓ Face processing completed successfully![/]");
+        return Result.Success();
+    }
+
+    private async Task<Result<byte[]>> LoadImageData(string inputPath)
+    {
+        return await Result.Try(async () =>
+        {
+            AnsiConsole.MarkupLine("[grey]Loading image...[/]");
+            var imageData = await File.ReadAllBytesAsync(inputPath);
+            _logger.LogDebug("Loaded image data: {Size} bytes", imageData.Length);
+            return imageData;
+        }, ex => $"Failed to load image: {ex.Message}");
+    }
+
+    private async Task<Result<ProcessingResultWithQuality>> ProcessImage(
+        byte[] imageData, 
+        ProcessingOptions processingOptions,
+        Settings settings)
+    {
+        if (settings.Verbose)
+        {
+            AnsiConsole.MarkupLine($"[blue]Source image: {imageData.Length} bytes[/]");
+        }
+
+        return await AnsiConsole.Progress()
+            .StartAsync(async ctx =>
             {
-                settings.QualityGate = 0.85f;
-                if (settings.Verbose)
+                var task = ctx.AddTask("[green]Processing image[/]", maxValue: 100);
+                
+                task.Value = 10;
+                task.Description = "[green]Initializing processing[/]";
+                
+                _logger.LogDebug("Starting face processing with options: {Options}", processingOptions);
+
+                task.Value = 20;
+                
+                // For quality assessment, use the quality extension method
+                if (settings.QualityGate.HasValue || settings.GenerateQualityReport)
                 {
-                    AnsiConsole.MarkupLine("[yellow]Strict mode enabled: quality gate set to 0.85[/]");
+                    task.Description = "[green]Processing with quality assessment[/]";
+                    task.Value = 50;
+                    var result = await ProcessWithQualityAssessment(imageData, processingOptions, settings);
+                    task.Value = 100;
+                    task.Description = "[green]Processing complete[/]";
+                    return result;
                 }
-            }
-            
-            // Validate format
-            var validFormats = new[] { "jp2", "jpeg", "jpg", "png", "tiff", "tif" };
-            if (!validFormats.Contains(settings.Format, StringComparer.OrdinalIgnoreCase))
+                
+                // For standard processing, use the new biometric processing service
+                task.Description = settings.NoResize 
+                    ? "[green]Encoding image without transformations[/]"
+                    : "[green]Processing for PIV compliance[/]";
+                task.Value = 50;
+                
+                var standardResult = settings.NoResize 
+                    ? await _processingService.ProcessWithEncodingOnlyAsync(imageData, processingOptions, settings.Format, settings.JpegQuality)
+                    : await _processingService.ProcessForPivAsync(imageData, processingOptions, settings.Format);
+                
+                task.Value = 100;
+                task.Description = "[green]Processing complete[/]";
+                
+                return standardResult.Map(r => new ProcessingResultWithQuality(r, null));
+            });
+    }
+
+    private async Task<Result<ProcessingResultWithQuality>> ProcessWithQualityAssessment(
+        byte[] imageData,
+        ProcessingOptions processingOptions,
+        Settings settings)
+    {
+        _logger.LogDebug("Performing quality assessment with gate: {QualityGate}, standard: {Standard}", 
+            settings.QualityGate, settings.QualityStandard);
+        
+        var qualityOptions = QualityAssessmentOptions.ForStandard(settings.QualityStandard) with
+        {
+            MinQualityThreshold = settings.QualityGate ?? 0.7f,
+            EnforceCompliance = false  // Only enforce threshold, not compliance violations
+        };
+        
+        return await imageData.ProcessWithQualityAsync(
+                processingOptions,
+                qualityOptions,
+                settings.Format,
+                settings.JpegQuality,
+                _logger
+            )
+            .Bind(qualityResult =>
             {
-                _logger.LogError(
-                    "Invalid output format: {Format}. Must be one of: {ValidFormats}.",
-                    settings.Format,
-                    string.Join(", ", validFormats)
-                );
-                AnsiConsole.MarkupLine(
-                    $"[red]Error: Invalid output format '{settings.Format}'. Must be one of: {string.Join(", ", validFormats)}.[/]"
-                );
-                return 1;
-            }
-
-            // Validate ROI requirements for non-JP2 formats
-            var isJp2Format = settings.Format.Equals("jp2", StringComparison.OrdinalIgnoreCase);
-            if (!isJp2Format && !settings.NoRoi)
-            {
-                _logger.LogError(
-                    "ROI is not supported for {Format} format. Use --no-roi flag.",
-                    settings.Format
-                );
-                AnsiConsole.MarkupLine(
-                    $"[red]Error: ROI encoding is not supported for {settings.Format.ToUpperInvariant()} format. You must use the --no-roi flag.[/]"
-                );
-                return 1;
-            }
-
-            // Determine the output path
-            var outputPath =
-                settings.OutputPath ?? GenerateOutputPath(settings.InputPath, settings.Format);
-            _logger.LogDebug("Output path determined: {OutputPath}", outputPath);
-
-            // Determine processing options based on parameters
-            var processingOptions = DetermineProcessingOptions(settings, _logger);
-
-            // Process the image
-            bool success = false;
-
-            if (settings.Debug)
-            {
-                // In debug mode, don't use status spinner as it conflicts with logging
-                AnsiConsole.MarkupLine("[grey]Loading image...[/]");
-
-                var imageData = await File.ReadAllBytesAsync(settings.InputPath);
-
-                if (settings.Verbose)
+                // Check quality gate if specified
+                if (settings.QualityGate.HasValue)
                 {
-                    AnsiConsole.MarkupLine($"[blue]Source image: {imageData.Length} bytes[/]");
-                }
-
-                AnsiConsole.MarkupLine("[grey]Processing with facial image encoder...[/]");
-                _logger.LogDebug(
-                    "Starting face processing with options: {Options}",
-                    processingOptions
-                );
-
-                try
-                {
-                    ProcessingResultDto result;
-                    Iso19794Assessment? qualityAssessment = null;
-
-                    // Check if quality assessment is requested
-                    if (settings.QualityGate.HasValue || settings.GenerateQualityReport)
+                    if (qualityResult.Quality.Overall.Value >= settings.QualityGate.Value)
                     {
-                        _logger.LogDebug("Performing quality assessment with gate: {QualityGate}, standard: {Standard}", settings.QualityGate, settings.QualityStandard);
-                        
-                        var qualityOptions = QualityAssessmentOptions.ForStandard(settings.QualityStandard) with
-                        {
-                            MinQualityThreshold = settings.QualityGate ?? 0.7f,
-                            EnforceCompliance = false  // Only enforce threshold, not compliance violations
-                        };
-                        
-                        var qualityResult = await imageData.ProcessWithQualityAsync(
-                            processingOptions,
-                            qualityOptions,
-                            settings.Format,
-                            settings.JpegQuality,
-                            _logger
-                        );
-                        
-                        if (qualityResult.IsFailure)
-                        {
-                            throw new InvalidOperationException(qualityResult.Error);
-                        }
-                        
-                        result = qualityResult.Value.Result;
-                        qualityAssessment = qualityResult.Value.Quality;
-                        
-                        // Show quality assessment result
-                        if (settings.QualityGate.HasValue)
-                        {
-                            if (qualityAssessment.Overall.Value >= settings.QualityGate.Value)
-                            {
-                                AnsiConsole.MarkupLine("[green]Quality assessment passed[/]");
-                            }
-                            else
-                            {
-                                AnsiConsole.MarkupLine($"[red]Quality assessment failed: score {qualityAssessment.Overall.Value:F2} below quality threshold {settings.QualityGate.Value:F2}[/]");
-                                throw new InvalidOperationException($"Quality score {qualityAssessment.Overall.Value:F2} below quality threshold {settings.QualityGate.Value:F2}");
-                            }
-                        }
-                    }
-                    else if (settings.NoResize)
-                    {
-                        _logger.LogDebug("Using no-resize mode, skipping face detection");
-                        AnsiConsole.MarkupLine("[yellow]No face detection - full image processing[/]");
-                        result = await FacialImageEncoder.ProcessWithoutFaceDetectionAsync(
-                            imageData,
-                            processingOptions,
-                            settings.Format,
-                            settings.JpegQuality,
-                            _logger
-                        );
+                        AnsiConsole.MarkupLine("[green]Quality assessment passed[/]");
+                        return Result.Success(new ProcessingResultWithQuality(qualityResult.Result, qualityResult.Quality));
                     }
                     else
                     {
-                        result = await FacialImageEncoder.ProcessAsync(
-                            imageData,
-                            processingOptions,
-                            settings.Format,
-                            settings.JpegQuality,
-                            _logger
-                        );
+                        AnsiConsole.MarkupLine($"[red]Quality assessment failed: score {qualityResult.Quality.Overall.Value:F2} below quality threshold {settings.QualityGate.Value:F2}[/]");
+                        return Result.Failure<ProcessingResultWithQuality>($"Quality score {qualityResult.Quality.Overall.Value:F2} below quality threshold {settings.QualityGate.Value:F2}");
                     }
-
-                    _logger.LogInformation("Image processing completed successfully");
-                    await HandleSuccess(result, outputPath, settings, qualityAssessment, _logger);
-                    success = true;
                 }
-                catch (Exception ex)
-                {
-                    _logger.LogError("Face processing failed: {Error}", ex.Message);
-                    HandleFailure(ex.Message, _logger);
-                    success = false;
-                }
-            }
-            else
-            {
-                // Normal mode with status spinner
-                await AnsiConsole
-                    .Status()
-                    .StartAsync(
-                        settings.NoResize
-                            ? "Processing image..."
-                            : "Processing image for face recognition...",
-                        async ctx =>
-                        {
-                            ctx.Status("Loading image...");
-                            var imageData = await File.ReadAllBytesAsync(settings.InputPath);
+                
+                return Result.Success(new ProcessingResultWithQuality(qualityResult.Result, qualityResult.Quality));
+            });
+    }
 
-                            if (settings.Verbose)
-                            {
-                                AnsiConsole.MarkupLine(
-                                    $"[blue]Source image: {imageData.Length} bytes[/]"
-                                );
-                            }
-
-                            ctx.Status("Processing with facial image encoder...");
-                            _logger.LogDebug(
-                                "Starting face processing with options: {Options}",
-                                processingOptions
-                            );
-
-                            try
-                            {
-                                ProcessingResultDto result;
-                                Iso19794Assessment? qualityAssessment = null;
-
-                                // Check if quality assessment is requested
-                                if (settings.QualityGate.HasValue || settings.GenerateQualityReport)
-                                {
-                                    ctx.Status("Performing quality assessment...");
-                                    _logger.LogDebug("Performing quality assessment with gate: {QualityGate}, standard: {Standard}", settings.QualityGate, settings.QualityStandard);
-                                    
-                                    var qualityOptions = QualityAssessmentOptions.ForStandard(settings.QualityStandard) with
-                                    {
-                                        MinQualityThreshold = settings.QualityGate ?? 0.7f,
-                                        EnforceCompliance = false  // Only enforce threshold, not compliance violations
-                                    };
-                                    
-                                    var qualityResult = await imageData.ProcessWithQualityAsync(
-                                        processingOptions,
-                                        qualityOptions,
-                                        settings.Format,
-                                        settings.JpegQuality,
-                                        _logger
-                                    );
-                                    
-                                    if (qualityResult.IsFailure)
-                                    {
-                                        throw new InvalidOperationException(qualityResult.Error);
-                                    }
-                                    
-                                    result = qualityResult.Value.Result;
-                                    qualityAssessment = qualityResult.Value.Quality;
-                                    
-                                    // Show quality assessment result
-                                    if (settings.QualityGate.HasValue)
-                                    {
-                                        if (qualityAssessment.Overall.Value >= settings.QualityGate.Value)
-                                        {
-                                            ctx.Status("[green]Quality assessment passed[/]");
-                                        }
-                                        else
-                                        {
-                                            ctx.Status($"[red]Quality assessment failed: score {qualityAssessment.Overall.Value:F2} below quality threshold {settings.QualityGate.Value:F2}[/]");
-                                        }
-                                    }
-                                }
-                                else if (settings.NoResize)
-                                {
-                                    ctx.Status("Processing image without face detection...");
-                                    _logger.LogDebug(
-                                        "Using no-resize mode, skipping face detection"
-                                    );
-                                    AnsiConsole.MarkupLine("[yellow]No face detection - full image processing[/]");
-                                    result =
-                                        await FacialImageEncoder.ProcessWithoutFaceDetectionAsync(
-                                            imageData,
-                                            processingOptions,
-                                            settings.Format,
-                                            settings.JpegQuality,
-                                            _logger
-                                        );
-                                }
-                                else
-                                {
-                                    result = await FacialImageEncoder.ProcessAsync(
-                                        imageData,
-                                        processingOptions,
-                                        settings.Format,
-                                        settings.JpegQuality,
-                                        _logger
-                                    );
-                                }
-
-                                _logger.LogInformation("Image processing completed successfully");
-                                await HandleSuccess(result, outputPath, settings, qualityAssessment, _logger);
-                                success = true;
-                            }
-                            catch (Exception ex)
-                            {
-                                _logger.LogError("Face processing failed: {Error}", ex.Message);
-                                HandleFailure(ex.Message, _logger);
-                                success = false;
-                            }
-                        }
-                    );
-            }
-
-            return success ? 0 : 1;
-        }
-        catch (Exception ex)
+    private async Task<Result> SaveResult(
+        ProcessingResultDto processingResult, 
+        string outputPath, 
+        Settings settings,
+        Iso19794Assessment? qualityAssessment)
+    {
+        return await Result.Try(async () =>
         {
-            _logger.LogError(ex, "Unhandled exception in ProcessCommand.ExecuteAsync");
-            AnsiConsole.WriteException(ex);
-            return 1;
-        }
+            // Save the encoded image data
+            await File.WriteAllBytesAsync(outputPath, processingResult.ImageData);
+            
+            // Display results
+            await DisplayResults(processingResult, outputPath, settings, qualityAssessment);
+        }, ex => $"Failed to save result: {ex.Message}");
     }
 
     /// <summary>
-    /// Handles processing success
+    /// Displays processing results to the console
     /// </summary>
-    /// <param name="result">Processing result</param>
-    /// <param name="outputPath">Output file path</param>
-    /// <param name="settings">Command settings</param>
-    /// <param name="logger">Logger instance</param>
-    private static async Task HandleSuccess(
+    private async Task DisplayResults(
         ProcessingResultDto result,
         string outputPath,
         Settings settings,
-        Iso19794Assessment? qualityAssessment,
-        ILogger<ProcessCommand> logger
+        Iso19794Assessment? qualityAssessment
     )
     {
-        // Save the encoded JPEG 2000 image data
-        await File.WriteAllBytesAsync(outputPath, result.ImageData);
-
         AnsiConsole.WriteLine();
-        AnsiConsole.MarkupLine($"[green]✓ Face processing completed successfully![/]");
         
         // Show quality assessment status if quality gate was used
         if (settings.QualityGate.HasValue && qualityAssessment != null)
@@ -634,33 +545,10 @@ public sealed class ProcessCommand(
                 );
             }
         }
+        
+        await Task.CompletedTask; // Make method async for consistency
     }
 
-    /// <summary>
-    /// Handles encoding failures
-    /// </summary>
-    /// <param name="error"></param>
-    /// <param name="logger"></param>
-    private static void HandleFailure(string error, ILogger<ProcessCommand> logger)
-    {
-        AnsiConsole.WriteLine();
-        AnsiConsole.MarkupLine($"[red]✗ Processing failed: {error}[/]");
-
-        // Provide helpful suggestions based on error type
-        if (error.Contains("No faces detected"))
-        {
-            AnsiConsole.MarkupLine("[yellow]💡 Suggestions:[/]");
-            AnsiConsole.MarkupLine(
-                "[yellow]  • Ensure the image contains a clear, visible face[/]"
-            );
-            AnsiConsole.MarkupLine("[yellow]  • Check that the image is well-lit and in focus[/]");
-        }
-        else if (error.Contains("Multiple faces"))
-        {
-            AnsiConsole.MarkupLine("[yellow]💡 Suggestions:[/]");
-            AnsiConsole.MarkupLine("[yellow]  • Crop the image to contain only one face[/]");
-        }
-    }
 
     /// <summary>
     /// Converts the input extension to the appropriate output format.

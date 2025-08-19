@@ -5,7 +5,7 @@ using NUnit.Framework;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
 
-namespace OpenPhysical.Biometrics.Cli.Tests.Commands;
+namespace OpenPhysical.Biometrics.Tool.Tests.Commands;
 
 /// <summary>
 /// Tests for PIV command-line interface
@@ -41,8 +41,8 @@ public class ProcessCommandTests : IntegrationTestBase
         _cliProjectPath = Path.Combine(
             searchDir.FullName,
             "src",
-            "OpenPhysical.Biometrics.Cli",
-            "OpenPhysical.Biometrics.Cli.csproj"
+            "OpenPhysical.Biometrics.Tool",
+            "OpenPhysical.Biometrics.Tool.csproj"
         );
     }
 
@@ -155,7 +155,7 @@ public class ProcessCommandTests : IntegrationTestBase
             $"process \"{_testImagePath}\" --output \"{outputPath}\" --verbose"
         );
         exitCode.Should().Be(0);
-        output.Should().Contain("Processing with facial image encoder");
+        output.Should().Contain("Processing Results");
         // The output should contain success message since we're using a real face image
         output.Should().Contain("completed successfully");
     }
@@ -236,16 +236,35 @@ public class ProcessCommandTests : IntegrationTestBase
             CreateNoWindow = true,
         };
 
+        // Set environment variables to ensure non-interactive mode
+        processInfo.Environment["NO_COLOR"] = "1";
+        processInfo.Environment["CI"] = "true";
+        processInfo.Environment["TERM"] = "dumb";
+
         using var process =
             Process.Start(processInfo)
             ?? throw new InvalidOperationException("Failed to start process");
 
-        var output = await process.StandardOutput.ReadToEndAsync();
-        var error = await process.StandardError.ReadToEndAsync();
-        await process.WaitForExitAsync();
+        // Add timeout for process execution
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+        
+        var outputTask = process.StandardOutput.ReadToEndAsync();
+        var errorTask = process.StandardError.ReadToEndAsync();
+        var waitTask = process.WaitForExitAsync(cts.Token);
 
-        var fullOutput = output + Environment.NewLine + error;
-        return (process.ExitCode, fullOutput);
+        try
+        {
+            await waitTask;
+            var output = await outputTask;
+            var error = await errorTask;
+            var fullOutput = output + Environment.NewLine + error;
+            return (process.ExitCode, fullOutput);
+        }
+        catch (OperationCanceledException)
+        {
+            process.Kill();
+            throw new TimeoutException("CLI command timed out after 30 seconds");
+        }
     }
 
     private string CreateEmptyImage()

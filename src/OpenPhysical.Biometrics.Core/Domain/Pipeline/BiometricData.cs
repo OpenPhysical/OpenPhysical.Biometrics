@@ -1,4 +1,6 @@
 using JetBrains.Annotations;
+using OpenPhysical.Biometrics.Core.Domain.Detection;
+using OpenPhysical.Biometrics.Core.Domain.Quality;
 using System.Collections.Immutable;
 
 namespace OpenPhysical.Biometrics.Core.Domain.Pipeline;
@@ -164,7 +166,7 @@ public readonly record struct ProcessedBiometricData(
     BiometricData Data,
     QualityMetrics Quality,
     ImmutableList<DetectedFace> DetectedFaces,
-    Maybe<FaceLandmarks> Landmarks,
+    Maybe<FaceLandmarks68> Landmarks,
     ImmutableDictionary<string, object> ProcessingMetadata
 )
 {
@@ -178,7 +180,7 @@ public readonly record struct ProcessedBiometricData(
         data,
         quality,
         ImmutableList<DetectedFace>.Empty,
-        Maybe<FaceLandmarks>.None,
+        Maybe<FaceLandmarks68>.None,
         ImmutableDictionary<string, object>.Empty
     );
 
@@ -191,8 +193,8 @@ public readonly record struct ProcessedBiometricData(
     /// <summary>
     /// Returns new processed data with landmarks.
     /// </summary>
-    public ProcessedBiometricData WithLandmarks(FaceLandmarks landmarks) =>
-        this with { Landmarks = Maybe<FaceLandmarks>.From(landmarks) };
+    public ProcessedBiometricData WithLandmarks(FaceLandmarks68 landmarks) =>
+        this with { Landmarks = Maybe<FaceLandmarks68>.From(landmarks) };
 
     /// <summary>
     /// Returns new processed data with processing metadata.

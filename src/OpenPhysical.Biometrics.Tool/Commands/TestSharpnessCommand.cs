@@ -29,7 +29,7 @@ using SixLabors.ImageSharp.PixelFormats;
 using Spectre.Console;
 using Spectre.Console.Cli;
 
-namespace OpenPhysical.Biometrics.Cli.Commands;
+namespace OpenPhysical.Biometrics.Tool.Commands;
 
 /// <summary>
 /// Command to test sharpness calibration on blur progressions

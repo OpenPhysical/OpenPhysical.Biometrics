@@ -91,7 +91,7 @@ public class SetupVerificationTests
     public void Test_Infrastructure_References_Are_Valid()
     {
         // This test verifies that we can reference the Infrastructure project
-        var infrastructureAssembly = typeof(OpenPhysical.Biometrics.Infrastructure.Services.FacialImageEncoder).Assembly;
+        var infrastructureAssembly = typeof(OpenPhysical.Biometrics.Infrastructure.Services.FacialImageEncoderService).Assembly;
         infrastructureAssembly.Should().NotBeNull();
         
         // Verify Core project reference

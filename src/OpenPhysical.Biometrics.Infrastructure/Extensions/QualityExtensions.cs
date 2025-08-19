@@ -30,84 +30,89 @@ public static class QualityExtensions
     {
         logger ??= NullLogger.Instance;
         
-        try
-        {
-            using var image = Image.Load<Rgba32>(imageData);
-            using var services = new FacialProcessingServices(logger);
-            
-            // Step 1: Detect face
-            var faceResult = await services.Detector.DetectFacesAsync(image);
-            if (faceResult.IsFailure)
-            {
-                return Result.Failure<(ProcessingResultDto, Iso19794Assessment)>(
-                    $"Face detection failed: {faceResult.Error}");
-            }
-            
-            var faces = faceResult.Value;
-            if (!faces.Any())
-            {
-                return Result.Failure<(ProcessingResultDto, Iso19794Assessment)>(
-                    "No faces detected in the image");
-            }
-            
-            var primaryFace = faces.OrderByDescending(f => f.Confidence).First();
-            
-            // Step 2: Extract landmarks
-            var landmarksResult = await services.LandmarkExtractor
-                .ExtractLandmarksAsync(image, primaryFace.BoundingBox);
-            if (landmarksResult.IsFailure)
-            {
-                return Result.Failure<(ProcessingResultDto, Iso19794Assessment)>(
-                    $"Landmark extraction failed: {landmarksResult.Error}");
-            }
-            
-            // Step 3: Perform quality assessment
-            var qualityAssessor = new QualityAssessor(logger as ILogger<QualityAssessor> ?? 
-                NullLogger<QualityAssessor>.Instance);
-            
-            var qualityResult = await qualityAssessor.AssessAsync(
-                image,
-                primaryFace,
-                landmarksResult.Value,
-                qualityOptions);
-            
-            if (qualityResult.IsFailure)
-            {
-                return Result.Failure<(ProcessingResultDto, Iso19794Assessment)>(
-                    $"Quality assessment failed: {qualityResult.Error}");
-            }
-            
-            var quality = qualityResult.Value;
-            
-            // Step 4: Check if quality meets threshold
-            if (qualityOptions.EnforceCompliance && !quality.IsCompliant)
-            {
-                return Result.Failure<(ProcessingResultDto, Iso19794Assessment)>(
-                    $"Image quality {quality.Overall} does not meet compliance requirements. " +
-                    $"Critical violations: {quality.Violations.Count(v => v.Severity == ViolationSeverity.Critical)}");
-            }
-            
-            if (quality.Overall.Value < qualityOptions.MinQualityThreshold)
-            {
-                return Result.Failure<(ProcessingResultDto, Iso19794Assessment)>(
-                    $"Image quality {quality.Overall} is below minimum threshold {qualityOptions.MinQualityThreshold:P0}");
-            }
-            
-            // Step 5: Process the image
-            var processingResult = await FacialImageEncoder.ProcessAsync(
-                imageData,
-                processingOptions,
-                format,
-                jpegQuality,
-                logger);
-            
-            return Result.Success((processingResult, quality));
-        }
-        catch (Exception ex)
+        using var services = BiometricProcessingServices.CreateDefault(logger);
+        
+        // Step 1: Detect face
+        using var image = Image.Load<Rgba32>(imageData);
+        var faceResult = await services.FaceDetector.DetectFacesAsync(image);
+        if (faceResult.IsFailure)
         {
             return Result.Failure<(ProcessingResultDto, Iso19794Assessment)>(
-                $"Processing with quality assessment failed: {ex.Message}");
+                $"Face detection failed: {faceResult.Error}");
         }
+        
+        var faces = faceResult.Value;
+        if (!faces.Any())
+        {
+            return Result.Failure<(ProcessingResultDto, Iso19794Assessment)>(
+                "No faces detected in the image");
+        }
+        
+        var primaryFace = faces.OrderByDescending(f => f.Confidence).First();
+        
+        // Step 2: Extract landmarks
+        var landmarksResult = await services.LandmarkExtractor
+            .ExtractLandmarksAsync(image, primaryFace.BoundingBox);
+        if (landmarksResult.IsFailure)
+        {
+            return Result.Failure<(ProcessingResultDto, Iso19794Assessment)>(
+                $"Landmark extraction failed: {landmarksResult.Error}");
+        }
+        
+        // Step 3: Perform quality assessment
+        var qualityResult = await services.QualityAssessor.AssessAsync(
+            image,
+            primaryFace,
+            landmarksResult.Value,
+            qualityOptions);
+        
+        if (qualityResult.IsFailure)
+        {
+            return Result.Failure<(ProcessingResultDto, Iso19794Assessment)>(
+                $"Quality assessment failed: {qualityResult.Error}");
+        }
+        
+        var quality = qualityResult.Value;
+        
+        // Step 4: Check if quality meets threshold
+        if (qualityOptions.EnforceCompliance && !quality.IsCompliant)
+        {
+            return Result.Failure<(ProcessingResultDto, Iso19794Assessment)>(
+                $"Image quality {quality.Overall} does not meet compliance requirements. " +
+                $"Critical violations: {quality.Violations.Count(v => v.Severity == ViolationSeverity.Critical)}");
+        }
+        
+        if (quality.Overall.Value < qualityOptions.MinQualityThreshold)
+        {
+            return Result.Failure<(ProcessingResultDto, Iso19794Assessment)>(
+                $"Image quality {quality.Overall} is below minimum threshold {qualityOptions.MinQualityThreshold:P0}");
+        }
+        
+        // Step 5: Process the image using functional service
+        // Create a typed logger for the encoder service
+        var loggerFactory = logger.GetType().GetProperty("Factory")?.GetValue(logger) as ILoggerFactory;
+        var encoderLogger = loggerFactory?.CreateLogger<FacialImageEncoderService>() 
+            ?? NullLogger<FacialImageEncoderService>.Instance;
+        
+        var facialImageEncoderService = new FacialImageEncoderService(
+            services.FaceDetector,
+            services.LandmarkExtractor,
+            services.Jpeg2000Encoder,
+            encoderLogger);
+        
+        var processingResult = await facialImageEncoderService.ProcessAsync(
+            imageData,
+            processingOptions,
+            format,
+            jpegQuality);
+        
+        if (processingResult.IsFailure)
+        {
+            return Result.Failure<(ProcessingResultDto, Iso19794Assessment)>(
+                $"Image processing failed: {processingResult.Error}");
+        }
+        
+        return Result.Success((processingResult.Value, quality));
     }
     
     /// <summary>
@@ -121,48 +126,38 @@ public static class QualityExtensions
         logger ??= NullLogger.Instance;
         options ??= new QualityAssessmentOptions();
         
-        try
+        using var services = BiometricProcessingServices.CreateDefault(logger);
+        using var image = Image.Load<Rgba32>(imageData);
+        
+        // Detect face
+        var faceResult = await services.FaceDetector.DetectFacesAsync(image);
+        if (faceResult.IsFailure)
         {
-            using var image = Image.Load<Rgba32>(imageData);
-            using var services = new FacialProcessingServices(logger);
-            
-            // Detect face
-            var faceResult = await services.Detector.DetectFacesAsync(image);
-            if (faceResult.IsFailure)
-            {
-                return Result.Failure<Iso19794Assessment>($"Face detection failed: {faceResult.Error}");
-            }
-            
-            var faces = faceResult.Value;
-            if (!faces.Any())
-            {
-                return Result.Failure<Iso19794Assessment>("No faces detected in the image");
-            }
-            
-            var primaryFace = faces.OrderByDescending(f => f.Confidence).First();
-            
-            // Extract landmarks
-            var landmarksResult = await services.LandmarkExtractor
-                .ExtractLandmarksAsync(image, primaryFace.BoundingBox);
-            if (landmarksResult.IsFailure)
-            {
-                return Result.Failure<Iso19794Assessment>($"Landmark extraction failed: {landmarksResult.Error}");
-            }
-            
-            // Perform quality assessment
-            var qualityAssessor = new QualityAssessor(logger as ILogger<QualityAssessor> ?? 
-                NullLogger<QualityAssessor>.Instance);
-            
-            return await qualityAssessor.AssessAsync(
-                image,
-                primaryFace,
-                landmarksResult.Value,
-                options);
+            return Result.Failure<Iso19794Assessment>($"Face detection failed: {faceResult.Error}");
         }
-        catch (Exception ex)
+        
+        var faces = faceResult.Value;
+        if (!faces.Any())
         {
-            return Result.Failure<Iso19794Assessment>($"Quality assessment failed: {ex.Message}");
+            return Result.Failure<Iso19794Assessment>("No faces detected in the image");
         }
+        
+        var primaryFace = faces.OrderByDescending(f => f.Confidence).First();
+        
+        // Extract landmarks
+        var landmarksResult = await services.LandmarkExtractor
+            .ExtractLandmarksAsync(image, primaryFace.BoundingBox);
+        if (landmarksResult.IsFailure)
+        {
+            return Result.Failure<Iso19794Assessment>($"Landmark extraction failed: {landmarksResult.Error}");
+        }
+        
+        // Perform quality assessment
+        return await services.QualityAssessor.AssessAsync(
+            image,
+            primaryFace,
+            landmarksResult.Value,
+            options);
     }
     
     /// <summary>
@@ -177,50 +172,43 @@ public static class QualityExtensions
     {
         logger ??= NullLogger.Instance;
         
-        try
+        using var services = BiometricProcessingServices.CreateDefault(logger);
+        using var image = Image.Load<Rgba32>(imageData);
+        
+        // Detect face
+        var faceResult = await services.FaceDetector.DetectFacesAsync(image);
+        if (faceResult.IsFailure)
         {
-            using var image = Image.Load<Rgba32>(imageData);
-            using var services = new FacialProcessingServices(logger);
-            
-            // Detect face
-            var faceResult = await services.Detector.DetectFacesAsync(image);
-            if (faceResult.IsFailure)
-            {
-                return Result.Failure<ComplianceAssessment>($"Face detection failed: {faceResult.Error}");
-            }
-            
-            var faces = faceResult.Value;
-            if (!faces.Any())
-            {
-                return Result.Failure<ComplianceAssessment>("No faces detected in the image");
-            }
-            
-            var primaryFace = faces.OrderByDescending(f => f.Confidence).First();
-            if (primaryFace.Confidence < minConfidence)
-            {
-                return Result.Failure<ComplianceAssessment>(
-                    $"Face detection confidence {primaryFace.Confidence:P1} is below minimum {minConfidence:P1}");
-            }
-            
-            // Extract landmarks
-            var landmarksResult = await services.LandmarkExtractor
-                .ExtractLandmarksAsync(image, primaryFace.BoundingBox);
-            if (landmarksResult.IsFailure)
-            {
-                return Result.Failure<ComplianceAssessment>($"Landmark extraction failed: {landmarksResult.Error}");
-            }
-            
-            // Perform compliance assessment using new pipeline
-            return await ComplianceAssessmentPipeline.AssessComplianceAsync(
-                image,
-                primaryFace,
-                landmarksResult.Value,
-                standardName,
-                mode);
+            return Result.Failure<ComplianceAssessment>($"Face detection failed: {faceResult.Error}");
         }
-        catch (Exception ex)
+        
+        var faces = faceResult.Value;
+        if (!faces.Any())
         {
-            return Result.Failure<ComplianceAssessment>($"Compliance validation failed: {ex.Message}");
+            return Result.Failure<ComplianceAssessment>("No faces detected in the image");
         }
+        
+        var primaryFace = faces.OrderByDescending(f => f.Confidence).First();
+        if (primaryFace.Confidence < minConfidence)
+        {
+            return Result.Failure<ComplianceAssessment>(
+                $"Face detection confidence {primaryFace.Confidence:P1} is below minimum {minConfidence:P1}");
+        }
+        
+        // Extract landmarks
+        var landmarksResult = await services.LandmarkExtractor
+            .ExtractLandmarksAsync(image, primaryFace.BoundingBox);
+        if (landmarksResult.IsFailure)
+        {
+            return Result.Failure<ComplianceAssessment>($"Landmark extraction failed: {landmarksResult.Error}");
+        }
+        
+        // Perform compliance assessment using new pipeline
+        return await ComplianceAssessmentPipeline.AssessComplianceAsync(
+            image,
+            primaryFace,
+            landmarksResult.Value,
+            standardName,
+            mode);
     }
 }

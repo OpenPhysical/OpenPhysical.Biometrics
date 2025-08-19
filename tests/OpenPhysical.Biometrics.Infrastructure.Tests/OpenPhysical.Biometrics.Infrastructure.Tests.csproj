@@ -8,9 +8,9 @@
     <PackageReference Include="NUnit" Version="4.2.2" />
     <PackageReference Include="NUnit3TestAdapter" Version="4.6.0" />
     <PackageReference Update="Microsoft.NET.Test.Sdk" Version="17.11.1" />
-    <PackageReference Include="AwesomeAssertions" Version="9.1.0" />
-    <PackageReference Include="FluentAssertions" Version="6.12.2" />
     <PackageReference Include="CSharpFunctionalExtensions" Version="3.6.0" />
+    <PackageReference Include="CSharpFunctionalExtensions.AwesomeAssertions" Version="1.1.0" />
+    <PackageReference Include="NSubstitute" Version="5.2.0" />
     <PackageReference Include="SixLabors.ImageSharp.Drawing" Version="2.1.5" />
     <PackageReference Update="coverlet.collector" Version="6.0.4">
       <PrivateAssets>all</PrivateAssets>
