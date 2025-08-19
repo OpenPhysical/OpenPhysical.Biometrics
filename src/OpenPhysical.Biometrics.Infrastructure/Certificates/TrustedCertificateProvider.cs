@@ -41,13 +41,22 @@ public sealed class TrustedCertificateProvider : ITrustedCertificateProvider
             // List of embedded certificate resource names
             var certificateResources = new[]
             {
+                // PIV certificates
                 "icam-test-root-ca.crt",
                 "icam-test-signing-ca.crt", 
                 "icam-test-content-signer.crt",
                 "icam-piv-root-ca-gen1-3.crt",
                 "icam-piv-signing-ca-gen3.crt",
                 "icam-piv-content-signer-gen3.crt",
-                "icam-piv-content-signer-gen1-2.crt"
+                "icam-piv-content-signer-gen1-2.crt",
+                "icam-piv-content-signer.crt",
+                "icam-piv-signing-ca.crt",
+                
+                // PIV-I certificates
+                "icam-piv-i-root-ca-gen3.crt",
+                "icam-piv-i-signing-ca-gen3.crt",
+                "icam-piv-i-content-signer-gen1-2.crt",
+                "icam-piv-i-content-signer-gen3.crt"
             };
 
             foreach (var resourceName in certificateResources)

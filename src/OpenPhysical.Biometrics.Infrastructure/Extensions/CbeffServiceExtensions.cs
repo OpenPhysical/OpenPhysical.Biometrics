@@ -57,6 +57,11 @@ public static class CbeffServiceExtensions
         services.AddScoped<ICbeffVerifier, CbeffVerifierService>();
         services.AddScoped<ICbeffBuilder, CbeffBuilderService>();
         
+        // Register PIV cross-validation services
+        services.AddScoped<IChuidParsingService, ChuidParsingService>();
+        services.AddScoped<ICertificateDiscoveryService, CertificateDiscoveryService>();
+        services.AddScoped<IPivCrossValidationService, PivCrossValidationService>();
+        
         return services;
     }
 }

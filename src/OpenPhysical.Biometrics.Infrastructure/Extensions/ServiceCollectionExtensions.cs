@@ -22,11 +22,30 @@ public static class ServiceCollectionExtensions
     {
         services.AddOptions<TrustedCertificateStoreOptions>();
         services.AddSingleton<ITrustedCertificateProvider, TrustedCertificateProvider>();
-        services.AddSingleton<ITrustedCertificateStore, TrustedCertificateStore>();
         
-        // Register Lazy<ITrustedCertificateProvider> for the store dependency
-        services.AddSingleton<Lazy<ITrustedCertificateProvider>>(provider =>
-            new Lazy<ITrustedCertificateProvider>(() => provider.GetRequiredService<ITrustedCertificateProvider>()));
+        services.AddSingleton<ITrustedCertificateStoreExtended>(serviceProvider =>
+        {
+            var logger = serviceProvider.GetRequiredService<ILogger<MultiIndexCertificateStore>>();
+            var provider = serviceProvider.GetRequiredService<ITrustedCertificateProvider>();
+            var lazyProvider = new Lazy<ITrustedCertificateProvider>(() => provider);
+            
+            var store = new MultiIndexCertificateStore(logger, lazyProvider);
+            var initResult = store.CreateWithDefaults();
+            
+            if (initResult.IsSuccess)
+            {
+                return initResult.Value;
+            }
+            else
+            {
+                logger.LogError("Failed to load certificates: {Error}", initResult.Error);
+                return store;
+            }
+        });
+        
+        // Register base interface for signature verification
+        services.AddSingleton<ITrustedCertificateStore>(serviceProvider => 
+            serviceProvider.GetRequiredService<ITrustedCertificateStoreExtended>());
         
         return services;
     }
@@ -45,11 +64,30 @@ public static class ServiceCollectionExtensions
     {
         services.Configure<TrustedCertificateStoreOptions>(configuration.GetSection(sectionName));
         services.AddSingleton<ITrustedCertificateProvider, TrustedCertificateProvider>();
-        services.AddSingleton<ITrustedCertificateStore, TrustedCertificateStore>();
         
-        // Register Lazy<ITrustedCertificateProvider> for the store dependency
-        services.AddSingleton<Lazy<ITrustedCertificateProvider>>(provider =>
-            new Lazy<ITrustedCertificateProvider>(() => provider.GetRequiredService<ITrustedCertificateProvider>()));
+        services.AddSingleton<ITrustedCertificateStoreExtended>(serviceProvider =>
+        {
+            var logger = serviceProvider.GetRequiredService<ILogger<MultiIndexCertificateStore>>();
+            var provider = serviceProvider.GetRequiredService<ITrustedCertificateProvider>();
+            var lazyProvider = new Lazy<ITrustedCertificateProvider>(() => provider);
+            
+            var store = new MultiIndexCertificateStore(logger, lazyProvider);
+            var initResult = store.CreateWithDefaults();
+            
+            if (initResult.IsSuccess)
+            {
+                return initResult.Value;
+            }
+            else
+            {
+                logger.LogError("Failed to load certificates: {Error}", initResult.Error);
+                return store;
+            }
+        });
+        
+        // Register base interface for signature verification
+        services.AddSingleton<ITrustedCertificateStore>(serviceProvider => 
+            serviceProvider.GetRequiredService<ITrustedCertificateStoreExtended>());
         
         return services;
     }
@@ -66,11 +104,30 @@ public static class ServiceCollectionExtensions
     {
         services.Configure(configureOptions);
         services.AddSingleton<ITrustedCertificateProvider, TrustedCertificateProvider>();
-        services.AddSingleton<ITrustedCertificateStore, TrustedCertificateStore>();
         
-        // Register Lazy<ITrustedCertificateProvider> for the store dependency
-        services.AddSingleton<Lazy<ITrustedCertificateProvider>>(provider =>
-            new Lazy<ITrustedCertificateProvider>(() => provider.GetRequiredService<ITrustedCertificateProvider>()));
+        services.AddSingleton<ITrustedCertificateStoreExtended>(serviceProvider =>
+        {
+            var logger = serviceProvider.GetRequiredService<ILogger<MultiIndexCertificateStore>>();
+            var provider = serviceProvider.GetRequiredService<ITrustedCertificateProvider>();
+            var lazyProvider = new Lazy<ITrustedCertificateProvider>(() => provider);
+            
+            var store = new MultiIndexCertificateStore(logger, lazyProvider);
+            var initResult = store.CreateWithDefaults();
+            
+            if (initResult.IsSuccess)
+            {
+                return initResult.Value;
+            }
+            else
+            {
+                logger.LogError("Failed to load certificates: {Error}", initResult.Error);
+                return store;
+            }
+        });
+        
+        // Register base interface for signature verification
+        services.AddSingleton<ITrustedCertificateStore>(serviceProvider => 
+            serviceProvider.GetRequiredService<ITrustedCertificateStoreExtended>());
         
         return services;
     }
@@ -107,12 +164,8 @@ public static class ServiceCollectionExtensions
             }
         });
         
-        // Also register as ITrustedCertificateStore for backward compatibility
-        services.AddSingleton<ITrustedCertificateStore>(serviceProvider =>
-            serviceProvider.GetRequiredService<ITrustedCertificateStoreExtended>());
-        
-        // Register as ICertificateLookupService
-        services.AddSingleton<ICertificateLookupService>(serviceProvider =>
+        // Register base interface for signature verification
+        services.AddSingleton<ITrustedCertificateStore>(serviceProvider => 
             serviceProvider.GetRequiredService<ITrustedCertificateStoreExtended>());
         
         return services;

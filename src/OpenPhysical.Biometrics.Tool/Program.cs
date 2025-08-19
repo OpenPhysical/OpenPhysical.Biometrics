@@ -39,8 +39,9 @@ services.AddLogging(builder =>
     // Clear existing providers first
     builder.ClearProviders();
 
-    // Set minimum level based on debug flag
-    if (hasDebugFlag)
+    // Set minimum level based on debug flag or cross-validate command
+    var hasCrossValidateFlag = args.Contains("--cross-validate");
+    if (hasDebugFlag || hasCrossValidateFlag)
     {
         builder.SetMinimumLevel(LogLevel.Debug);
     }
@@ -54,7 +55,7 @@ services.AddLogging(builder =>
     {
         options.IncludeScopes = false;
         options.SingleLine = true;
-        options.TimestampFormat = hasDebugFlag ? "HH:mm:ss " : null;
+        options.TimestampFormat = (hasDebugFlag || hasCrossValidateFlag) ? "HH:mm:ss " : null;
     });
 });
 

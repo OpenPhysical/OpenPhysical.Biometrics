@@ -380,6 +380,19 @@ public sealed class MultiIndexCertificateStore : ITrustedCertificateStoreExtende
             });
     }
 
+    /// <summary>
+    /// Calculates the SHA-256 fingerprint for a certificate.
+    /// </summary>
+    public byte[] CalculateFingerprint(X509Certificate certificate)
+    {
+        var sha256 = new Org.BouncyCastle.Crypto.Digests.Sha256Digest();
+        var certBytes = certificate.GetEncoded();
+        sha256.BlockUpdate(certBytes, 0, certBytes.Length);
+        var fingerprint = new byte[sha256.GetDigestSize()];
+        sha256.DoFinal(fingerprint, 0);
+        return fingerprint;
+    }
+
     private static ImmutableDictionary<string, ImmutableHashSet<string>> UpdateMultiValueIndex(
         ImmutableDictionary<string, ImmutableHashSet<string>> index,
         string key,

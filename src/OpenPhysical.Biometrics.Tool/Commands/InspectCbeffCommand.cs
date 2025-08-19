@@ -18,6 +18,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Org.BouncyCastle.X509;
 using Org.BouncyCastle.Utilities.Collections;
+using CSharpFunctionalExtensions;
 
 /// <summary>
 /// Command to inspect CBEFF files and display their structure with detailed CMS analysis.
@@ -72,6 +73,20 @@ public sealed class InspectCbeffCommand : AsyncCommand<InspectCbeffCommand.Setti
         [CommandOption("--cert <path>")]
         [Description("Certificate file for signature verification")]
         public string? CertificatePath { get; set; }
+
+        /// <summary>
+        /// Gets or sets the path to the CHUID file for cross-validation.
+        /// </summary>
+        [CommandOption("--chuid <path>")]
+        [Description("Path to CHUID file (5FC1A4.dat) for PIV cross-validation")]
+        public string? ChuidFilePath { get; set; }
+
+        /// <summary>
+        /// Gets or sets a value indicating whether to enable PIV cross-validation.
+        /// </summary>
+        [CommandOption("--cross-validate")]
+        [Description("Enable comprehensive PIV CBEFF-CHUID cross-validation")]
+        public bool EnableCrossValidation { get; set; }
     }
 
     /// <summary>
@@ -111,7 +126,14 @@ public sealed class InspectCbeffCommand : AsyncCommand<InspectCbeffCommand.Setti
             }
 
             // Verify signature if present
-            await VerifySignature(payload, settings);
+            if (settings.EnableCrossValidation)
+            {
+                await PerformCrossValidation(payload, settings);
+            }
+            else
+            {
+                await VerifySignature(payload, settings);
+            }
 
             return 0;
         }
@@ -462,6 +484,188 @@ public sealed class InspectCbeffCommand : AsyncCommand<InspectCbeffCommand.Setti
         }
     }
 
+    private async Task PerformCrossValidation(CbeffPayloadExtended payload, Settings settings)
+    {
+        _console.WriteLine();
+        _console.MarkupLine("[yellow]PIV Cross-Validation[/]");
+        
+        if (!payload.Signature.HasValue)
+        {
+            _console.MarkupLine("[red]No signature present for cross-validation[/]");
+            return;
+        }
+
+        try
+        {
+            var crossValidator = _serviceProvider.GetRequiredService<IPivCrossValidationService>();
+            var trustedStore = _serviceProvider.GetRequiredService<ITrustedCertificateStoreExtended>();
+            
+            // Auto-detect CHUID if not provided
+            var chuidFilePath = settings.ChuidFilePath;
+            if (string.IsNullOrEmpty(chuidFilePath))
+            {
+                var autoDetectedChuid = crossValidator.AutoDetectChuidFile(settings.FilePath);
+                if (autoDetectedChuid.HasValue)
+                {
+                    chuidFilePath = autoDetectedChuid.Value;
+                    _console.MarkupLine($"[green]Auto-detected CHUID file:[/] {chuidFilePath}");
+                }
+            }
+
+            // Convert CbeffPayloadExtended to CbeffPayload for cross-validation
+            var basicPayloadResult = payload.ToBasicPayload();
+            if (basicPayloadResult.IsFailure)
+            {
+                _console.MarkupLine($"[red]Failed to convert payload:[/] {basicPayloadResult.Error}");
+                return;
+            }
+            var basicPayload = basicPayloadResult.Value;
+
+            // Perform cross-validation
+            var chuidMaybe = string.IsNullOrEmpty(chuidFilePath) 
+                ? Maybe<string>.None 
+                : Maybe<string>.From(chuidFilePath);
+                
+            var validationResult = await crossValidator.ValidateAsync(basicPayload, chuidMaybe, trustedStore);
+            
+            if (validationResult.IsSuccess)
+            {
+                DisplayCrossValidationResults(validationResult.Value);
+            }
+            else
+            {
+                _console.MarkupLine($"[red]Cross-validation failed:[/] {validationResult.Error}");
+            }
+        }
+        catch (Exception ex)
+        {
+            _console.MarkupLine($"[red]Cross-validation error:[/] {ex.Message}");
+        }
+    }
+
+    private void DisplayCrossValidationResults(PivCrossValidationResult result)
+    {
+        var tree = new Tree(result.IsValid ? "[green]✓ PIV Cross-Validation PASSED[/]" : "[red]✗ PIV Cross-Validation FAILED[/]");
+
+        // CBEFF Validation Results
+        var cbeffNode = tree.AddNode("[cyan]CBEFF Signature Validation[/]");
+        cbeffNode.AddNode(result.CbeffValidation.IsValid ? "[green]✓ Valid[/]" : "[red]✗ Invalid[/]");
+        
+        if (result.CbeffValidation.SignerCertificate.HasValue)
+        {
+            cbeffNode.AddNode($"Signer: {result.CbeffValidation.SignerCertificate.Value.SubjectDN}");
+        }
+        
+        if (result.CbeffValidation.ValidationErrors.Length > 0)
+        {
+            var errorsNode = cbeffNode.AddNode($"[red]Errors ({result.CbeffValidation.ValidationErrors.Length})[/]");
+            foreach (var error in result.CbeffValidation.ValidationErrors)
+            {
+                errorsNode.AddNode($"[red]• {error}[/]");
+            }
+        }
+
+        // CHUID Validation Results
+        if (result.ChuidValidation.HasValue)
+        {
+            var chuidNode = tree.AddNode("[cyan]CHUID Signature Validation[/]");
+            var chuid = result.ChuidValidation.Value;
+            
+            chuidNode.AddNode(chuid.SignatureValid ? "[green]✓ Valid[/]" : "[red]✗ Invalid[/]");
+            
+            if (chuid.SignerCertificate.HasValue)
+            {
+                chuidNode.AddNode($"Signer: {chuid.SignerCertificate.Value.SubjectDN}");
+            }
+            
+            if (chuid.ValidationErrors.Length > 0)
+            {
+                var errorsNode = chuidNode.AddNode($"[red]Errors ({chuid.ValidationErrors.Length})[/]");
+                foreach (var error in chuid.ValidationErrors)
+                {
+                    errorsNode.AddNode($"[red]• {error}[/]");
+                }
+            }
+
+            // Display CHUID details
+            var chuidStructNode = chuidNode.AddNode("[dim]CHUID Structure[/]");
+            if (chuid.ChuidStructure.FascN != null)
+            {
+                var fascnHex = Convert.ToHexString(chuid.ChuidStructure.FascN);
+                chuidStructNode.AddNode($"FASC-N: {fascnHex}");
+            }
+            if (chuid.ChuidStructure.CardUuid.HasValue)
+            {
+                chuidStructNode.AddNode($"Card UUID: {chuid.ChuidStructure.CardUuid.Value}");
+            }
+            if (chuid.ChuidStructure.ExpirationDate.HasValue)
+            {
+                chuidStructNode.AddNode($"Expiration: {chuid.ChuidStructure.ExpirationDate.Value:yyyy-MM-dd}");
+            }
+        }
+        else
+        {
+            tree.AddNode("[yellow]⚠ No CHUID available for cross-validation[/]");
+        }
+
+        // Certificate Discovery Results
+        var discoveryNode = tree.AddNode("[cyan]Certificate Discovery[/]");
+        discoveryNode.AddNode($"Validation Strategy: {result.ValidationStrategy}");
+        discoveryNode.AddNode($"Signer Identity Match: {(result.CertificateDiscovery.SignerIdentityMatch ? "[green]✓ Yes[/]" : "[yellow]⚠ No[/]")}");
+        discoveryNode.AddNode($"Recommended Certificate: {result.CertificateDiscovery.RecommendedCertificate.SubjectDN}");
+        
+        if (result.CertificateDiscovery.CbeffSignerCertificate.HasValue)
+        {
+            discoveryNode.AddNode($"CBEFF Certificate: {result.CertificateDiscovery.CbeffSignerCertificate.Value.SubjectDN}");
+        }
+        
+        if (result.CertificateDiscovery.ChuidSignerCertificate.HasValue)
+        {
+            discoveryNode.AddNode($"CHUID Certificate: {result.CertificateDiscovery.ChuidSignerCertificate.Value.SubjectDN}");
+        }
+
+        // Certificate Chain Validation
+        var chainNode = tree.AddNode("[cyan]Certificate Chain Validation[/]");
+        chainNode.AddNode(result.ChainValidation.IsValid ? "[green]✓ Valid[/]" : "[red]✗ Invalid[/]");
+        
+        if (result.ChainValidation.TrustedRoot.HasValue)
+        {
+            chainNode.AddNode($"Trusted Root: {result.ChainValidation.TrustedRoot.Value.SubjectDN}");
+        }
+        
+        chainNode.AddNode($"Chain Length: {result.ChainValidation.ChainPath.Length} certificates");
+        
+        if (result.ChainValidation.ValidationErrors.Length > 0)
+        {
+            var chainErrorsNode = chainNode.AddNode($"[red]Chain Errors ({result.ChainValidation.ValidationErrors.Length})[/]");
+            foreach (var error in result.ChainValidation.ValidationErrors)
+            {
+                chainErrorsNode.AddNode($"[red]• {error}[/]");
+            }
+        }
+
+        // Cross-Validation Checks
+        var crossChecksNode = tree.AddNode("[cyan]Cross-Validation Checks[/]");
+        var checks = result.CrossValidationChecks;
+        
+        crossChecksNode.AddNode($"FASC-N Consistency: {(checks.FascNMatches ? "[green]✓ Matches[/]" : "[red]✗ Mismatch[/]")}");
+        crossChecksNode.AddNode($"Signer Identity: {(checks.SignerIdentityMatches ? "[green]✓ Correct PIV Behavior[/]" : "[red]✗ Invalid Signer Identity[/]")}");
+        crossChecksNode.AddNode($"Card UUID Consistency: {(checks.CardUuidMatches ? "[green]✓ Matches[/]" : "[yellow]⚠ Mismatch or N/A[/]")}");
+        crossChecksNode.AddNode($"Timestamp Consistency: {(checks.ValidationTimestampConsistency ? "[green]✓ Consistent[/]" : "[yellow]⚠ Inconsistent or N/A[/]")}");
+
+        // Overall validation errors
+        if (result.ValidationErrors.Length > 0)
+        {
+            var allErrorsNode = tree.AddNode($"[red]All Validation Errors ({result.ValidationErrors.Length})[/]");
+            foreach (var error in result.ValidationErrors)
+            {
+                allErrorsNode.AddNode($"[red]• {error}[/]");
+            }
+        }
+
+        _console.Write(tree);
+    }
+
     private async Task VerifySignature(CbeffPayloadExtended payload, Settings settings)
     {
         _console.WriteLine();
@@ -509,21 +713,6 @@ public sealed class InspectCbeffCommand : AsyncCommand<InspectCbeffCommand.Setti
                 }
                 
                 trustedCerts = storeResult.Value;
-                var certCount = trustedCerts.EnumerateMatches(null).Count();
-                _console.MarkupLine($"[green]Loaded {certCount} certificates from trusted store[/]");
-                
-                // Show certificate subjects for debugging
-                foreach (var cert in trustedCerts.EnumerateMatches(null))
-                {
-                    _console.MarkupLine($"[dim]  - {cert.SubjectDN}[/]");
-                    _console.MarkupLine($"[dim]    Serial: {cert.SerialNumber}[/]");
-                }
-                
-                // If we have the extended store, show additional info
-                if (certificateStore is ITrustedCertificateStoreExtended extendedStore)
-                {
-                    _console.MarkupLine($"[dim]  Total unique certificates: {extendedStore.CertificateCount}[/]");
-                }
             }
 
             // Convert CbeffPayloadExtended to CbeffPayload for verification
@@ -811,15 +1000,11 @@ public sealed class InspectCbeffCommand : AsyncCommand<InspectCbeffCommand.Setti
 
         var fascn = result.Value;
         
-        fascnNode.AddNode($"Agency Code: {fascn.AgencyCode:D4}");
-        fascnNode.AddNode($"System Code: {fascn.SystemCode:D4}");
-        fascnNode.AddNode($"Credential Number: {fascn.CredentialNumber:D6}");
-        fascnNode.AddNode($"Credential Series: {fascn.CredentialSeries}");
-        fascnNode.AddNode($"Credential Issue: {fascn.IndividualCredentialIssue}");
-        fascnNode.AddNode($"Person Identifier: {fascn.PersonIdentifier:D10}");
-        fascnNode.AddNode($"Organizational Category: {(int)fascn.Category} ({fascn.GetCategoryDescription()})");
-        fascnNode.AddNode($"Organizational Identifier: {fascn.OrganizationalIdentifier:D4}");
-        fascnNode.AddNode($"Person/Organization Association: {(int)fascn.Affiliation} ({fascn.GetAffiliationDescription()})");
+        fascnNode.AddNode($"Credential: {fascn.CredentialNumber:D6} (Series: {fascn.CredentialSeries}, Issue: {fascn.IndividualCredentialIssue})");
+        fascnNode.AddNode($"Agency/System: {fascn.AgencyCode:D4} / {fascn.SystemCode:D4}");
+        fascnNode.AddNode($"Person ID: {fascn.PersonIdentifier:D10}");
+        fascnNode.AddNode($"Organization: {fascn.OrganizationalIdentifier:D4} ({fascn.GetCategoryDescription()})");
+        fascnNode.AddNode($"Association: {fascn.GetAffiliationDescription()}");
     }
 
     private void ParseAndDisplayPivFascN(TreeNode parentNode, Org.BouncyCastle.Asn1.Asn1Object attributeValue)

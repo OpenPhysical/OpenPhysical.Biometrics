@@ -72,4 +72,11 @@ public interface ICertificateLookupService
     /// <param name="predicate">The predicate to match certificates against.</param>
     /// <returns>A result containing matching certificates.</returns>
     Result<ImmutableArray<X509Certificate>> FindWhere(System.Func<CertificateMetadata, bool> predicate);
+
+    /// <summary>
+    /// Calculates the SHA-256 fingerprint for a certificate.
+    /// </summary>
+    /// <param name="certificate">The certificate to calculate fingerprint for.</param>
+    /// <returns>The SHA-256 fingerprint bytes.</returns>
+    byte[] CalculateFingerprint(X509Certificate certificate);
 }

@@ -89,8 +89,8 @@ public class CbeffVerifierService : ICbeffVerifier
             
             var signerInfo = signers.Cast<SignerInformation>().First();
             
-            // Find the signing certificate
-            var signerCertResult = FindSigningCertificate(signerInfo, trustedCertificates);
+            // Find the signing certificate - check embedded certs first, then trusted store
+            var signerCertResult = FindSigningCertificate(signerInfo, cmsSignedData, trustedCertificates);
             if (signerCertResult.IsFailure)
             {
                 errors.Add(signerCertResult.Error);
@@ -143,17 +143,28 @@ public class CbeffVerifierService : ICbeffVerifier
     }
 
     /// <summary>
-    /// Finds the signing certificate in the trusted certificate store.
+    /// Finds the signing certificate - first in CMS embedded certificates, then in trusted store.
     /// </summary>
     private Result<X509Certificate> FindSigningCertificate(
         SignerInformation signerInfo,
+        CmsSignedData cmsSignedData,
         IStore<X509Certificate> trustedCertificates)
     {
         try
         {
             var signerId = signerInfo.SignerID;
             
-            // Try to find by issuer and serial number
+            // First check embedded certificates in the CMS signature
+            var embeddedCerts = cmsSignedData.GetCertificates();
+            foreach (var cert in embeddedCerts.EnumerateMatches(null))
+            {
+                if (signerId.Match(cert))
+                {
+                    return Result.Success(cert);
+                }
+            }
+            
+            // If not found in embedded certs, check the trusted certificate store
             if (signerId.Issuer != null && signerId.SerialNumber != null)
             {
                 foreach (var cert in trustedCertificates.EnumerateMatches(null))
@@ -169,7 +180,7 @@ public class CbeffVerifierService : ICbeffVerifier
             // Note: Subject Key Identifier matching temporarily simplified for BouncyCastle migration
             // This should be re-enabled with proper X509ExtensionUtilities usage
             
-            return Result.Failure<X509Certificate>("Signing certificate not found in trusted certificate store");
+            return Result.Failure<X509Certificate>("Signing certificate not found in CMS or trusted certificate store");
         }
         catch (Exception ex)
         {
