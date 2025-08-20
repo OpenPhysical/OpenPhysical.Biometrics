@@ -3,8 +3,11 @@ namespace OpenPhysical.Biometrics.Infrastructure.Cbeff;
 using CSharpFunctionalExtensions;
 using OpenPhysical.Biometrics.Core.Cbeff;
 using OpenPhysical.Biometrics.Core.Cbeff.Formats;
+using OpenPhysical.Biometrics.Core.Domain;
+using OpenPhysical.Biometrics.Infrastructure.Display;
 using OpenPhysical.Domains.Cbeff;
 using System.Collections.Immutable;
+using System.Reflection;
 
 /// <summary>
 /// Extended CBEFF serializer that integrates with the format registry.
@@ -12,14 +15,14 @@ using System.Collections.Immutable;
 public sealed class CbeffSerializerExtended : ICbeffSerializerExtended
 {
     private readonly ICbeffSerializer _baseSerializer;
-    private readonly Core.Cbeff.Formats.ICbeffFormatRegistry _formatRegistry;
+    private readonly IBiometricFormatRegistry _formatRegistry;
     
     /// <summary>
     /// Initializes a new instance of the CbeffSerializerExtended class.
     /// </summary>
     /// <param name="baseSerializer">The base CBEFF serializer.</param>
-    /// <param name="formatRegistry">The format registry for biometric data parsing.</param>
-    public CbeffSerializerExtended(ICbeffSerializer baseSerializer, Core.Cbeff.Formats.ICbeffFormatRegistry formatRegistry)
+    /// <param name="formatRegistry">The biometric format registry for data parsing.</param>
+    public CbeffSerializerExtended(ICbeffSerializer baseSerializer, IBiometricFormatRegistry formatRegistry)
     {
         _baseSerializer = baseSerializer ?? throw new ArgumentNullException(nameof(baseSerializer));
         _formatRegistry = formatRegistry ?? throw new ArgumentNullException(nameof(formatRegistry));
@@ -121,15 +124,66 @@ public sealed class CbeffSerializerExtended : ICbeffSerializerExtended
     
     private CbeffPayloadExtended CreateExtendedPayload(CbeffPayload payload)
     {
-        var formatHandler = _formatRegistry.GetFormat(payload.Header);
+        var formatHandler = _formatRegistry.GetFormatHandler(
+            payload.Header.PatronHeaderVersion,
+            payload.Header.BdbFormatOwner,
+            payload.Header.BdbFormatType);
         
         var parsedRecord = formatHandler.HasValue 
-            ? formatHandler.Value.ParseBiometricData(payload.BiometricDataBlock.ToImmutableArray())
-                .Match(
-                    success => Maybe<BiometricRecord>.From(success),
-                    failure => Maybe<BiometricRecord>.None)
-            : Maybe<BiometricRecord>.None;
+            ? ParseWithHandler(formatHandler.Value, payload.BiometricDataBlock.ToImmutableArray())
+            : Maybe<object>.None;
         
-        return CbeffPayloadExtended.Create(payload, parsedRecord, formatHandler);
+        var displayRepresentation = parsedRecord
+            .Bind(record => 
+            {
+                var transformResult = BiometricDisplayTransformations.Transform(record);
+                return transformResult.IsSuccess 
+                    ? Maybe<BiometricDisplay>.From(transformResult.Value)
+                    : Maybe<BiometricDisplay>.None;
+            });
+        
+        return CbeffPayloadExtended.Create(payload, parsedRecord, displayRepresentation);
+    }
+    
+    private Maybe<object> ParseWithHandler(object handler, ImmutableArray<byte> data)
+    {
+        // Use reflection to invoke the generic ParseBiometricData method
+        var handlerType = handler.GetType();
+        var parseMethod = handlerType.GetMethod("ParseBiometricData");
+        
+        if (parseMethod == null)
+            return Maybe<object>.None;
+            
+        try
+        {
+            var result = parseMethod.Invoke(handler, new object[] { data });
+            
+            // The result is a Result<TDomainRecord> - we need to extract the value
+            if (result != null)
+            {
+                var resultType = result.GetType();
+                var isSuccessProperty = resultType.GetProperty("IsSuccess");
+                var valueProperty = resultType.GetProperty("Value");
+                
+                if (isSuccessProperty != null && valueProperty != null)
+                {
+                    var isSuccess = (bool)isSuccessProperty.GetValue(result)!;
+                    if (isSuccess)
+                    {
+                        var value = valueProperty.GetValue(result);
+                        if (value != null)
+                        {
+                            return Maybe<object>.From(value);
+                        }
+                    }
+                }
+            }
+        }
+        catch
+        {
+            // Parsing failed, return None
+        }
+        
+        return Maybe<object>.None;
     }
 }

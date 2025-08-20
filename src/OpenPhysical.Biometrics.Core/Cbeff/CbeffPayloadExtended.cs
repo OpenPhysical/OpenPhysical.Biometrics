@@ -2,6 +2,7 @@ namespace OpenPhysical.Biometrics.Core.Cbeff;
 
 using CSharpFunctionalExtensions;
 using OpenPhysical.Biometrics.Core.Cbeff.Formats;
+using OpenPhysical.Biometrics.Core.Domain;
 using OpenPhysical.Domains.Cbeff;
 using System.Collections.Immutable;
 
@@ -28,25 +29,25 @@ public sealed record CbeffPayloadExtended
     /// <summary>
     /// Gets the parsed biometric record if a format handler was found.
     /// </summary>
-    public Maybe<BiometricRecord> ParsedBiometricRecord { get; }
+    public Maybe<object> ParsedBiometricRecord { get; }
     
     /// <summary>
-    /// Gets the format handler used to parse the biometric data.
+    /// Gets the display representation if the parsed record could be transformed.
     /// </summary>
-    public Maybe<Formats.ICbeffFormat> FormatHandler { get; }
+    public Maybe<BiometricDisplay> DisplayRepresentation { get; }
     
     private CbeffPayloadExtended(
         CbeffHeader header,
         ImmutableArray<byte> biometricDataBlock,
         Maybe<CbeffSignature> signature,
-        Maybe<BiometricRecord> parsedBiometricRecord,
-        Maybe<Formats.ICbeffFormat> formatHandler)
+        Maybe<object> parsedBiometricRecord,
+        Maybe<BiometricDisplay> displayRepresentation)
     {
         Header = header;
         BiometricDataBlock = biometricDataBlock;
         Signature = signature;
         ParsedBiometricRecord = parsedBiometricRecord;
-        FormatHandler = formatHandler;
+        DisplayRepresentation = displayRepresentation;
     }
     
     /// <summary>
@@ -54,15 +55,15 @@ public sealed record CbeffPayloadExtended
     /// </summary>
     public static CbeffPayloadExtended Create(
         CbeffPayload payload,
-        Maybe<BiometricRecord> parsedRecord,
-        Maybe<Formats.ICbeffFormat> formatHandler)
+        Maybe<object> parsedRecord,
+        Maybe<BiometricDisplay> displayRepresentation)
     {
         return new CbeffPayloadExtended(
             payload.Header,
             payload.BiometricDataBlock.ToImmutableArray(),
             payload.Signature,
             parsedRecord,
-            formatHandler);
+            displayRepresentation);
     }
     
     /// <summary>
@@ -74,8 +75,8 @@ public sealed record CbeffPayloadExtended
             payload.Header,
             payload.BiometricDataBlock.ToImmutableArray(),
             payload.Signature,
-            Maybe<BiometricRecord>.None,
-            Maybe<Formats.ICbeffFormat>.None);
+            Maybe<object>.None,
+            Maybe<BiometricDisplay>.None);
     }
     
     /// <summary>

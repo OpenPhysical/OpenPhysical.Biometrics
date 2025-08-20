@@ -23,13 +23,6 @@ public static class CbeffServiceExtensions
         // Add the new generic biometric format registry with auto-discovery
         services.AddBiometricFormats(Assembly.GetExecutingAssembly());
         
-        // Register legacy format registry for backwards compatibility (empty for now)
-        services.AddSingleton<ICbeffFormatRegistry>(provider =>
-        {
-            var registry = new CbeffFormatRegistry();
-            return registry;
-        });
-        
         // Register basic serializer
         services.AddSingleton<ICbeffSerializer, CbeffSerializer>();
         

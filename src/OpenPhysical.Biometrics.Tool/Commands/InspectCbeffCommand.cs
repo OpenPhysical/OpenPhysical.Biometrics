@@ -5,6 +5,7 @@ using System.Diagnostics.CodeAnalysis;
 using Microsoft.Extensions.DependencyInjection;
 using OpenPhysical.Biometrics.Core.Cbeff;
 using OpenPhysical.Biometrics.Core.Certificates;
+using OpenPhysical.Biometrics.Core.Domain;
 using OpenPhysical.Biometrics.Core.Services;
 using OpenPhysical.Biometrics.Infrastructure.Cbeff;
 using OpenPhysical.Biometrics.Infrastructure.Utilities;
@@ -201,30 +202,12 @@ public sealed class InspectCbeffCommand : AsyncCommand<InspectCbeffCommand.Setti
         // Biometric data block information
         var bdbNode = tree.AddNode($"[green]Biometric Data Block[/] ({payload.BiometricDataBlock.Length:N0} bytes)");
 
-        // If we have parsed biometric record, show detailed information
-        if (payload.ParsedBiometricRecord.HasValue)
+        // If we have display representation, show it
+        payload.DisplayRepresentation.Execute(display =>
         {
-            var record = payload.ParsedBiometricRecord.Value;
-            var recordNode = bdbNode.AddNode($"[green]Parsed Biometric Record[/] [cyan]({record.GetType().Name})[/]");
-            
-            // Use reflection to display properties
-            var properties = record.GetType().GetProperties();
-            foreach (var prop in properties)
-            {
-                try
-                {
-                    var value = prop.GetValue(record);
-                    if (value != null)
-                    {
-                        recordNode.AddNode($"{prop.Name}: [yellow]{value}[/]");
-                    }
-                }
-                catch
-                {
-                    // Skip properties that can't be read
-                }
-            }
-        }
+            var recordNode = bdbNode.AddNode("");
+            RenderBiometricDisplay(display, recordNode);
+        });
 
         // Show hex dump if requested
         if (settings.ShowHex)
@@ -245,6 +228,15 @@ public sealed class InspectCbeffCommand : AsyncCommand<InspectCbeffCommand.Setti
         }
 
         _console.Write(tree);
+    }
+    
+    private void RenderBiometricDisplay(BiometricDisplay display, TreeNode parentNode)
+    {
+        var node = display.Value
+            .Map(value => parentNode.AddNode($"{display.Label}: [yellow]{value}[/]"))
+            .GetValueOrDefault(() => parentNode.AddNode($"[green]{display.Label}[/]"));
+        
+        display.Children.ForEach(child => RenderBiometricDisplay(child, node));
     }
 
     private static string GetFormatOwnerName(ushort owner) => owner switch
