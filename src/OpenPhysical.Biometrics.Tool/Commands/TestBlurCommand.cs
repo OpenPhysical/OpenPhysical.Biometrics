@@ -40,32 +40,54 @@ public class TestBlurCommand : AsyncCommand<TestBlurCommand.Settings>
     private const string DefaultTestDirectory = ".faceoffx-test";
     private const string BlurProgressionsSubdir = "blur-progressions";
     
+    /// <summary>
+    /// Settings for the test blur command
+    /// </summary>
     [SuppressMessage("ReSharper", "ClassNeverInstantiated.Global")]
     [SuppressMessage("ReSharper", "AutoPropertyCanBeMadeGetOnly.Global")]
     public sealed class Settings : CommandSettings
     {
+        /// <summary>
+        /// Gets or sets the source image or directory pattern
+        /// </summary>
         [CommandArgument(0, "[SOURCE]")]
         [Description("Source image or directory pattern (e.g., tests/sample_images/*.jpg)")]
         public string Source { get; set; } = "tests/sample_images/*_photo.jpg";
 
+        /// <summary>
+        /// Gets or sets the comma-separated blur levels
+        /// </summary>
         [CommandOption("-l|--levels <VALUES>")]
         [Description("Comma-separated blur levels (e.g., 0,0.3,0.5,0.63,0.7,1.0)")]
         public string? BlurLevels { get; set; }
 
+        /// <summary>
+        /// Gets or sets the output directory for blur progressions
+        /// </summary>
         [CommandOption("-o|--output <DIR>")]
         [Description("Output directory for blur progressions")]
         public string OutputDirectory { get; set; } = Path.Combine(DefaultTestDirectory, BlurProgressionsSubdir);
 
+        /// <summary>
+        /// Gets or sets the JPEG quality (1-100)
+        /// </summary>
         [CommandOption("--quality <VALUE>")]
         [Description("JPEG quality (1-100)")]
         [DefaultValue(95)]
         public int JpegQuality { get; set; } = 95;
         
+        /// <summary>
+        /// Gets or sets a value indicating whether to measure and display baseline sharpness of source images
+        /// </summary>
         [CommandOption("--measure-baseline")]
         [Description("Measure and display baseline sharpness of source images")]
         [DefaultValue(true)]
         public bool MeasureBaseline { get; set; } = true;
 
+        /// <summary>
+        /// Gets the parsed blur levels from the BlurLevels string
+        /// </summary>
+        /// <returns>Array of blur levels as floats</returns>
         public float[] GetBlurLevels()
         {
             if (string.IsNullOrWhiteSpace(BlurLevels))
@@ -80,6 +102,7 @@ public class TestBlurCommand : AsyncCommand<TestBlurCommand.Settings>
         }
     }
 
+    /// <inheritdoc />
     public override async Task<int> ExecuteAsync(CommandContext context, Settings settings)
     {
         // Find source images

@@ -1,6 +1,6 @@
 using NUnit.Framework;
 using CSharpFunctionalExtensions;
-using FluentAssertions;
+using AwesomeAssertions;
 
 namespace OpenPhysical.Biometrics.Infrastructure.Tests;
 

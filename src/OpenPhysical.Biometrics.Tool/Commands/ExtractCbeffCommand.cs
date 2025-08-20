@@ -9,8 +9,11 @@ using System.Text.Json;
 using System.Threading.Tasks;
 using Microsoft.Extensions.DependencyInjection;
 using OpenPhysical.Biometrics.Core.Cbeff;
+using OpenPhysical.Biometrics.Core.Cbeff.Formats;
+using OpenPhysical.Biometrics.Core.Domain;
 using OpenPhysical.Biometrics.Infrastructure.Cbeff.Formats;
 using OpenPhysical.Domains.Cbeff.Formats.Incits385;
+using OpenPhysical.Domains.Cbeff.Formats.Incits378;
 
 /// <summary>
 /// Command to extract images from CBEFF containers.
@@ -86,46 +89,30 @@ public sealed class ExtractCbeffCommand : AsyncCommand<ExtractCbeffCommand.Setti
 
             var payload = decodeResult.Value;
             
-            // Check if we have parsed biometric data
-            if (payload.ParsedBiometricRecord.HasValue)
-            {
-                var record = payload.ParsedBiometricRecord.Value;
+            // Use the generic biometric format registry to process the data
+            var registry = _serviceProvider.GetRequiredService<IBiometricFormatRegistry>();
+            var header = payload.Header;
+            
+            // PIV uses patron format 0x03
+            const byte PivPatronFormat = 0x03;
+            
+            var processingResult = registry.ProcessBiometricData(
+                PivPatronFormat,
+                header.BdbFormatOwner,
+                header.BdbFormatType,
+                payload.BiometricDataBlock);
                 
-                // Extract image data based on record type
-                if (record is Incits385BiometricRecord incits385)
-                {
-                    return await ExtractFacialImage(incits385.FacialRecord, settings, payload.Header);
-                }
-                else
-                {
-                    AnsiConsole.MarkupLine($"[red]Unsupported biometric record type:[/] {record.GetType().Name}");
-                    return 1;
-                }
-            }
-            else
+            if (processingResult.IsFailure)
             {
-                // Fallback: Try to parse INCITS 385 manually if the format registry didn't work
-                var header = payload.Header;
-                if (header.BdbFormatOwner == 0x001B && header.BdbFormatType == 0x0501)
-                {
-                    // INCITS 385 Facial Image - parse manually
-                    var parseResult = PivFacialFormat.ParseIncits385Record(payload.BiometricDataBlock);
-                    if (parseResult.IsSuccess)
-                    {
-                        return await ExtractFacialImage(parseResult.Value, settings, header);
-                    }
-                    else
-                    {
-                        AnsiConsole.MarkupLine($"[red]Failed to parse INCITS 385 data:[/] {parseResult.Error}");
-                        return 1;
-                    }
-                }
-                else
-                {
-                    AnsiConsole.MarkupLine($"[red]Unsupported biometric format:[/] Owner=0x{header.BdbFormatOwner:X4}, Type=0x{header.BdbFormatType:X4}");
-                    return 1;
-                }
+                AnsiConsole.MarkupLine($"[red]Failed to process biometric data:[/] {processingResult.Error}");
+                AnsiConsole.MarkupLine($"[dim]Format: Patron=0x{PivPatronFormat:X2}, Owner=0x{header.BdbFormatOwner:X4}, Type=0x{header.BdbFormatType:X4}[/]");
+                return 1;
             }
+            
+            var extraction = processingResult.Value;
+            
+            // Extract the biometric data using the generic pipeline
+            return await ExtractBiometricData(extraction, settings);
         }
         catch (Exception ex)
         {
@@ -134,74 +121,70 @@ public sealed class ExtractCbeffCommand : AsyncCommand<ExtractCbeffCommand.Setti
         }
     }
 
-    private async Task<int> ExtractFacialImage(
-        FacialImageRecord facialRecord, 
-        Settings settings,
-        OpenPhysical.Domains.Cbeff.CbeffHeader header)
+    private async Task<int> ExtractBiometricData(
+        BiometricExtraction extraction,
+        Settings settings)
     {
+        var biometricData = extraction.Data;
+        
         // Determine output file path
         var outputPath = settings.OutputPath;
         if (string.IsNullOrEmpty(outputPath))
         {
             var inputName = Path.GetFileNameWithoutExtension(settings.FilePath);
-            var extension = facialRecord.ImageInfo.ImageDataType == 0 ? ".jpg" : ".jp2";
-            outputPath = $"{inputName}_extracted{extension}";
+            outputPath = $"{inputName}_extracted{biometricData.SuggestedExtension}";
         }
 
-        // Write image data
+        // Write extracted data
         try
         {
-            await File.WriteAllBytesAsync(outputPath, facialRecord.ImageData.ToArray());
-            AnsiConsole.MarkupLine($"[green]Extracted image to:[/] {outputPath}");
-            AnsiConsole.MarkupLine($"[dim]Format: {GetFormatName(facialRecord.ImageInfo.ImageDataType)}[/]");
-            AnsiConsole.MarkupLine($"[dim]Dimensions: {facialRecord.ImageInfo.Width}×{facialRecord.ImageInfo.Height}[/]");
-            AnsiConsole.MarkupLine($"[dim]Quality: {facialRecord.ImageInfo.Quality}[/]");
+            await File.WriteAllBytesAsync(outputPath, biometricData.ExtractedData.ToArray());
+            AnsiConsole.MarkupLine($"[green]Extracted {biometricData.ModalityType.ToLower()} data to:[/] {outputPath}");
+            
+            // Display modality-specific information
+            DisplayExtractionSummary(biometricData);
+            
+            // Display validation results if any
+            if (!extraction.IsValid && extraction.ValidationResults.Any())
+            {
+                AnsiConsole.MarkupLine($"[yellow]Validation warnings:[/]");
+                foreach (var validation in extraction.ValidationResults)
+                {
+                    AnsiConsole.MarkupLine($"[dim]  • {validation}[/]");
+                }
+            }
         }
         catch (Exception ex)
         {
-            AnsiConsole.MarkupLine($"[red]Failed to write image file:[/] {ex.Message}");
+            AnsiConsole.MarkupLine($"[red]Failed to write extracted file:[/] {ex.Message}");
             return 1;
         }
 
         // Save metadata if requested
         if (settings.SaveMetadata)
         {
-            var metadataPath = Path.ChangeExtension(outputPath, ".json");
+            var metadataPath = Path.ChangeExtension(outputPath, ".metadata.json");
             var metadata = new
             {
                 Source = settings.FilePath,
                 ExtractedAt = DateTime.UtcNow,
-                CbeffHeader = new
+                SourceFormat = new
                 {
-                    CreationDate = header.CreationDate,
-                    ValidityNotBefore = header.ValidityNotBefore,
-                    ValidityNotAfter = header.ValidityNotAfter,
-                    BiometricType = $"0x{header.BiometricType:X8}",
-                    Quality = header.Quality,
-                    Creator = GetCreatorString(header.Creator)
+                    FormatName = extraction.SourceFormat.FormatName,
+                    PatronFormat = $"0x{extraction.SourceFormat.PatronFormat:X2}",
+                    BdbFormatOwner = $"0x{extraction.SourceFormat.BdbFormatOwner:X4}",
+                    BdbFormatType = $"0x{extraction.SourceFormat.BdbFormatType:X4}"
                 },
-                FacialRecord = new
+                BiometricData = new
                 {
-                    FormatIdentifier = facialRecord.Header.FormatIdentifier.TrimEnd('\0'),
-                    VersionNumber = facialRecord.Header.VersionNumber.TrimEnd('\0'),
-                    RecordLength = facialRecord.Header.RecordLength,
-                    Gender = facialRecord.FacialInfo.Gender.ToString(),
-                    EyeColor = GetEyeColorName(facialRecord.FacialInfo.EyeColor),
-                    HairColor = GetHairColorName(facialRecord.FacialInfo.HairColor),
-                    Expression = facialRecord.FacialInfo.Expression,
-                    FeaturePointCount = facialRecord.FeaturePoints.Length
+                    ModalityType = biometricData.ModalityType,
+                    FormatIdentifier = biometricData.FormatIdentifier,
+                    SuggestedExtension = biometricData.SuggestedExtension,
+                    Metadata = biometricData.Metadata
                 },
-                ImageInfo = new
-                {
-                    Type = GetImageTypeName(facialRecord.ImageInfo.FacialImageType),
-                    Format = GetFormatName(facialRecord.ImageInfo.ImageDataType),
-                    Width = facialRecord.ImageInfo.Width,
-                    Height = facialRecord.ImageInfo.Height,
-                    ColorSpace = GetColorSpaceName(facialRecord.ImageInfo.ImageColorSpace),
-                    SourceType = GetSourceTypeName(facialRecord.ImageInfo.SourceType),
-                    Quality = facialRecord.ImageInfo.Quality,
-                    SizeBytes = facialRecord.ImageData.Length
-                }
+                AnalysisResults = extraction.AnalysisResults,
+                ValidationResults = extraction.ValidationResults,
+                IsValid = extraction.IsValid
             };
 
             try
@@ -222,76 +205,36 @@ public sealed class ExtractCbeffCommand : AsyncCommand<ExtractCbeffCommand.Setti
         return 0;
     }
 
-    private static string GetCreatorString(byte[] creator)
+    private static void DisplayExtractionSummary(ExtractedBiometricData biometricData)
     {
-        var str = System.Text.Encoding.ASCII.GetString(creator).TrimEnd('\0');
-        return string.IsNullOrWhiteSpace(str) ? "<empty>" : str;
+        switch (biometricData)
+        {
+            case FacialImageData facialData:
+                AnsiConsole.MarkupLine($"[dim]Format: {GetImageFormatName(facialData.SuggestedExtension)}[/]");
+                AnsiConsole.MarkupLine($"[dim]Dimensions: {facialData.Width}×{facialData.Height}[/]");
+                AnsiConsole.MarkupLine($"[dim]Quality: {facialData.Quality}[/]");
+                break;
+                
+            case FingerprintMinutiaeData fingerprintData:
+                AnsiConsole.MarkupLine($"[dim]Total minutiae: {fingerprintData.TotalMinutiae}[/]");
+                AnsiConsole.MarkupLine($"[dim]Finger views: {fingerprintData.NumberOfViews}[/]");
+                AnsiConsole.MarkupLine($"[dim]Empty template: {fingerprintData.IsEmptyTemplate}[/]");
+                break;
+                
+            default:
+                AnsiConsole.MarkupLine($"[dim]Format: {biometricData.FormatIdentifier}[/]");
+                AnsiConsole.MarkupLine($"[dim]Size: {biometricData.ExtractedData.Length} bytes[/]");
+                break;
+        }
     }
 
-    private static string GetFormatName(byte type) => type switch
+    private static string GetImageFormatName(string extension) => extension switch
     {
-        0 => "JPEG",
-        1 => "JPEG 2000",
-        _ => $"Unknown ({type})"
+        ".jpg" => "JPEG",
+        ".jp2" => "JPEG 2000",
+        ".json" => "JSON (Minutiae)",
+        ".bin" => "Binary",
+        _ => "Unknown"
     };
 
-    private static string GetImageTypeName(byte type) => type switch
-    {
-        0x01 => "Full frontal",
-        0x02 => "Token frontal",
-        _ => $"Unknown ({type})"
-    };
-
-    private static string GetColorSpaceName(byte colorSpace) => colorSpace switch
-    {
-        0x00 => "Unspecified",
-        0x01 => "24-bit RGB",
-        0x02 => "YUV422",
-        0x03 => "8-bit grayscale",
-        0x04 => "Other",
-        _ => $"Unknown ({colorSpace})"
-    };
-
-    private static string GetSourceTypeName(byte sourceType) => sourceType switch
-    {
-        0x00 => "Unspecified",
-        0x01 => "Static photograph - unknown source",
-        0x02 => "Static photograph - digital camera",
-        0x03 => "Static photograph - scanner",
-        0x04 => "Video frame - unknown source",
-        0x05 => "Video frame - analog camera",
-        0x06 => "Video frame - digital camera",
-        0x07 => "Unknown",
-        _ => $"Invalid ({sourceType})"
-    };
-
-    private static string GetEyeColorName(byte color) => color switch
-    {
-        0x00 => "Unspecified",
-        0x01 => "Blue",
-        0x02 => "Brown",
-        0x03 => "Gray",
-        0x04 => "Green",
-        0x05 => "Hazel",
-        0x06 => "Maroon",
-        0x07 => "Pink",
-        0x08 => "Multi-colored",
-        0xFF => "Unknown",
-        _ => $"Invalid ({color})"
-    };
-
-    private static string GetHairColorName(byte color) => color switch
-    {
-        0x00 => "Unspecified",
-        0x01 => "Bald",
-        0x02 => "Black",
-        0x03 => "Blonde",
-        0x04 => "Brown",
-        0x05 => "Gray",
-        0x06 => "Red",
-        0x07 => "Blue",
-        0x08 => "Green",
-        0xFF => "Unknown",
-        _ => $"Invalid ({color})"
-    };
 }

@@ -159,17 +159,42 @@ public sealed class InspectCbeffCommand : AsyncCommand<InspectCbeffCommand.Setti
         headerNode.AddNode($"Creation Date: [yellow]{header.CreationDate:yyyy-MM-dd HH:mm:ss}[/]");
         headerNode.AddNode($"Validity Not Before: [yellow]{header.ValidityNotBefore:yyyy-MM-dd HH:mm:ss}[/]");
         headerNode.AddNode($"Validity Not After: [yellow]{header.ValidityNotAfter:yyyy-MM-dd HH:mm:ss}[/]");
-        headerNode.AddNode($"Creator: [yellow]{System.Text.Encoding.UTF8.GetString(header.GetCreator()).TrimEnd('\0')}[/]");
+        // Handle Creator field - show hex for non-ASCII characters
+        var creatorBytes = header.GetCreator();
+        var creatorText = System.Text.Encoding.UTF8.GetString(creatorBytes).TrimEnd('\0');
+        var hasNonAscii = creatorBytes.Any(b => b > 127 || (b < 32 && b != 0));
+        
+        if (hasNonAscii)
+        {
+            var hexValue = Convert.ToHexString(creatorBytes);
+            headerNode.AddNode($"Creator: [yellow]{creatorText}[/] [dim](hex: {hexValue})[/]");
+        }
+        else
+        {
+            headerNode.AddNode($"Creator: [yellow]{creatorText}[/]");
+        }
+        // Handle FASC-N field - distinguish empty vs invalid vs valid
         var fascnBytes = header.GetFascN();
         var fascnHex = Convert.ToHexString(fascnBytes);
-        var fascnNode = headerNode.AddNode($"FASC-N: [yellow]{fascnHex}[/]");
-        DisplayFascNTree(fascnNode, fascnBytes);
+        
+        // Check if FASC-N is all zeros (empty)
+        var isEmpty = fascnBytes.All(b => b == 0);
+        
+        if (isEmpty)
+        {
+            var fascnNode = headerNode.AddNode("FASC-N: [dim](empty - all zeros)[/]");
+        }
+        else
+        {
+            var fascnNode = headerNode.AddNode($"FASC-N: [yellow]{fascnHex}[/]");
+            DisplayFascNTree(fascnNode, fascnBytes);
+        }
         headerNode.AddNode($"Biometric Type: [yellow]{header.BiometricType}[/]");
         
         // Store header FASC-N for comparison with signature
         _headerFascN = fascnBytes;
         headerNode.AddNode($"Biometric Subtype: [yellow]{header.BiometricSubtype}[/]");
-        headerNode.AddNode($"Quality: [yellow]{header.Quality}[/] ({GetQualityDescription(header.Quality)})");
+        headerNode.AddNode($"Quality: [yellow]{header.Quality}[/] ({GetQualityDescription(header.Quality, header.BdbFormatOwner, header.BdbFormatType)})");
         headerNode.AddNode($"BDB Length: [yellow]{header.BdbLength:N0}[/] bytes");
         headerNode.AddNode($"SB Length: [yellow]{header.SbLength:N0}[/] bytes");
 
@@ -263,14 +288,25 @@ public sealed class InspectCbeffCommand : AsyncCommand<InspectCbeffCommand.Setti
         _ => "Unknown"
     };
 
-    private string GetQualityDescription(sbyte quality) => quality switch
+    private string GetQualityDescription(sbyte quality, ushort formatOwner, ushort formatType)
     {
-        -2 => "Permanently unusable (254 as byte) [yellow]⚠ INCITS 385-2004 requires 0[/]",
-        -1 => "Temporarily unusable (255 as byte) [yellow]⚠ INCITS 385-2004 requires 0[/]",
-        0 => "Unspecified (compliant with INCITS 385-2004)",
-        >= 1 and <= 100 => $"{quality}% [yellow]⚠ INCITS 385-2004 requires 0 (SP 800-76-2 permits 0-100)[/]",
-        _ => "Invalid"
-    };
+        // Determine the standard based on format owner and type
+        var isIncits385 = formatOwner == 0x001B && formatType == 0x0501; // INCITS 385 Facial Image
+        var isIncits378 = formatOwner == 0x001B && formatType == 0x0201; // INCITS 378 Fingerprint Minutiae
+        
+        return quality switch
+        {
+            -2 => "Permanently unusable (254 as byte)",
+            -1 => "Temporarily unusable (255 as byte)", 
+            0 when isIncits385 => "Unspecified (per INCITS 385-2004 Section 5.7.8)",
+            0 when isIncits378 => "Lowest quality (per INCITS 378-2004 Section 6.5.1.4)",
+            0 => "Unspecified",
+            >= 1 and <= 100 when isIncits385 => $"{quality}% [yellow]⚠ INCITS 385-2004 Section 5.7.8 requires 0 (unspecified)[/]",
+            >= 1 and <= 100 when isIncits378 => $"{quality}% (per INCITS 378-2004 Section 6.5.1.4)",
+            >= 1 and <= 100 => $"{quality}%",
+            _ => "Invalid quality value"
+        };
+    }
 
     private static string GetHexDump(byte[] data, int bytesPerLine = 16)
     {

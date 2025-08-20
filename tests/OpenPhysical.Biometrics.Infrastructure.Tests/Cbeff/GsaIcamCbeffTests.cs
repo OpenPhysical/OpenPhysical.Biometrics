@@ -1,6 +1,6 @@
 using System.Collections.Immutable;
 using NUnit.Framework;
-using FluentAssertions;
+using AwesomeAssertions;
 using CSharpFunctionalExtensions;
 using OpenPhysical.Biometrics.Core.Cbeff;
 using OpenPhysical.Biometrics.Infrastructure.Cbeff;

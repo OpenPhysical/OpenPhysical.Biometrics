@@ -15,40 +15,65 @@ namespace OpenPhysical.Biometrics.Tool.Commands;
 /// </summary>
 public class QualityCommand : AsyncCommand<QualityCommand.Settings>
 {
+    /// <summary>
+    /// Settings for the quality command.
+    /// </summary>
     public class Settings : CommandSettings
     {
+        /// <summary>
+        /// Gets or sets the path to the input image file.
+        /// </summary>
         [Description("Path to the input image file")]
         [CommandOption("-i|--input <PATH>")]
         public string InputPath { get; set; } = string.Empty;
 
+        /// <summary>
+        /// Gets or sets the standard to assess against (piv, twic, icao, cac).
+        /// </summary>
         [Description("Standard to assess against (piv, twic, icao, cac)")]
         [CommandOption("-s|--standard <STANDARD>")]
         [DefaultValue("piv")]
         public string Standard { get; set; } = "piv";
 
+        /// <summary>
+        /// Gets or sets the output format (json, text, detailed).
+        /// </summary>
         [Description("Output format (json, text, detailed)")]
         [CommandOption("-f|--format <FORMAT>")]
         [DefaultValue("text")]
         public string OutputFormat { get; set; } = "text";
 
+        /// <summary>
+        /// Gets or sets the path to save the quality report.
+        /// </summary>
         [Description("Path to save the quality report")]
         [CommandOption("-o|--output <PATH>")]
         public string? OutputPath { get; set; }
 
+        /// <summary>
+        /// Gets or sets the minimum quality threshold (0.0-1.0).
+        /// </summary>
         [Description("Minimum quality threshold (0.0-1.0)")]
         [CommandOption("-t|--threshold <THRESHOLD>")]
         [DefaultValue(0.7f)]
         public float Threshold { get; set; } = 0.7f;
 
+        /// <summary>
+        /// Gets or sets a value indicating whether to enforce strict compliance.
+        /// </summary>
         [Description("Enforce strict compliance")]
         [CommandOption("--strict")]
         public bool Strict { get; set; }
 
+        /// <summary>
+        /// Gets or sets a value indicating whether to show visual quality overlay.
+        /// </summary>
         [Description("Show visual quality overlay (saves image with quality indicators)")]
         [CommandOption("--visual")]
         public bool Visual { get; set; }
     }
 
+    /// <inheritdoc />
     public override async Task<int> ExecuteAsync(CommandContext context, Settings settings)
     {
         // Validate input

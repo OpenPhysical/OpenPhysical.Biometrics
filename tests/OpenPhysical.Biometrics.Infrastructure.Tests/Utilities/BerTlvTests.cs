@@ -1,5 +1,5 @@
 using CSharpFunctionalExtensions;
-using FluentAssertions;
+using AwesomeAssertions;
 using NUnit.Framework;
 using OpenPhysical.Biometrics.Infrastructure.Utilities;
 using System;

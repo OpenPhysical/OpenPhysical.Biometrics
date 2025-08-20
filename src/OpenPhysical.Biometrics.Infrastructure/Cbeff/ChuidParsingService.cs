@@ -19,6 +19,10 @@ public sealed class ChuidParsingService : IChuidParsingService
 {
     private readonly ILogger<ChuidParsingService> _logger;
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="ChuidParsingService"/> class.
+    /// </summary>
+    /// <param name="logger">The logger instance for diagnostic logging.</param>
     public ChuidParsingService(ILogger<ChuidParsingService> logger)
     {
         _logger = logger;

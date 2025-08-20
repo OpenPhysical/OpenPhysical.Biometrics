@@ -37,33 +37,52 @@ public class TestReportCommand : AsyncCommand<TestReportCommand.Settings>
 {
     private const string DefaultTestDirectory = ".faceoffx-test";
     
+    /// <summary>
+    /// Settings for the test report command
+    /// </summary>
     [SuppressMessage("ReSharper", "ClassNeverInstantiated.Global")]
     [SuppressMessage("ReSharper", "AutoPropertyCanBeMadeGetOnly.Global")]
     public sealed class Settings : CommandSettings
     {
+        /// <summary>
+        /// Gets or sets the input JSON results file
+        /// </summary>
         [CommandOption("-i|--input <FILE>")]
         [Description("Input JSON results file")]
         public string? InputFile { get; set; }
 
+        /// <summary>
+        /// Gets or sets the report type (sharpness-calibration)
+        /// </summary>
         [CommandOption("-t|--type <TYPE>")]
         [Description("Report type (sharpness-calibration)")]
         [DefaultValue("sharpness-calibration")]
         public string ReportType { get; set; } = "sharpness-calibration";
 
+        /// <summary>
+        /// Gets or sets the output directory for reports
+        /// </summary>
         [CommandOption("-o|--output <DIR>")]
         [Description("Output directory for reports")]
         public string OutputDirectory { get; set; } = Path.Combine(DefaultTestDirectory, "reports");
         
+        /// <summary>
+        /// Gets or sets the directory containing test images
+        /// </summary>
         [CommandOption("--images-dir <DIR>")]
         [Description("Directory containing test images")]
         public string? ImagesDirectory { get; set; }
         
+        /// <summary>
+        /// Gets or sets a value indicating whether to open report in browser after generation
+        /// </summary>
         [CommandOption("--open")]
         [Description("Open report in browser after generation")]
         [DefaultValue(true)]
         public bool OpenInBrowser { get; set; } = true;
     }
 
+    /// <inheritdoc />
     public override async Task<int> ExecuteAsync(CommandContext context, Settings settings)
     {
         // Find input file

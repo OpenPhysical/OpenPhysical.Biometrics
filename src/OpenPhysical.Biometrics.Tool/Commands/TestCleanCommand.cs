@@ -35,36 +35,55 @@ public class TestCleanCommand : Command<TestCleanCommand.Settings>
 {
     private const string DefaultTestDirectory = ".faceoffx-test";
     
+    /// <summary>
+    /// Settings for the test clean command
+    /// </summary>
     [SuppressMessage("ReSharper", "ClassNeverInstantiated.Global")]
     [SuppressMessage("ReSharper", "AutoPropertyCanBeMadeGetOnly.Global")]
     public sealed class Settings : CommandSettings
     {
+        /// <summary>
+        /// Gets or sets a value indicating whether to clean all test artifacts
+        /// </summary>
         [CommandOption("--all")]
         [Description("Clean all test artifacts")]
         [DefaultValue(false)]
         public bool All { get; set; }
 
+        /// <summary>
+        /// Gets or sets a value indicating whether to clean blur progression images
+        /// </summary>
         [CommandOption("--blur")]
         [Description("Clean blur progression images")]
         [DefaultValue(false)]
         public bool Blur { get; set; }
 
+        /// <summary>
+        /// Gets or sets a value indicating whether to clean test results
+        /// </summary>
         [CommandOption("--results")]
         [Description("Clean test results")]
         [DefaultValue(false)]
         public bool Results { get; set; }
 
+        /// <summary>
+        /// Gets or sets a value indicating whether to clean generated reports
+        /// </summary>
         [CommandOption("--reports")]
         [Description("Clean generated reports")]
         [DefaultValue(false)]
         public bool Reports { get; set; }
         
+        /// <summary>
+        /// Gets or sets a value indicating whether to force deletion without confirmation
+        /// </summary>
         [CommandOption("-f|--force")]
         [Description("Force deletion without confirmation")]
         [DefaultValue(false)]
         public bool Force { get; set; }
     }
 
+    /// <inheritdoc />
     public override int Execute(CommandContext context, Settings settings)
     {
         if (!Directory.Exists(DefaultTestDirectory))

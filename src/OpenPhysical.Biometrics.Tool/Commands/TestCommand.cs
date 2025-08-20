@@ -32,6 +32,7 @@ namespace OpenPhysical.Biometrics.Tool.Commands;
 [Description("Automated testing and calibration tools")]
 public class TestCommand : Command
 {
+    /// <inheritdoc />
     public override int Execute(CommandContext context)
     {
         AnsiConsole.MarkupLine("[yellow]Please specify a test subcommand:[/]");

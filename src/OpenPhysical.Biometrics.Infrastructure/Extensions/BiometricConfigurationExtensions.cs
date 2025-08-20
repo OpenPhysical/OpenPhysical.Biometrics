@@ -335,24 +335,72 @@ public static class BiometricConfigurationExtensions
 /// <summary>
 /// Options class for binding from IConfiguration
 /// </summary>
+/// <summary>
+/// Configuration options for biometric processing services.
+/// </summary>
 [PublicAPI]
 public sealed class BiometricConfigurationOptions
 {
+    /// <summary>
+    /// Gets or sets the face detection configuration options.
+    /// </summary>
     public FaceDetectionOptions? FaceDetection { get; set; }
+    
+    /// <summary>
+    /// Gets or sets the encoding configuration options.
+    /// </summary>
     public EncodingOptions? Encoding { get; set; }
+    
+    /// <summary>
+    /// Gets or sets the quality assessment configuration options.
+    /// </summary>
     public QualityOptions? Quality { get; set; }
+    
+    /// <summary>
+    /// Gets or sets the performance configuration options.
+    /// </summary>
     public PerformanceOptions? Performance { get; set; }
+    
+    /// <summary>
+    /// Gets or sets the standards presets configuration options.
+    /// </summary>
     public StandardsOptions? Standards { get; set; }
 }
 
+/// <summary>
+/// Configuration options for face detection.
+/// </summary>
 [PublicAPI]
 public sealed class FaceDetectionOptions
 {
+    /// <summary>
+    /// Gets or sets the minimum confidence threshold for face detection (0.0-1.0).
+    /// </summary>
     public float? MinConfidence { get; set; }
+    
+    /// <summary>
+    /// Gets or sets the minimum confidence threshold for strict mode face detection (0.0-1.0).
+    /// </summary>
     public float? StrictModeMinConfidence { get; set; }
+    
+    /// <summary>
+    /// Gets or sets the minimum confidence threshold for archival quality face detection (0.0-1.0).
+    /// </summary>
     public float? ArchivalMinConfidence { get; set; }
+    
+    /// <summary>
+    /// Gets or sets the minimum confidence threshold for relaxed mode face detection (0.0-1.0).
+    /// </summary>
     public float? RelaxedMinConfidence { get; set; }
+    
+    /// <summary>
+    /// Gets or sets a value indicating whether to require exactly one face in the image.
+    /// </summary>
     public bool? RequireSingleFace { get; set; }
+    
+    /// <summary>
+    /// Gets or sets the maximum allowed face rotation in degrees.
+    /// </summary>
     public float? MaxRotationDegrees { get; set; }
 
     internal FaceDetectionConfiguration ToConfiguration(FaceDetectionConfiguration defaults) => defaults with
@@ -366,11 +414,25 @@ public sealed class FaceDetectionOptions
     };
 }
 
+/// <summary>
+/// Configuration options for image encoding.
+/// </summary>
 [PublicAPI]
 public sealed class EncodingOptions
 {
+    /// <summary>
+    /// Gets or sets the default encoding format ("jpeg", "jp2", "png", "tiff").
+    /// </summary>
     public string? DefaultFormat { get; set; }
+    
+    /// <summary>
+    /// Gets or sets the JPEG 2000 specific encoding options.
+    /// </summary>
     public Jpeg2000Options? Jpeg2000 { get; set; }
+    
+    /// <summary>
+    /// Gets or sets the JPEG specific encoding options.
+    /// </summary>
     public JpegOptions? Jpeg { get; set; }
 
     internal EncodingConfiguration ToConfiguration(EncodingConfiguration defaults) => defaults with
@@ -381,16 +443,50 @@ public sealed class EncodingOptions
     };
 }
 
+/// <summary>
+/// Configuration options for JPEG 2000 encoding.
+/// </summary>
 [PublicAPI]
 public sealed class Jpeg2000Options
 {
+    /// <summary>
+    /// Gets or sets the default compression rate for JPEG 2000 encoding.
+    /// </summary>
     public float? DefaultRate { get; set; }
+    
+    /// <summary>
+    /// Gets or sets the compression rate for high quality JPEG 2000 encoding.
+    /// </summary>
     public float? HighQualityRate { get; set; }
+    
+    /// <summary>
+    /// Gets or sets the compression rate for archival quality JPEG 2000 encoding.
+    /// </summary>
     public float? ArchivalRate { get; set; }
+    
+    /// <summary>
+    /// Gets or sets the default ROI (Region of Interest) start level.
+    /// </summary>
     public int? DefaultRoiStartLevel { get; set; }
+    
+    /// <summary>
+    /// Gets or sets the conservative ROI start level for minimal face priority.
+    /// </summary>
     public int? ConservativeRoiStartLevel { get; set; }
+    
+    /// <summary>
+    /// Gets or sets the aggressive ROI start level for maximum face priority.
+    /// </summary>
     public int? AggressiveRoiStartLevel { get; set; }
+    
+    /// <summary>
+    /// Gets or sets a value indicating whether to enable ROI encoding by default.
+    /// </summary>
     public bool? EnableRoiByDefault { get; set; }
+    
+    /// <summary>
+    /// Gets or sets a value indicating whether to align ROI to codeblock boundaries by default.
+    /// </summary>
     public bool? AlignRoiByDefault { get; set; }
 
     internal Jpeg2000Configuration ToConfiguration(Jpeg2000Configuration defaults) => defaults with
@@ -406,12 +502,30 @@ public sealed class Jpeg2000Options
     };
 }
 
+/// <summary>
+/// Configuration options for JPEG encoding.
+/// </summary>
 [PublicAPI]
 public sealed class JpegOptions
 {
+    /// <summary>
+    /// Gets or sets the default JPEG quality (0-100).
+    /// </summary>
     public int? DefaultQuality { get; set; }
+    
+    /// <summary>
+    /// Gets or sets the high JPEG quality setting (0-100).
+    /// </summary>
     public int? HighQuality { get; set; }
+    
+    /// <summary>
+    /// Gets or sets the standard JPEG quality setting (0-100).
+    /// </summary>
     public int? StandardQuality { get; set; }
+    
+    /// <summary>
+    /// Gets or sets the minimum acceptable JPEG quality (0-100).
+    /// </summary>
     public int? MinQuality { get; set; }
 
     internal JpegConfiguration ToConfiguration(JpegConfiguration defaults) => defaults with
@@ -423,13 +537,35 @@ public sealed class JpegOptions
     };
 }
 
+/// <summary>
+/// Configuration options for quality assessment thresholds.
+/// </summary>
 [PublicAPI]
 public sealed class QualityOptions
 {
+    /// <summary>
+    /// Gets or sets the default quality threshold (0.0-1.0).
+    /// </summary>
     public float? DefaultThreshold { get; set; }
+    
+    /// <summary>
+    /// Gets or sets the high quality threshold (0.0-1.0).
+    /// </summary>
     public float? HighThreshold { get; set; }
+    
+    /// <summary>
+    /// Gets or sets the very high quality threshold (0.0-1.0).
+    /// </summary>
     public float? VeryHighThreshold { get; set; }
+    
+    /// <summary>
+    /// Gets or sets the archival quality threshold (0.0-1.0).
+    /// </summary>
     public float? ArchivalThreshold { get; set; }
+    
+    /// <summary>
+    /// Gets or sets the minimum acceptable quality threshold (0.0-1.0).
+    /// </summary>
     public float? MinThreshold { get; set; }
     public bool? EnforceComplianceByDefault { get; set; }
 

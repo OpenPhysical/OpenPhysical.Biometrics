@@ -1,7 +1,7 @@
 namespace OpenPhysical.Biometrics.Infrastructure.Tests.Certificates;
 
 using System.Linq;
-using FluentAssertions;
+using AwesomeAssertions;
 using Microsoft.Extensions.Logging;
 using NUnit.Framework;
 using OpenPhysical.Biometrics.Infrastructure.Certificates;

@@ -5,7 +5,7 @@ using CSharpFunctionalExtensions;
 using OpenPhysical.Biometrics.Core.Domain.Common;
 using OpenPhysical.Biometrics.Core.Domain.Detection;
 using OpenPhysical.Biometrics.Core.Domain.Quality;
-using FluentAssertions;
+using AwesomeAssertions;
 using NUnit.Framework;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;

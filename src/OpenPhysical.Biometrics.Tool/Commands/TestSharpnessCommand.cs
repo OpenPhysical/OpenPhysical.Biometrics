@@ -39,29 +39,45 @@ public class TestSharpnessCommand : AsyncCommand<TestSharpnessCommand.Settings>
 {
     private const string DefaultTestDirectory = ".faceoffx-test";
     
+    /// <summary>
+    /// Settings for the test sharpness command
+    /// </summary>
     [SuppressMessage("ReSharper", "ClassNeverInstantiated.Global")]
     [SuppressMessage("ReSharper", "AutoPropertyCanBeMadeGetOnly.Global")]
     public sealed class Settings : CommandSettings
     {
+        /// <summary>
+        /// Gets or sets the input directory containing blur progressions
+        /// </summary>
         [CommandOption("-i|--input <DIR>")]
         [Description("Input directory containing blur progressions")]
         public string InputDirectory { get; set; } = Path.Combine(DefaultTestDirectory, "blur-progressions");
 
+        /// <summary>
+        /// Gets or sets the sharpness threshold for pass/fail (0.0-1.0)
+        /// </summary>
         [CommandOption("-t|--threshold <VALUE>")]
         [Description("Sharpness threshold for pass/fail (0.0-1.0)")]
         [DefaultValue(0.7f)]
         public float Threshold { get; set; } = 0.7f;
 
+        /// <summary>
+        /// Gets or sets the output JSON file for test results
+        /// </summary>
         [CommandOption("-o|--output <FILE>")]
         [Description("Output JSON file for test results")]
         public string? OutputFile { get; set; }
         
+        /// <summary>
+        /// Gets or sets the file pattern to test (e.g., *_blur_*.jpg)
+        /// </summary>
         [CommandOption("--pattern <PATTERN>")]
         [Description("File pattern to test (e.g., *_blur_*.jpg)")]
         [DefaultValue("*_blur_*.jpg")]
         public string Pattern { get; set; } = "*_blur_*.jpg";
     }
 
+    /// <inheritdoc />
     public override async Task<int> ExecuteAsync(CommandContext context, Settings settings)
     {
         if (!Directory.Exists(settings.InputDirectory))
@@ -240,15 +256,58 @@ public class TestSharpnessCommand : AsyncCommand<TestSharpnessCommand.Settings>
 /// </summary>
 public class SharpnessTestResult
 {
+    /// <summary>
+    /// Gets or sets the full file path of the tested image
+    /// </summary>
     public string FilePath { get; set; } = string.Empty;
+    
+    /// <summary>
+    /// Gets or sets the file name of the tested image
+    /// </summary>
     public string FileName { get; set; } = string.Empty;
+    
+    /// <summary>
+    /// Gets or sets the base name without blur level suffix
+    /// </summary>
     public string BaseName { get; set; } = string.Empty;
+    
+    /// <summary>
+    /// Gets or sets the blur level applied to this image
+    /// </summary>
     public float BlurLevel { get; set; }
+    
+    /// <summary>
+    /// Gets or sets the computed sharpness score (0.0-1.0)
+    /// </summary>
     public float SharpnessScore { get; set; }
+    
+    /// <summary>
+    /// Gets or sets the high frequency ratio metric
+    /// </summary>
     public float HighFrequencyRatio { get; set; }
+    
+    /// <summary>
+    /// Gets or sets the threshold used for pass/fail determination
+    /// </summary>
     public float Threshold { get; set; }
+    
+    /// <summary>
+    /// Gets or sets a value indicating whether the image passed the sharpness test
+    /// </summary>
     public bool Pass { get; set; }
+    
+    /// <summary>
+    /// Gets or sets the regional sharpness scores for different image regions
+    /// </summary>
     public IReadOnlyDictionary<string, float>? RegionalScores { get; set; }
+    
+    /// <summary>
+    /// Gets or sets the error message if assessment failed
+    /// </summary>
     public string? Error { get; set; }
+    
+    /// <summary>
+    /// Gets or sets the timestamp when the test was performed
+    /// </summary>
     public DateTime Timestamp { get; set; }
 }

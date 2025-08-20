@@ -1,7 +1,6 @@
 using OpenPhysical.Biometrics.Tool.Commands;
 using OpenPhysical.Biometrics.Infrastructure.Extensions;
 using OpenPhysical.Biometrics.Infrastructure.Cbeff;
-using PivFingerprintCbeffFormat = OpenPhysical.Biometrics.Infrastructure.Cbeff.PivFingerprintCbeffFormat;
 using OpenPhysical.Biometrics.Infrastructure.Standards.Incits385;
 using OpenPhysical.Biometrics.Core.Cbeff;
 using OpenPhysical.Biometrics.Core.Standards.Incits385;
@@ -62,6 +61,9 @@ services.AddLogging(builder =>
 // Register biometrics services - functional approach
 services.AddBiometricServices();
 
+// Register biometric format handlers
+services.AddBiometricFormats();
+
 // Register CBEFF services
 services.AddCbeffServices();
 services.AddScoped<ICbeffEncoder, CbeffEncoderService>();
@@ -73,8 +75,6 @@ services.AddScoped<ICbeffBuilder, CbeffBuilderService>();
 // Register INCITS 385 services
 services.AddSingleton<IIncits385Writer, Incits385WriterService>();
 
-// Register CBEFF format implementations
-services.AddSingleton<PivFingerprintCbeffFormat>();
 
 // Register metadata services
 services.AddMetadataServices();
@@ -113,6 +113,10 @@ services.AddScoped<SignCbeffCommand>();
 services.AddScoped<VerifyCbeffCommand>();
 services.AddScoped<ExtractChuidCertCommand>();
 services.AddScoped<ProcessCommand>();
+
+// Build the service provider and initialize the biometric registry
+var serviceProvider = services.BuildServiceProvider();
+serviceProvider.InitializeBiometricRegistry();
 
 // Create the CLI app with dependency injection
 using var registrar = new DependencyInjectionRegistrar(services);

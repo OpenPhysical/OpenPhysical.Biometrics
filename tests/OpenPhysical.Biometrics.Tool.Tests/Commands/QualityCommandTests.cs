@@ -2,7 +2,7 @@ using System.Text.Json;
 using OpenPhysical.Biometrics.Tool.Commands;
 using OpenPhysical.Biometrics.Core.Domain.Quality;
 using OpenPhysical.Biometrics.Tests.Common;
-using FluentAssertions;
+using AwesomeAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NUnit.Framework;
@@ -123,7 +123,7 @@ public class QualityCommandTests : UnitTestBase
         // If compliant, score should be >= 0.9
         if (json.RootElement.GetProperty("IsCompliant").GetBoolean())
         {
-            json.RootElement.GetProperty("OverallScore").GetDouble().Should().BeGreaterOrEqualTo(0.9);
+            json.RootElement.GetProperty("OverallScore").GetDouble().Should().BeGreaterThanOrEqualTo(0.9);
         }
     }
     
@@ -144,7 +144,7 @@ public class QualityCommandTests : UnitTestBase
         // Strict mode should have higher threshold (0.85)
         if (json.RootElement.GetProperty("IsCompliant").GetBoolean())
         {
-            json.RootElement.GetProperty("OverallScore").GetDouble().Should().BeGreaterOrEqualTo(0.85);
+            json.RootElement.GetProperty("OverallScore").GetDouble().Should().BeGreaterThanOrEqualTo(0.85);
         }
     }
     

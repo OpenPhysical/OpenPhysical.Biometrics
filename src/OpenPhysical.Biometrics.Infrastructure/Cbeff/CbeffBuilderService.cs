@@ -17,6 +17,11 @@ public sealed class CbeffBuilderService : ICbeffBuilder
     private readonly ICbeffEncoder _encoder;
     private readonly ICbeffSigner _signer;
     
+    /// <summary>
+    /// Initializes a new instance of the <see cref="CbeffBuilderService"/> class.
+    /// </summary>
+    /// <param name="encoder">The CBEFF encoder service.</param>
+    /// <param name="signer">The CBEFF signer service.</param>
     public CbeffBuilderService(ICbeffEncoder encoder, ICbeffSigner signer)
     {
         _encoder = encoder;

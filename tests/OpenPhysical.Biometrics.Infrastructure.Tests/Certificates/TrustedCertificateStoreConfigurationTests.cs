@@ -2,7 +2,7 @@ namespace OpenPhysical.Biometrics.Infrastructure.Tests.Certificates;
 
 using System;
 using System.IO;
-using FluentAssertions;
+using AwesomeAssertions;
 using NUnit.Framework;
 using OpenPhysical.Biometrics.Core.Certificates;
 

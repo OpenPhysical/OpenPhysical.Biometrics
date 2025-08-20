@@ -92,6 +92,7 @@ public class DatasetReviewCommand : AsyncCommand<DatasetReviewCommand.Settings>
         public Dictionary<string, object>? Metadata { get; init; }
     }
 
+    /// <inheritdoc />
     public override async Task<int> ExecuteAsync(CommandContext context, Settings settings)
     {
         try

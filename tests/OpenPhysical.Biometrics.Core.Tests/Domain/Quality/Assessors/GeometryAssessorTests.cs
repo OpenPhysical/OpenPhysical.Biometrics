@@ -4,7 +4,7 @@ using OpenPhysical.Biometrics.Core.Domain.Detection;
 using OpenPhysical.Biometrics.Core.Domain.Quality;
 using OpenPhysical.Biometrics.Core.Domain.Quality.Assessors;
 using OpenPhysical.Biometrics.Core.Domain.Transformations;
-using FluentAssertions;
+using AwesomeAssertions;
 using NUnit.Framework;
 
 namespace OpenPhysical.Biometrics.Core.Tests.Domain.Quality.Assessors;

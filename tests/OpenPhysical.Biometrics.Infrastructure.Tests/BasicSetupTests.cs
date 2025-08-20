@@ -1,5 +1,6 @@
 using NUnit.Framework;
-using FluentAssertions;
+using AwesomeAssertions;
+using CSharpFunctionalExtensions.AwesomeAssertions;
 
 namespace OpenPhysical.Biometrics.Infrastructure.Tests;
 
@@ -17,16 +18,14 @@ public class BasicSetupTests
     }
 
     [Test]
-    public void FluentAssertions_Is_Available()
+    public void CSharpFunctionalExtensions_AwesomeAssertions_Is_Available()
     {
-        var value = 42;
-        value.Should().Be(42);
-        value.Should().BeGreaterThan(0);
+        // Test with Result<T> to verify CSharpFunctionalExtensions.AwesomeAssertions works
+        var successResult = CSharpFunctionalExtensions.Result.Success(42);
+        successResult.Should().SucceedWith(42);
         
-        var text = "Hello, Test";
-        text.Should().StartWith("Hello");
-        text.Should().EndWith("Test");
-        text.Should().Contain(",");
+        var failureResult = CSharpFunctionalExtensions.Result.Failure<int>("error");
+        failureResult.Should().Fail().Which.Should().Be("error");
     }
 
     [Test]
@@ -36,16 +35,16 @@ public class BasicSetupTests
         
         // NUnit - already verified by this test running
         
-        // FluentAssertions
-        var fluentAssertionsType = typeof(FluentAssertions.AssertionExtensions);
-        fluentAssertionsType.Should().NotBeNull();
+        // CSharpFunctionalExtensions.AwesomeAssertions - just verify the extensions work
+        var result = CSharpFunctionalExtensions.Result.Success("test");
+        result.Should().Succeed(); // This verifies the extensions are available
         
         // CSharpFunctionalExtensions
         var resultType = typeof(CSharpFunctionalExtensions.Result);
-        resultType.Should().NotBeNull();
+        Assert.That(resultType, Is.Not.Null);
         
         var maybeType = typeof(CSharpFunctionalExtensions.Maybe<>);
-        maybeType.Should().NotBeNull();
+        Assert.That(maybeType, Is.Not.Null);
     }
 
     [Test]

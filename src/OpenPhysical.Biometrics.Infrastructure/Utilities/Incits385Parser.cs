@@ -1,52 +1,19 @@
-namespace OpenPhysical.Biometrics.Infrastructure.Cbeff.Formats;
+namespace OpenPhysical.Biometrics.Infrastructure.Utilities;
 
 using CSharpFunctionalExtensions;
-using OpenPhysical.Biometrics.Core.Cbeff.Formats;
 using OpenPhysical.Domains.Cbeff.Formats.Incits385;
 using System.Collections.Immutable;
 
 /// <summary>
-/// Format handler for PIV facial images (INCITS 385).
+/// Utility class for parsing INCITS 385 facial image format data.
 /// </summary>
-public sealed class PivFacialFormat : ICbeffFormat
+public static class Incits385Parser
 {
-    /// <inheritdoc />
-    public string FormatName => "PIV Facial Image (INCITS 385)";
-    
-    /// <inheritdoc />
-    public byte PatronFormat => 0x03; // PIV patron format
-    
-    /// <inheritdoc />
-    public ushort BdbFormatOwner => 0x001B; // INCITS
-    
-    /// <inheritdoc />
-    public ushort BdbFormatType => 0x0501; // Facial image
-    
-    /// <inheritdoc />
-    public Result<BiometricRecord> ParseBiometricData(ImmutableArray<byte> data)
-    {
-        return ParseIncits385Record(data)
-            .Map(record => (BiometricRecord)new Incits385BiometricRecord(data, record));
-    }
-    
-    /// <inheritdoc />
-    public Result<ImmutableArray<byte>> SerializeBiometricData(BiometricRecord record)
-    {
-        if (record is not Incits385BiometricRecord incits385Record)
-            return Result.Failure<ImmutableArray<byte>>("Record is not an INCITS 385 facial record");
-            
-        return SerializeIncits385Record(incits385Record.FacialRecord);
-    }
-    
-    /// <inheritdoc />
-    public Result ValidateBiometricData(ImmutableArray<byte> data)
-    {
-        return ParseIncits385Record(data)
-            .Bind(record => record.ValidateImageFormat())
-            .Map(_ => Result.Success())
-            .GetValueOrDefault(Result.Success());
-    }
-    
+    /// <summary>
+    /// Parses INCITS 385 facial image data.
+    /// </summary>
+    /// <param name="data">The raw biometric data bytes.</param>
+    /// <returns>A Result containing the parsed facial image record or an error.</returns>
     public static Result<FacialImageRecord> ParseIncits385Record(ImmutableArray<byte> data)
     {
         if (data.IsDefaultOrEmpty)
@@ -199,53 +166,6 @@ public sealed class PivFacialFormat : ICbeffFormat
         return FacialImageRecord.Create(header, facialInfo, featurePoints, imageInfo, imageData);
     }
     
-    private static Result<ImmutableArray<byte>> SerializeIncits385Record(FacialImageRecord record)
-    {
-        var buffer = new List<byte>();
-        
-        // Serialize header
-        buffer.AddRange(GetBytesFromAscii(record.Header.FormatIdentifier));
-        buffer.AddRange(GetBytesFromAscii(record.Header.VersionNumber));
-        buffer.AddRange(GetBytes(record.Header.RecordLength));
-        buffer.AddRange(GetBytes(record.Header.NumberOfFaces));
-        
-        // Serialize facial information
-        buffer.AddRange(GetBytes(record.FacialInfo.FaceImageBlockLength));
-        buffer.AddRange(GetBytes(record.FacialInfo.NumberOfFeaturePoints));
-        buffer.Add(record.FacialInfo.Gender);
-        buffer.Add(record.FacialInfo.EyeColor);
-        buffer.Add(record.FacialInfo.HairColor);
-        buffer.AddRange(GetBytes24(record.FacialInfo.FeatureMask));
-        buffer.AddRange(GetBytes(record.FacialInfo.Expression));
-        buffer.AddRange(GetBytes24(record.FacialInfo.PoseAngle));
-        buffer.AddRange(GetBytes24(record.FacialInfo.PoseAngleUncertainty));
-        
-        // Serialize feature points
-        foreach (var point in record.FeaturePoints)
-        {
-            buffer.Add(point.FeatureType);
-            buffer.Add(point.FeaturePointId);
-            buffer.AddRange(GetBytes(point.HorizontalPosition));
-            buffer.AddRange(GetBytes(point.VerticalPosition));
-            buffer.AddRange(GetBytes(point.Reserved));
-        }
-        
-        // Serialize image information
-        buffer.Add(record.ImageInfo.FacialImageType);
-        buffer.Add(record.ImageInfo.ImageDataType);
-        buffer.AddRange(GetBytes(record.ImageInfo.Width));
-        buffer.AddRange(GetBytes(record.ImageInfo.Height));
-        buffer.Add(record.ImageInfo.ImageColorSpace);
-        buffer.Add(record.ImageInfo.SourceType);
-        buffer.AddRange(GetBytes(record.ImageInfo.DeviceType));
-        buffer.AddRange(GetBytes(record.ImageInfo.Quality));
-        
-        // Add image data
-        buffer.AddRange(record.ImageData);
-        
-        return Result.Success(buffer.ToImmutableArray());
-    }
-    
     // Helper methods for reading big-endian values
     
     private static uint ReadUInt32BigEndian(ImmutableArray<byte> data, int offset)
@@ -262,43 +182,5 @@ public sealed class PivFacialFormat : ICbeffFormat
     private static uint ReadUInt24BigEndian(ImmutableArray<byte> data, int offset)
     {
         return (uint)((data[offset] << 16) | (data[offset + 1] << 8) | data[offset + 2]);
-    }
-    
-    private static byte[] GetBytes(uint value)
-    {
-        return new[]
-        {
-            (byte)(value >> 24),
-            (byte)(value >> 16),
-            (byte)(value >> 8),
-            (byte)value
-        };
-    }
-    
-    private static byte[] GetBytes(ushort value)
-    {
-        return new[]
-        {
-            (byte)(value >> 8),
-            (byte)value
-        };
-    }
-    
-    private static byte[] GetBytes24(uint value)
-    {
-        return new[]
-        {
-            (byte)(value >> 16),
-            (byte)(value >> 8),
-            (byte)value
-        };
-    }
-    
-    private static byte[] GetBytesFromAscii(string value)
-    {
-        if (value.Length != 4)
-            throw new ArgumentException("ASCII string must be exactly 4 characters", nameof(value));
-            
-        return System.Text.Encoding.ASCII.GetBytes(value);
     }
 }

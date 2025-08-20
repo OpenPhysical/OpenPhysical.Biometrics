@@ -1,7 +1,7 @@
 using System.Text.Json;
 using OpenPhysical.Biometrics.Tool.Commands;
 using OpenPhysical.Biometrics.Tests.Common;
-using FluentAssertions;
+using AwesomeAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NUnit.Framework;

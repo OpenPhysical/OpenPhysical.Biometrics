@@ -4,7 +4,7 @@ using System;
 using System.IO;
 using System.Linq;
 using CSharpFunctionalExtensions;
-using FluentAssertions;
+using AwesomeAssertions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NUnit.Framework;

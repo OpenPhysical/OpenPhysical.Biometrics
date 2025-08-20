@@ -2,8 +2,11 @@ namespace OpenPhysical.Biometrics.Infrastructure.Tests.Certificates;
 
 using System.Linq;
 using AwesomeAssertions;
+using CSharpFunctionalExtensions.AwesomeAssertions;
 using Microsoft.Extensions.Logging;
 using NUnit.Framework;
+using NSubstitute;
+using OpenPhysical.Biometrics.Core.Certificates;
 using OpenPhysical.Biometrics.Infrastructure.Certificates;
 using Org.BouncyCastle.Math;
 
@@ -20,8 +23,8 @@ public class MultiIndexCertificateStoreTests
     [SetUp]
     public void Setup()
     {
-        _logger = NSubstitute.Substitute.For<ILogger<MultiIndexCertificateStore>>();
-        _provider = new TrustedCertificateProvider(NSubstitute.Substitute.For<ILogger<TrustedCertificateProvider>>());
+        _logger = Substitute.For<ILogger<MultiIndexCertificateStore>>();
+        _provider = new TrustedCertificateProvider(Substitute.For<ILogger<TrustedCertificateProvider>>());
         _store = new MultiIndexCertificateStore(_logger, new Lazy<ITrustedCertificateProvider>(() => _provider));
     }
 
@@ -32,13 +35,13 @@ public class MultiIndexCertificateStoreTests
         var result = _store.CreateWithDefaults();
 
         // Assert
-        result.Should().BeSuccess();
+        result.Should().Succeed();
         var store = result.Value;
         Assert.That(store.CertificateCount, Is.EqualTo(7), "all 7 ICAM certificates should be stored with unique fingerprints");
 
         // Verify we can retrieve all certificates
         var allCertsResult = store.GetAllCertificates();
-        allCertsResult.Should().BeSuccess();
+        allCertsResult.Should().Succeed();
         Assert.That(allCertsResult.Value.Length, Is.EqualTo(7));
 
         // Log certificate details
@@ -68,7 +71,7 @@ public class MultiIndexCertificateStoreTests
         foreach (var serial in duplicateSerials)
         {
             var result = store.FindBySerialNumber(serial);
-            result.Should().BeSuccess();
+            result.Should().Succeed();
             Assert.That(result.Value.Length, Is.EqualTo(2), $"serial number {serial} should return 2 certificates");
             
             // Verify they have different subjects

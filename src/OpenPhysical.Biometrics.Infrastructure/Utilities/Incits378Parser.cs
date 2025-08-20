@@ -1,54 +1,19 @@
-namespace OpenPhysical.Biometrics.Infrastructure.Cbeff.Formats;
+namespace OpenPhysical.Biometrics.Infrastructure.Utilities;
 
 using CSharpFunctionalExtensions;
-using OpenPhysical.Biometrics.Core.Cbeff.Formats;
 using OpenPhysical.Domains.Cbeff.Formats.Incits378;
 using System.Collections.Immutable;
-using System.Linq;
 
 /// <summary>
-/// Format handler for PIV fingerprint templates (INCITS 378).
+/// Utility class for parsing INCITS 378 fingerprint minutiae format data.
 /// </summary>
-public sealed class PivFingerprintFormat : ICbeffFormat
+public static class Incits378Parser
 {
-    /// <inheritdoc />
-    public string FormatName => "PIV Fingerprint Minutiae (INCITS 378)";
-    
-    /// <inheritdoc />
-    public byte PatronFormat => 0x03; // PIV patron format
-    
-    /// <inheritdoc />
-    public ushort BdbFormatOwner => 0x001B; // INCITS
-    
-    /// <inheritdoc />
-    public ushort BdbFormatType => 0x0201; // Fingerprint minutiae
-    
-    /// <inheritdoc />
-    public Result<BiometricRecord> ParseBiometricData(ImmutableArray<byte> data)
-    {
-        return ParseIncits378Record(data)
-            .Map(record => (BiometricRecord)new Incits378BiometricRecord(data, record));
-    }
-    
-    /// <inheritdoc />
-    public Result<ImmutableArray<byte>> SerializeBiometricData(BiometricRecord record)
-    {
-        if (record is not Incits378BiometricRecord incits378Record)
-            return Result.Failure<ImmutableArray<byte>>("Record is not an INCITS 378 fingerprint record");
-            
-        return SerializeIncits378Record(incits378Record.FingerprintRecord);
-    }
-    
-    /// <inheritdoc />
-    public Result ValidateBiometricData(ImmutableArray<byte> data)
-    {
-        return ParseIncits378Record(data)
-            .Bind(record => record.ValidateFormat());
-    }
-    
     /// <summary>
     /// Parses INCITS 378 fingerprint minutiae data.
     /// </summary>
+    /// <param name="data">The raw biometric data bytes.</param>
+    /// <returns>A Result containing the parsed fingerprint record or an error.</returns>
     public static Result<FingerprintRecord> ParseIncits378Record(ImmutableArray<byte> data)
     {
         if (data.IsDefaultOrEmpty)
@@ -61,13 +26,51 @@ public sealed class PivFingerprintFormat : ICbeffFormat
         
         // Parse general record header (26 bytes per INCITS 378-2004 Table 6)
         return ParseGeneralRecordHeader(data, ref offset)
-            .Bind(header => ParseFingerViewRecords(data, ref offset, header.NumberOfFingerRecords)
-                .Map(viewRecords => new FingerprintRecord(header, viewRecords)));
+            .Bind(header => {
+                // Validate that we have enough data for the complete record
+                if (data.Length < header.RecordLength)
+                {
+                    return Result.Failure<FingerprintRecord>(
+                        $"Data length ({data.Length} bytes) is less than record length ({header.RecordLength} bytes)");
+                }
+                
+                // DEBUG: Handle case where NumberOfFingerRecords = 0 but data is present
+                // This might be extended data blocks or finger view records with different interpretation
+                if (header.NumberOfFingerRecords == 0 && offset < header.RecordLength)
+                {
+                    var remainingBytes = (int)(header.RecordLength - offset);
+                    
+                    // DEBUG: Try to determine if this might be finger view records anyway
+                    if (remainingBytes >= 6) // Minimum for finger view record header
+                    {
+                        var debugFingerPosition = data[offset];
+                        var debugViewNumber = data[offset + 1];
+                        var debugImpressionType = data[offset + 2];
+                        var debugFingerQuality = data[offset + 3];
+                        var debugNumberOfMinutiae = data[offset + 4];
+                        var debugReserved = data[offset + 5];
+                        
+                        return Result.Failure<FingerprintRecord>(
+                            $"INCITS 378 DEBUG: NumberOfFingerRecords=0 but {remainingBytes} bytes remain. " +
+                            $"Next bytes look like: Pos={debugFingerPosition}, View={debugViewNumber}, " +
+                            $"ImpType={debugImpressionType}, Quality={debugFingerQuality}, " +
+                            $"Minutiae={debugNumberOfMinutiae}, Reserved=0x{debugReserved:X2}. " +
+                            $"This suggests extended data blocks or misinterpreted header.");
+                    }
+                    
+                    return Result.Failure<FingerprintRecord>(
+                        $"INCITS 378 format variant: NumberOfFingerRecords is 0 but {remainingBytes} bytes of data remain.");
+                }
+                
+                return ParseFingerViewRecords(data, ref offset, header.NumberOfFingerRecords)
+                    .Map(viewRecords => new FingerprintRecord(header, viewRecords));
+            });
     }
     
     private static Result<GeneralRecordHeader> ParseGeneralRecordHeader(ImmutableArray<byte> data, ref int offset)
     {
-        if (offset + 26 > data.Length)
+        // Need minimum 10 bytes to determine record length format (8 bytes format/version + 2 bytes minimum length)
+        if (offset + 10 > data.Length)
             return Result.Failure<GeneralRecordHeader>("Insufficient data for general record header");
             
         // Format identifier - "FMR\0"
@@ -78,9 +81,15 @@ public sealed class PivFingerprintFormat : ICbeffFormat
         var version = ReadBytes(data, offset, 4);
         offset += 4;
         
-        // Record length (2 bytes, big-endian)
-        var recordLength = ReadUInt16BigEndian(data, offset);
-        offset += 2;
+        // Record length (2 or 6 bytes, big-endian)
+        var (recordLength, bytesConsumed) = ReadRecordLength(data, offset);
+        offset += bytesConsumed;
+        
+        // Now we know the record length format, validate we have enough data for the remaining header fields
+        // Remaining fields: ProductOwner(2) + ProductType(2) + CaptureEquipment(2) + 
+        // ImageSizeX(2) + ImageSizeY(2) + XResolution(2) + YResolution(2) + NumberOfFingerRecords(1) + Reserved(1) = 14 bytes
+        if (offset + 14 > data.Length)
+            return Result.Failure<GeneralRecordHeader>("Insufficient data for complete general record header");
         
         // CBEFF Product Owner (2 bytes, big-endian)
         var productOwner = ReadUInt16BigEndian(data, offset);
@@ -90,18 +99,25 @@ public sealed class PivFingerprintFormat : ICbeffFormat
         var productType = ReadUInt16BigEndian(data, offset);
         offset += 2;
         
-        // Capture equipment compliance (1 byte)
-        var captureEquipmentCompliance = data[offset++];
-        
-        // Capture equipment ID (1 byte)
-        var captureEquipmentId = data[offset++];
-        
-        // Horizontal scan resolution (2 bytes, big-endian, pixels per cm)
-        var horizontalResolution = ReadUInt16BigEndian(data, offset);
+        // Capture equipment compliance and ID (2 bytes, big-endian)
+        // Bits 15-12: Equipment compliance (4 bits), Bits 11-0: Equipment ID (12 bits)
+        var captureEquipmentCompliance = ReadUInt16BigEndian(data, offset);
         offset += 2;
         
-        // Vertical scan resolution (2 bytes, big-endian, pixels per cm)
-        var verticalResolution = ReadUInt16BigEndian(data, offset);
+        // Image size X (width) in pixels (2 bytes, big-endian)
+        var imageSizeX = ReadUInt16BigEndian(data, offset);
+        offset += 2;
+        
+        // Image size Y (height) in pixels (2 bytes, big-endian)
+        var imageSizeY = ReadUInt16BigEndian(data, offset);
+        offset += 2;
+        
+        // X scan resolution (2 bytes, big-endian, pixels per cm)
+        var xResolution = ReadUInt16BigEndian(data, offset);
+        offset += 2;
+        
+        // Y scan resolution (2 bytes, big-endian, pixels per cm)
+        var yResolution = ReadUInt16BigEndian(data, offset);
         offset += 2;
         
         // Number of finger records (1 byte)
@@ -117,9 +133,10 @@ public sealed class PivFingerprintFormat : ICbeffFormat
             productOwner,
             productType,
             captureEquipmentCompliance,
-            captureEquipmentId,
-            horizontalResolution,
-            verticalResolution,
+            imageSizeX,
+            imageSizeY,
+            xResolution,
+            yResolution,
             numberOfFingerRecords,
             reserved);
     }
@@ -163,6 +180,7 @@ public sealed class PivFingerprintFormat : ICbeffFormat
         
         // Reserved (1 byte)
         var reserved = data[offset++];
+        
         
         // Parse minutiae data if present
         var minutiae = ImmutableArray<MinutiaPoint>.Empty;
@@ -228,52 +246,6 @@ public sealed class PivFingerprintFormat : ICbeffFormat
         return Result.Success(minutiae.ToImmutableArray());
     }
     
-    private static Result<ImmutableArray<byte>> SerializeIncits378Record(FingerprintRecord record)
-    {
-        var buffer = new List<byte>();
-        
-        // Serialize general record header
-        buffer.AddRange(record.Header.FormatIdentifier);
-        buffer.AddRange(record.Header.VersionNumber);
-        buffer.AddRange(GetBytes(record.Header.RecordLength));
-        buffer.AddRange(GetBytes(record.Header.ProductOwner));
-        buffer.AddRange(GetBytes(record.Header.ProductType));
-        buffer.Add(record.Header.CaptureEquipmentCompliance);
-        buffer.Add(record.Header.CaptureEquipmentId);
-        buffer.AddRange(GetBytes(record.Header.HorizontalResolution));
-        buffer.AddRange(GetBytes(record.Header.VerticalResolution));
-        buffer.Add(record.Header.NumberOfFingerRecords);
-        buffer.Add(record.Header.Reserved);
-        
-        // Serialize finger view records
-        foreach (var viewRecord in record.ViewRecords)
-        {
-            buffer.Add(viewRecord.FingerPosition);
-            buffer.Add(viewRecord.ViewNumber);
-            buffer.Add(viewRecord.ImpressionType);
-            buffer.Add(viewRecord.FingerQuality);
-            buffer.Add(viewRecord.NumberOfMinutiae);
-            buffer.Add(viewRecord.Reserved);
-            
-            // Serialize minutiae
-            foreach (var minutia in viewRecord.Minutiae)
-            {
-                // Pack type and X coordinate
-                var typeAndX = (ushort)((minutia.MinutiaType << 14) | (minutia.XCoordinate & 0x3FFF));
-                buffer.AddRange(GetBytes(typeAndX));
-                
-                // Pack reserved and Y coordinate  
-                var reservedAndY = (ushort)(minutia.YCoordinate & 0x3FFF);
-                buffer.AddRange(GetBytes(reservedAndY));
-                
-                buffer.Add(minutia.Angle);
-                buffer.Add(minutia.Quality);
-            }
-        }
-        
-        return Result.Success(buffer.ToImmutableArray());
-    }
-    
     // Helper methods for reading big-endian values
     
     private static ushort ReadUInt16BigEndian(ImmutableArray<byte> data, int offset)
@@ -289,12 +261,32 @@ public sealed class PivFingerprintFormat : ICbeffFormat
         return result;
     }
     
-    private static byte[] GetBytes(ushort value)
+    private static (uint recordLength, int bytesConsumed) ReadRecordLength(ImmutableArray<byte> data, int offset)
     {
-        return new[]
+        if (offset + 2 > data.Length)
+            throw new ArgumentException("Insufficient data for record length");
+            
+        var firstTwoBytes = ReadUInt16BigEndian(data, offset);
+        
+        // If first two bytes are 0x0000, then it's a 6-byte format
+        if (firstTwoBytes == 0x0000)
         {
-            (byte)(value >> 8),
-            (byte)value
-        };
+            if (offset + 6 > data.Length)
+                throw new ArgumentException("Insufficient data for 6-byte record length");
+                
+            // Read the next 4 bytes as the actual length
+            var length = ReadUInt32BigEndian(data, offset + 2);
+            return (length, 6);
+        }
+        else
+        {
+            // 2-byte format
+            return (firstTwoBytes, 2);
+        }
+    }
+    
+    private static uint ReadUInt32BigEndian(ImmutableArray<byte> data, int offset)
+    {
+        return (uint)((data[offset] << 24) | (data[offset + 1] << 16) | (data[offset + 2] << 8) | data[offset + 3]);
     }
 }

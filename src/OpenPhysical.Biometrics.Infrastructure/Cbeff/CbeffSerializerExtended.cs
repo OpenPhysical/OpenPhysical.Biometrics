@@ -123,10 +123,12 @@ public sealed class CbeffSerializerExtended : ICbeffSerializerExtended
     {
         var formatHandler = _formatRegistry.GetFormat(payload.Header);
         
-        var parsedRecord = formatHandler
-            .Bind(format => format.ParseBiometricData(payload.BiometricDataBlock.ToImmutableArray())
-                .Map(record => Maybe<BiometricRecord>.From(record))
-                .GetValueOrDefault(Maybe<BiometricRecord>.None));
+        var parsedRecord = formatHandler.HasValue 
+            ? formatHandler.Value.ParseBiometricData(payload.BiometricDataBlock.ToImmutableArray())
+                .Match(
+                    success => Maybe<BiometricRecord>.From(success),
+                    failure => Maybe<BiometricRecord>.None)
+            : Maybe<BiometricRecord>.None;
         
         return CbeffPayloadExtended.Create(payload, parsedRecord, formatHandler);
     }

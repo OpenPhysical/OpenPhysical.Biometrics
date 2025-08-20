@@ -25,7 +25,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using OpenPhysical.Biometrics.Core.Domain.Quality.Sharpness;
-using FluentAssertions;
+using AwesomeAssertions;
 using Microsoft.Extensions.Logging;
 using NUnit.Framework;
 using SixLabors.ImageSharp;

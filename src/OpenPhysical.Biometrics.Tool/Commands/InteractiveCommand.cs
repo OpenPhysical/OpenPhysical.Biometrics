@@ -41,6 +41,14 @@ public class InteractiveCommand : AsyncCommand<InteractiveCommand.Settings>
     private readonly IQualityAssessor _qualityAssessor;
     private readonly ILogger<InteractiveCommand> _logger;
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="InteractiveCommand"/> class.
+    /// </summary>
+    /// <param name="faceDetector">The face detector service.</param>
+    /// <param name="landmarkExtractor">The landmark extractor service.</param>
+    /// <param name="jpeg2000Encoder">The JPEG 2000 encoder service.</param>
+    /// <param name="qualityAssessor">The quality assessor service.</param>
+    /// <param name="logger">The logger instance.</param>
     public InteractiveCommand(
         IFaceDetector faceDetector,
         ILandmarkExtractor landmarkExtractor,
