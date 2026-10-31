@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <IsPackable>true</IsPackable>
+        <IsConsolidatedBiometricsProject>true</IsConsolidatedBiometricsProject>
+        <GenerateDocumentationFile>true</GenerateDocumentationFile>
+        <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+        <Description>Owned pixel buffers and portable Skia image transformations for biometric processing.</Description>
+    </PropertyGroup>
+    <ItemGroup>
+        <PackageReference Include="SkiaSharp" Version="3.119.4" />
+        <PackageReference Include="SkiaSharp.NativeAssets.Linux.NoDependencies" Version="3.119.4" />
+        <InternalsVisibleTo Include="OpenPhysical.Biometrics.Infrastructure" />
+        <InternalsVisibleTo Include="OpenPhysical.Biometrics.Facial" />
+        <InternalsVisibleTo Include="OpenPhysical.Biometrics.Tool" />
+        <InternalsVisibleTo Include="OpenPhysical.Biometrics.Tool.Compatibility" />
+        <InternalsVisibleTo Include="OpenPhysical.Biometrics.Tool.Tests" />
+        <InternalsVisibleTo Include="biotool" />
+        <InternalsVisibleTo Include="biotool-compat" />
+        <InternalsVisibleTo Include="OpenPhysical.Biometrics.Imaging.Tests" />
+    </ItemGroup>
+</Project>

@@ -1,14 +1,14 @@
 using System.ComponentModel;
+using System.Drawing;
 using CSharpFunctionalExtensions;
-using OpenPhysical.Biometrics.Tool.Services;
+using Microsoft.Extensions.Logging;
 using OpenPhysical.Biometrics.Core.Abstractions;
 using OpenPhysical.Biometrics.Core.Domain.Detection;
 using OpenPhysical.Biometrics.Core.Domain.Standards;
 using OpenPhysical.Biometrics.Core.Domain.Transformations;
-using Microsoft.Extensions.Logging;
-using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.Formats.Jpeg;
-using SixLabors.ImageSharp.PixelFormats;
+using OpenPhysical.Biometrics.Imaging;
+using OpenPhysical.Biometrics.Tool.Drawing;
+using OpenPhysical.Biometrics.Tool.Services;
 using Spectre.Console;
 using Spectre.Console.Cli;
 
@@ -145,26 +145,14 @@ public sealed class RoiCommand(
     /// <returns>Exit code: 0 for success, 1 for failure.</returns>
     public override async Task<int> ExecuteAsync(CommandContext context, Settings settings)
     {
-        _logger.LogDebug(
-            "RoiCommand.ExecuteAsync started - InputPath: {InputPath}, OutputPath: {OutputPath}, Format: {Format}, Quality: {Quality}, StrokeWidth: {StrokeWidth}, ShowLabels: {ShowLabels}, ShowLandmarks: {ShowLandmarks}, ShowPivLines: {ShowPivLines}, Verbose: {Verbose}, NoBoxes: {NoBoxes}",
-            settings.InputPath,
-            settings.OutputPath,
-            settings.Format,
-            settings.Quality,
-            settings.StrokeWidth,
-            settings.ShowLabels,
-            settings.ShowLandmarks,
-            settings.ShowPivLines,
-            settings.Verbose,
-            settings.NoBoxes
-        );
+        _logger.LogDebug(new EventId(686489, "RoiCommand"), "RoiCommand stage completed.");
 
         try
         {
             // Validate input file
             if (!File.Exists(settings.InputPath))
             {
-                _logger.LogError("Input file not found: {InputPath}", settings.InputPath);
+                _logger.LogError(new EventId(709999, "RoiCommand"), "RoiCommand failed.");
                 AnsiConsole.MarkupLine(
                     $"[red]Error: Input file '{settings.InputPath}' not found[/]"
                 );
@@ -174,7 +162,7 @@ public sealed class RoiCommand(
             // Determine output path
             var outputPath =
                 settings.OutputPath ?? GenerateOutputPath(settings.InputPath, settings.Format);
-            _logger.LogDebug("Output path determined: {OutputPath}", outputPath);
+            _logger.LogDebug(new EventId(838869, "RoiCommand"), "RoiCommand stage completed.");
 
             if (settings.Verbose)
             {
@@ -184,12 +172,11 @@ public sealed class RoiCommand(
             }
 
             // Load the image
-            _logger.LogDebug("Loading image from: {InputPath}", settings.InputPath);
-            using var sourceImage = await Image.LoadAsync<Rgba32>(settings.InputPath);
+            _logger.LogDebug(new EventId(775715, "RoiCommand"), "RoiCommand stage completed.");
+            using var sourceImage = await RgbImage.LoadAsync(settings.InputPath);
             _logger.LogInformation(
-                "Image loaded successfully - Dimensions: {Width}x{Height}",
-                sourceImage.Width,
-                sourceImage.Height
+                new EventId(836960, "RoiCommand"),
+                "RoiCommand stage completed."
             );
 
             if (settings.Verbose)
@@ -233,8 +220,8 @@ public sealed class RoiCommand(
 
                     if (pivResult.IsFailure)
                     {
-                        _logger.LogError("PIV processing failed: {Error}", pivResult.Error);
-                        return Result.Failure<Image<Rgba32>>(pivResult.Error);
+                        _logger.LogError(new EventId(858124, "RoiCommand"), "RoiCommand failed.");
+                        return Result.Failure<RgbImage>(pivResult.Error);
                     }
 
                     var pivData = pivResult.Value;
@@ -244,11 +231,8 @@ public sealed class RoiCommand(
                     if (settings.Verbose)
                     {
                         _logger.LogDebug(
-                            "PIV processing results - Dimensions: {Width}x{Height}, Face confidence: {Confidence:F2}, Transformation: {Summary}",
-                            pivData.Dimensions.Width,
-                            pivData.Dimensions.Height,
-                            pivData.SourceFace.Confidence,
-                            pivData.ProcessingSummary
+                            new EventId(704683, "RoiCommand"),
+                            "RoiCommand stage completed."
                         );
                         AnsiConsole.MarkupLine(
                             $"[green]✓[/] PIV processing complete: {pivData.Dimensions.Width}x{pivData.Dimensions.Height}"
@@ -274,20 +258,18 @@ public sealed class RoiCommand(
                         _logger.LogError(
                             "PIV processing did not produce ROI Inner Region in metadata"
                         );
-                        return Result.Failure<Image<Rgba32>>(
+                        return Result.Failure<RgbImage>(
                             "PIV processing did not produce ROI Inner Region"
                         );
                     }
 
                     if (
                         !pivData.Metadata.TryGetValue("PivImage", out var imageObject)
-                        || imageObject is not Image<Rgba32> pivImage
+                        || imageObject is not RgbImage pivImage
                     )
                     {
                         _logger.LogError("PIV processing did not produce image in metadata");
-                        return Result.Failure<Image<Rgba32>>(
-                            "PIV processing did not produce image"
-                        );
+                        return Result.Failure<RgbImage>("PIV processing did not produce image");
                     }
                     _logger.LogDebug(
                         "Successfully extracted ROI Inner Region and PIV image from metadata"
@@ -297,11 +279,8 @@ public sealed class RoiCommand(
                     {
                         var innerRegion = roiSet.InnerRegion;
                         _logger.LogDebug(
-                            "ROI region - Appendix C.6 Inner: {Width}x{Height} at ({X},{Y})",
-                            innerRegion.BoundingBox.Width,
-                            innerRegion.BoundingBox.Height,
-                            innerRegion.BoundingBox.X,
-                            innerRegion.BoundingBox.Y
+                            new EventId(887287, "RoiCommand"),
+                            "RoiCommand stage completed."
                         );
                         AnsiConsole.MarkupLine(
                             $"[green]✓[/] Appendix C.6 Inner ROI region (420x560 coordinates):"
@@ -315,7 +294,7 @@ public sealed class RoiCommand(
                     task.Description = "[blue]Generating ROI visualization...[/]";
                     task.Value = 90;
 
-                    Result<Image<Rgba32>> visualizationResult;
+                    Result<RgbImage> visualizationResult;
 
                     // Use strokeWidth of 0 if NoBoxes is set
                     var strokeWidth = settings.NoBoxes ? 0f : settings.StrokeWidth;
@@ -447,7 +426,7 @@ public sealed class RoiCommand(
 
             if (result.IsFailure)
             {
-                _logger.LogError("ROI visualization failed: {Error}", result.Error);
+                _logger.LogError(new EventId(820248, "RoiCommand"), "RoiCommand failed.");
                 AnsiConsole.MarkupLine($"[red]Error: {result.Error}[/]");
                 return 1;
             }
@@ -455,36 +434,28 @@ public sealed class RoiCommand(
             // Save the output image
             using var outputImage = result.Value;
 
-            _logger.LogDebug(
-                "Saving output image as {Format} to {OutputPath}",
-                settings.Format,
-                outputPath
-            );
+            _logger.LogDebug(new EventId(849954, "RoiCommand"), "RoiCommand stage completed.");
             if (settings.Format.ToUpperInvariant() == "PNG")
             {
                 await outputImage.SaveAsPngAsync(outputPath);
                 _logger.LogInformation(
-                    "Saved ROI visualization as PNG to {OutputPath}",
-                    outputPath
+                    new EventId(772916, "RoiCommand"),
+                    "RoiCommand stage completed."
                 );
             }
             else
             {
-                await outputImage.SaveAsJpegAsync(
-                    outputPath,
-                    new JpegEncoder { Quality = settings.Quality }
-                );
+                await outputImage.SaveAsJpegAsync(outputPath, settings.Quality);
                 _logger.LogInformation(
-                    "Saved ROI visualization as JPEG (quality: {Quality}) to {OutputPath}",
-                    settings.Quality,
-                    outputPath
+                    new EventId(629815, "RoiCommand"),
+                    "RoiCommand stage completed."
                 );
             }
 
             if (settings.Verbose)
             {
                 var fileInfo = new FileInfo(outputPath);
-                _logger.LogDebug("Output file size: {Size} bytes", fileInfo.Length);
+                _logger.LogDebug(new EventId(688513, "RoiCommand"), "RoiCommand stage completed.");
                 AnsiConsole.MarkupLine(
                     $"[green]✓[/] Saved ROI visualization: {fileInfo.Length:N0} bytes"
                 );
@@ -509,7 +480,7 @@ public sealed class RoiCommand(
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Unhandled exception in RoiCommand.ExecuteAsync");
+            _logger.LogError(new EventId(654701, "RoiCommand"), "RoiCommand failed.");
             AnsiConsole.MarkupLine($"[red]Unexpected error: {ex.Message}[/]");
             return 1;
         }
@@ -537,8 +508,8 @@ public sealed class RoiCommand(
     /// <summary>
     /// Draws ROI Inner Region with PIV compliance lines overlay.
     /// </summary>
-    private static Result<Image<Rgba32>> DrawRoiRegionsWithPivLines(
-        Image<Rgba32> pivImage,
+    private static Result<RgbImage> DrawRoiRegionsWithPivLines(
+        RgbImage pivImage,
         FacialRoiSet roiSet,
         PivComplianceLines pivLines,
         PivComplianceValidation complianceValidation,
@@ -579,8 +550,8 @@ public sealed class RoiCommand(
     /// <summary>
     /// Draws complete visualization with ROI Inner Region, landmarks, and PIV compliance lines.
     /// </summary>
-    private static Result<Image<Rgba32>> DrawCompleteVisualizationWithPivLines(
-        Image<Rgba32> pivImage,
+    private static Result<RgbImage> DrawCompleteVisualizationWithPivLines(
+        RgbImage pivImage,
         FaceLandmarks68 transformedLandmarks,
         FacialRoiSet roiSet,
         PivComplianceLines pivLines,

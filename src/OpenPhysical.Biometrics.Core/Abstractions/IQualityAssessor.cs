@@ -1,9 +1,9 @@
+using System.Drawing;
 using CSharpFunctionalExtensions;
+using JetBrains.Annotations;
 using OpenPhysical.Biometrics.Core.Domain.Detection;
 using OpenPhysical.Biometrics.Core.Domain.Quality;
-using JetBrains.Annotations;
-using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.PixelFormats;
+using OpenPhysical.Biometrics.Imaging;
 
 namespace OpenPhysical.Biometrics.Core.Abstractions;
 
@@ -22,8 +22,9 @@ public interface IQualityAssessor
     /// <param name="options">Assessment options</param>
     /// <returns>Quality assessment result</returns>
     Task<Result<Iso19794Assessment>> AssessAsync(
-        Image<Rgba32> image,
+        RgbImage image,
         DetectedFace face,
         FaceLandmarks68 landmarks,
-        QualityAssessmentOptions options);
+        QualityAssessmentOptions options
+    );
 }

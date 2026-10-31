@@ -1,8 +1,8 @@
 namespace OpenPhysical.Biometrics.Core.Standards;
 
 using CSharpFunctionalExtensions;
-using OpenPhysical.Domains.Standards;
 using OpenPhysical.Domains.Biometrics;
+using OpenPhysical.Domains.Standards;
 
 /// <summary>
 /// Registry interface for managing available document standards.
@@ -81,10 +81,13 @@ public static class StandardRegistryExtensions
     /// <param name="registry">The registry to add standards to.</param>
     /// <param name="standards">The standards to register.</param>
     /// <returns>A Result indicating success or containing any registration errors.</returns>
-    public static Result RegisterMany(this IStandardRegistry registry, params IDocumentStandard[] standards)
+    public static Result RegisterMany(
+        this IStandardRegistry registry,
+        params IDocumentStandard[] standards
+    )
     {
         var errors = new List<string>();
-        
+
         foreach (var standard in standards)
         {
             var result = registry.Register(standard);
@@ -94,7 +97,7 @@ public static class StandardRegistryExtensions
             }
         }
 
-        return errors.Any() 
+        return errors.Any()
             ? Result.Failure($"Failed to register standards: {string.Join("; ", errors)}")
             : Result.Success();
     }
@@ -106,9 +109,11 @@ public static class StandardRegistryExtensions
     /// <param name="id">The standard identifier.</param>
     /// <returns>The document standard.</returns>
     /// <exception cref="InvalidOperationException">Thrown when standard is not found.</exception>
-    public static IDocumentStandard GetRequiredStandard(this IStandardRegistry registry, DocumentStandardId id)
+    public static IDocumentStandard GetRequiredStandard(
+        this IStandardRegistry registry,
+        DocumentStandardId id
+    )
     {
-        return registry.GetStandard(id)
-            .GetValueOrThrow($"Standard '{id}' not found in registry");
+        return registry.GetStandard(id).GetValueOrThrow($"Standard '{id}' not found in registry");
     }
 }

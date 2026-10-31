@@ -1,6 +1,6 @@
-using OpenPhysical.Biometrics.Core.Abstractions;
-using Microsoft.Extensions.Logging;
 using JetBrains.Annotations;
+using Microsoft.Extensions.Logging;
+using OpenPhysical.Biometrics.Core.Abstractions;
 
 namespace OpenPhysical.Biometrics.Infrastructure.Services;
 
@@ -14,12 +14,12 @@ public sealed class BiometricProcessingServices : IDisposable
     /// Face detection service
     /// </summary>
     public IFaceDetector FaceDetector { get; }
-    
+
     /// <summary>
     /// Landmark extraction service
     /// </summary>
     public ILandmarkExtractor LandmarkExtractor { get; }
-    
+
     /// <summary>
     /// JPEG 2000 encoding service
     /// </summary>
@@ -37,7 +37,8 @@ public sealed class BiometricProcessingServices : IDisposable
         IFaceDetector faceDetector,
         ILandmarkExtractor landmarkExtractor,
         IJpeg2000Encoder jpeg2000Encoder,
-        IQualityAssessor qualityAssessor)
+        IQualityAssessor qualityAssessor
+    )
     {
         FaceDetector = faceDetector;
         LandmarkExtractor = landmarkExtractor;
@@ -51,16 +52,44 @@ public sealed class BiometricProcessingServices : IDisposable
     public static BiometricProcessingServices CreateDefault(ILogger? logger = null)
     {
         logger ??= Microsoft.Extensions.Logging.Abstractions.NullLogger.Instance;
-        
+
         return new BiometricProcessingServices(
-            new RetinaFaceDetector(logger as ILogger<RetinaFaceDetector> ?? 
-                Microsoft.Extensions.Logging.Abstractions.NullLogger<RetinaFaceDetector>.Instance),
-            new OnnxLandmarkExtractor(logger as ILogger<OnnxLandmarkExtractor> ?? 
-                Microsoft.Extensions.Logging.Abstractions.NullLogger<OnnxLandmarkExtractor>.Instance),
-            new Jpeg2000EncoderService(logger as ILogger<Jpeg2000EncoderService> ?? 
-                Microsoft.Extensions.Logging.Abstractions.NullLogger<Jpeg2000EncoderService>.Instance),
-            new QualityAssessor(logger as ILogger<QualityAssessor> ?? 
-                Microsoft.Extensions.Logging.Abstractions.NullLogger<QualityAssessor>.Instance)
+            new RetinaFaceDetector(
+                logger as ILogger<RetinaFaceDetector>
+                    ?? Microsoft
+                        .Extensions
+                        .Logging
+                        .Abstractions
+                        .NullLogger<RetinaFaceDetector>
+                        .Instance
+            ),
+            new OnnxLandmarkExtractor(
+                logger as ILogger<OnnxLandmarkExtractor>
+                    ?? Microsoft
+                        .Extensions
+                        .Logging
+                        .Abstractions
+                        .NullLogger<OnnxLandmarkExtractor>
+                        .Instance
+            ),
+            new Jpeg2000EncoderService(
+                logger as ILogger<Jpeg2000EncoderService>
+                    ?? Microsoft
+                        .Extensions
+                        .Logging
+                        .Abstractions
+                        .NullLogger<Jpeg2000EncoderService>
+                        .Instance
+            ),
+            new QualityAssessor(
+                logger as ILogger<QualityAssessor>
+                    ?? Microsoft
+                        .Extensions
+                        .Logging
+                        .Abstractions
+                        .NullLogger<QualityAssessor>
+                        .Instance
+            )
         );
     }
 

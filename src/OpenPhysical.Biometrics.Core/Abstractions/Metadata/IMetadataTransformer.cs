@@ -13,12 +13,12 @@ public sealed class MetadataTreeNode
     /// Gets the label for this node.
     /// </summary>
     public string Label { get; }
-    
+
     /// <summary>
     /// Gets the child nodes.
     /// </summary>
     public IReadOnlyList<MetadataTreeNode> Children { get; }
-    
+
     /// <summary>
     /// Creates a new metadata tree node.
     /// </summary>
@@ -38,12 +38,12 @@ public interface IMetadataTransformer
     /// Transforms image metadata into a tree structure for display.
     /// </summary>
     Result<MetadataTreeNode> TransformToTree(ImageMetadata metadata);
-    
+
     /// <summary>
     /// Transforms EXIF data into a tree structure for display.
     /// </summary>
     Result<MetadataTreeNode> TransformExifToTree(ExifData exif);
-    
+
     /// <summary>
     /// Transforms image metadata into a simplified key-value format.
     /// </summary>

@@ -1,7 +1,7 @@
-using OpenPhysical.Biometrics.Core.Domain.Detection;
+using System.Drawing;
 using JetBrains.Annotations;
-using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.PixelFormats;
+using OpenPhysical.Biometrics.Core.Domain.Detection;
+using OpenPhysical.Biometrics.Imaging;
 
 namespace OpenPhysical.Biometrics.Core.Abstractions;
 
@@ -19,7 +19,7 @@ public interface ILandmarkExtractor
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>68 facial landmark points</returns>
     Task<Result<FaceLandmarks68>> ExtractLandmarksAsync(
-        Image<Rgba32> image,
+        RgbImage image,
         FaceBox faceBox,
         CancellationToken cancellationToken = default
     );

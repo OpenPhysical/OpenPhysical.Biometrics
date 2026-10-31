@@ -2,8 +2,8 @@ namespace OpenPhysical.Biometrics.Core.Cbeff;
 
 using CSharpFunctionalExtensions;
 using OpenPhysical.Domains.Cbeff;
-using Org.BouncyCastle.X509;
 using Org.BouncyCastle.Crypto;
+using Org.BouncyCastle.X509;
 
 /// <summary>
 /// Interface for signing CBEFF payloads.
@@ -22,7 +22,8 @@ public interface ICbeffSigner
         CbeffPayload payload,
         X509Certificate signingCertificate,
         AsymmetricKeyParameter privateKey,
-        Maybe<Guid> includeCardUuid = default);
+        Maybe<Guid> includeCardUuid = default
+    );
 
     /// <summary>
     /// Creates a detached CMS signature for CBEFF data.
@@ -36,7 +37,8 @@ public interface ICbeffSigner
         byte[] dataToSign,
         X509Certificate signingCertificate,
         AsymmetricKeyParameter privateKey,
-        Maybe<Guid> includeCardUuid = default);
+        Maybe<Guid> includeCardUuid = default
+    );
 
     /// <summary>
     /// Calculates the signature size for a given certificate and private key.
@@ -47,5 +49,6 @@ public interface ICbeffSigner
     /// <returns>Estimated signature size in bytes</returns>
     ushort EstimateSignatureSize(
         X509Certificate signingCertificate,
-        AsymmetricKeyParameter privateKey);
+        AsymmetricKeyParameter privateKey
+    );
 }

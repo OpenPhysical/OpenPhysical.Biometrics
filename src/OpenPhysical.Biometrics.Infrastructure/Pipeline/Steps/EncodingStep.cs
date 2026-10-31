@@ -1,11 +1,11 @@
+using System.Collections.Immutable;
 using JetBrains.Annotations;
 using Microsoft.Extensions.Logging;
 using OpenPhysical.Biometrics.Core.Abstractions.Pipeline;
-using OpenPhysical.Biometrics.Core.Domain.Pipeline;
 using OpenPhysical.Biometrics.Core.Domain.Common;
+using OpenPhysical.Biometrics.Core.Domain.Pipeline;
 using OpenPhysical.Biometrics.Core.Domain.Transformations;
 using OpenPhysical.Biometrics.Infrastructure.Services;
-using System.Collections.Immutable;
 using static OpenPhysical.Biometrics.Core.Domain.Pipeline.BiometricPipelineSteps;
 
 namespace OpenPhysical.Biometrics.Infrastructure.Pipeline.Steps;
@@ -28,7 +28,8 @@ public sealed class EncodingStep : IJpeg2000EncodingStep
     public string Name => "JPEG 2000 Encoding";
 
     /// <inheritdoc />
-    public string Description => "Encodes biometric image data to JPEG 2000 format with optional ROI";
+    public string Description =>
+        "Encodes biometric image data to JPEG 2000 format with optional ROI";
 
     /// <inheritdoc />
     public float CompressionRatio => _defaultOptions.CompressionRate;
@@ -52,7 +53,8 @@ public sealed class EncodingStep : IJpeg2000EncodingStep
         ILogger<EncodingStep> logger,
         Jpeg2000Options? options = null,
         bool roiEnabled = true,
-        Maybe<int> targetSizeBytes = default)
+        Maybe<int> targetSizeBytes = default
+    )
     {
         _jpeg2000Service = jpeg2000Service;
         _logger = logger;
@@ -63,11 +65,12 @@ public sealed class EncodingStep : IJpeg2000EncodingStep
 
     /// <inheritdoc />
     public async Task<Result<BiometricData>> ExecuteAsync(
-        ProcessedBiometricData input, 
-        IPipelineContext context, 
-        CancellationToken cancellationToken = default)
+        ProcessedBiometricData input,
+        IPipelineContext context,
+        CancellationToken cancellationToken = default
+    )
     {
-        _logger.LogDebug("Starting JPEG 2000 encoding for execution {ExecutionId}", context.ExecutionId);
+        _logger.LogDebug(new EventId(860868, "EncodingStep"), "EncodingStep stage completed.");
 
         try
         {
@@ -76,16 +79,22 @@ public sealed class EncodingStep : IJpeg2000EncodingStep
 
             // Check for ROI set in processing metadata
             Result<EncodedJpeg2000> encodingResult;
-            
-            if (input.ProcessingMetadata.TryGetValue("roi_set", out var roiData) && 
-                roiData is FacialRoiSet roiSet)
+
+            if (
+                input.ProcessingMetadata.TryGetValue("roi_set", out var roiData)
+                && roiData is FacialRoiSet roiSet
+            )
             {
-                _logger.LogDebug("Encoding with ROI regions: {RegionCount}", roiSet.AllRegions.Count);
+                _logger.LogDebug(
+                    new EventId(831474, "EncodingStep"),
+                    "EncodingStep stage completed."
+                );
                 encodingResult = await _jpeg2000Service.EncodeWithRoiAsync(
                     input.Data.RawData,
                     roiSet,
                     options,
-                    cancellationToken);
+                    cancellationToken
+                );
             }
             else
             {
@@ -93,12 +102,13 @@ public sealed class EncodingStep : IJpeg2000EncodingStep
                 encodingResult = await _jpeg2000Service.EncodeAsync(
                     input.Data.RawData,
                     options,
-                    cancellationToken);
+                    cancellationToken
+                );
             }
 
             if (encodingResult.IsFailure)
             {
-                _logger.LogError("JPEG 2000 encoding failed: {Error}", encodingResult.Error);
+                _logger.LogError(new EventId(854526, "EncodingStep"), "EncodingStep failed.");
                 return Result.Failure<BiometricData>(encodingResult.Error);
             }
 
@@ -109,27 +119,29 @@ public sealed class EncodingStep : IJpeg2000EncodingStep
                 encoded.ImageData,
                 BiometricDataType.FacialImage,
                 input.Data.Format,
-                input.Data.Metadata
-                    .SetItem("encoding", "JPEG2000")
+                input
+                    .Data.Metadata.SetItem("encoding", "JPEG2000")
                     .SetItem("compression_rate", encoded.CompressionRate)
                     .SetItem("file_size", encoded.FileSize)
-                    .SetItem("encoded_dimensions", encoded.Dimensions));
+                    .SetItem("encoded_dimensions", encoded.Dimensions)
+            );
 
             // Store encoded data in processing metadata for easy access
-            var updatedMetadata = input.ProcessingMetadata
-                .SetItem("encoded_data", encoded.ImageData.ToArray())
+            var updatedMetadata = input
+                .ProcessingMetadata.SetItem("encoded_data", encoded.ImageData.ToArray())
                 .SetItem("encoding_step", StepId)
                 .SetItem("encoding_metadata", encoded.Metadata);
 
             _logger.LogInformation(
-                "JPEG 2000 encoding completed. Size: {FileSize} bytes, Rate: {CompressionRate:F2} bpp",
-                encoded.FileSize, encoded.CompressionRate);
+                new EventId(809789, "EncodingStep"),
+                "EncodingStep stage completed."
+            );
 
             return Result.Success(outputData);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Encoding step failed with exception");
+            _logger.LogError(new EventId(706123, "EncodingStep"), "EncodingStep failed.");
             return Result.Failure<BiometricData>($"Encoding failed: {ex.Message}");
         }
     }
@@ -146,12 +158,19 @@ public sealed class EncodingStep : IJpeg2000EncodingStep
         var options = _defaultOptions;
 
         // Override with context values if available
-        if (context.Metadata.TryGetValue("target_size", out var targetSize) && targetSize is int size && size > 0)
+        if (
+            context.Metadata.TryGetValue("target_size", out var targetSize)
+            && targetSize is int size
+            && size > 0
+        )
         {
             // Target size mode - will be handled by the service
             _logger.LogDebug("Using target size mode: {TargetSize} bytes", size);
         }
-        else if (context.Metadata.TryGetValue("compression_rate", out var rate) && rate is float compressionRate)
+        else if (
+            context.Metadata.TryGetValue("compression_rate", out var rate)
+            && rate is float compressionRate
+        )
         {
             options = options with { CompressionRate = compressionRate };
         }

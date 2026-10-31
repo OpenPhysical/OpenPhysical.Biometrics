@@ -1,17 +1,17 @@
 // MIT License
-// 
+//
 // Copyright (c) 2025 FaceOFFx Contributors
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
 // in the Software without restriction, including without limitation the rights
 // to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 // copies of the Software, and to permit persons to whom the Software is
 // furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all
 // copies or substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 // IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 // FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -24,9 +24,9 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using CSharpFunctionalExtensions;
+using JetBrains.Annotations;
 using OpenPhysical.Biometrics.Core.Domain.Detection;
 using OpenPhysical.Biometrics.Core.Domain.Transformations;
-using JetBrains.Annotations;
 
 namespace OpenPhysical.Biometrics.Core.Domain.Quality;
 
@@ -93,22 +93,26 @@ public record FacialSymmetryScore(
     public static Result<FacialSymmetryScore> FromAsymmetryValues(
         float illuminationAsymmetry,
         float poseAsymmetry,
-        IReadOnlyList<float> gaborResponses)
+        IReadOnlyList<float> gaborResponses
+    )
     {
         // Convert asymmetry to quality scores (lower asymmetry = higher quality)
         var illuminationResult = QualityScore.Create(1f - MathF.Min(illuminationAsymmetry, 1f));
         var poseResult = QualityScore.Create(1f - MathF.Min(poseAsymmetry, 1f));
-        
-        return Result.Combine(illuminationResult, poseResult)
+
+        return Result
+            .Combine(illuminationResult, poseResult)
             .Bind(() =>
             {
                 var overall = (illuminationResult.Value.Value + poseResult.Value.Value) / 2f;
-                return QualityScore.Create(overall)
+                return QualityScore
+                    .Create(overall)
                     .Map(overallScore => new FacialSymmetryScore(
                         overallScore,
                         illuminationResult.Value,
                         poseResult.Value,
-                        gaborResponses));
+                        gaborResponses
+                    ));
             });
     }
 }
@@ -128,10 +132,12 @@ public record SharpnessScore(
     /// </summary>
     public static Result<SharpnessScore> FromDctAnalysis(
         float highFrequencyRatio,
-        IReadOnlyDictionary<string, float> regionalScores)
+        IReadOnlyDictionary<string, float> regionalScores
+    )
     {
         // Higher frequency content = sharper image
-        return QualityScore.Create(highFrequencyRatio)
+        return QualityScore
+            .Create(highFrequencyRatio)
             .Map(overall => new SharpnessScore(overall, highFrequencyRatio, regionalScores));
     }
 }
@@ -151,9 +157,10 @@ public record GeometricCompliance(
     /// <summary>
     /// Gets the overall geometric compliance score
     /// </summary>
-    public QualityScore Overall => QualityScore.Create(
-        (HeadSize.Value + Centering.Value + InterPupillaryDistance.Value) / 3f
-    ).Value;
+    public QualityScore Overall =>
+        QualityScore
+            .Create((HeadSize.Value + Centering.Value + InterPupillaryDistance.Value) / 3f)
+            .Value;
 }
 
 /// <summary>
@@ -177,16 +184,16 @@ public enum ViolationSeverity
     /// Minor issue that doesn't prevent usage
     /// </summary>
     Minor,
-    
+
     /// <summary>
     /// Moderate issue that may affect quality
     /// </summary>
     Moderate,
-    
+
     /// <summary>
     /// Critical issue that prevents compliance
     /// </summary>
-    Critical
+    Critical,
 }
 
 /// <summary>
@@ -205,13 +212,14 @@ public record Iso19794Assessment(
     /// <summary>
     /// Determines if the image is compliant with ISO/IEC 19794-5
     /// </summary>
-    public bool IsCompliant => Overall.Value >= 0.7f && 
-        !Violations.Any(v => v.Severity == ViolationSeverity.Critical);
+    public bool IsCompliant =>
+        Overall.Value >= 0.7f && !Violations.Any(v => v.Severity == ViolationSeverity.Critical);
 
     /// <summary>
     /// Gets a summary of the assessment
     /// </summary>
-    public string Summary => IsCompliant
-        ? $"Compliant (Quality: {Overall})"
-        : $"Non-compliant (Quality: {Overall}, Critical violations: {Violations.Count(v => v.Severity == ViolationSeverity.Critical)})";
+    public string Summary =>
+        IsCompliant
+            ? $"Compliant (Quality: {Overall})"
+            : $"Non-compliant (Quality: {Overall}, Critical violations: {Violations.Count(v => v.Severity == ViolationSeverity.Critical)})";
 }

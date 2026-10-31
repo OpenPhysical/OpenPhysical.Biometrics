@@ -16,12 +16,12 @@ public interface IBiometricStep<in TIn, TOut>
     /// Gets the unique identifier for this step
     /// </summary>
     string StepId { get; }
-    
+
     /// <summary>
     /// Gets a human-readable description of what this step does
     /// </summary>
     string Description { get; }
-    
+
     /// <summary>
     /// Executes the step, transforming input to output
     /// </summary>

@@ -2,17 +2,17 @@ namespace OpenPhysical.Biometrics.Tool.Commands;
 
 using System.ComponentModel;
 using System.Diagnostics.CodeAnalysis;
+using System.Text;
+using CSharpFunctionalExtensions;
 using Microsoft.Extensions.DependencyInjection;
 using OpenPhysical.Biometrics.Core.Cbeff;
 using OpenPhysical.Biometrics.Core.Certificates;
 using OpenPhysical.Biometrics.Infrastructure.Cbeff;
 using OpenPhysical.Domains.Cbeff;
+using Org.BouncyCastle.Utilities.Collections;
+using Org.BouncyCastle.X509;
 using Spectre.Console;
 using Spectre.Console.Cli;
-using System.Text;
-using Org.BouncyCastle.X509;
-using Org.BouncyCastle.Utilities.Collections;
-using CSharpFunctionalExtensions;
 
 /// <summary>
 /// Command to verify digital signatures on CBEFF files for PIV compliance.
@@ -29,11 +29,12 @@ public sealed class VerifyCbeffCommand : AsyncCommand<VerifyCbeffCommand.Setting
     /// Initializes a new instance of the <see cref="VerifyCbeffCommand"/> class.
     /// </summary>
     public VerifyCbeffCommand(
-        IServiceProvider serviceProvider, 
+        IServiceProvider serviceProvider,
         ICbeffSerializerExtended serializer,
         ICbeffVerifier verifier,
         ITrustedCertificateStore certificateStore,
-        IAnsiConsole console)
+        IAnsiConsole console
+    )
     {
         _serviceProvider = serviceProvider;
         _serializer = serializer;
@@ -131,13 +132,17 @@ public sealed class VerifyCbeffCommand : AsyncCommand<VerifyCbeffCommand.Setting
             var certificateStore = _certificateStore;
             if (!string.IsNullOrEmpty(settings.CertificatePath))
             {
-                var additionalCertResult = await LoadAdditionalCertificate(settings.CertificatePath);
+                var additionalCertResult = await LoadAdditionalCertificate(
+                    settings.CertificatePath
+                );
                 if (additionalCertResult.IsFailure)
                 {
-                    _console.MarkupLine($"[red]Error loading additional certificate: {additionalCertResult.Error}[/]");
+                    _console.MarkupLine(
+                        $"[red]Error loading additional certificate: {additionalCertResult.Error}[/]"
+                    );
                     return 1;
                 }
-                
+
                 // Create a new certificate store that includes the additional certificate
                 certificateStore = CreateExtendedCertificateStore(additionalCertResult.Value);
             }
@@ -146,10 +151,12 @@ public sealed class VerifyCbeffCommand : AsyncCommand<VerifyCbeffCommand.Setting
             var certStoreResult = certificateStore.GetTrustedCertificates();
             if (certStoreResult.IsFailure)
             {
-                _console.MarkupLine($"[red]Failed to get trusted certificates: {certStoreResult.Error}[/]");
+                _console.MarkupLine(
+                    $"[red]Failed to get trusted certificates: {certStoreResult.Error}[/]"
+                );
                 return 1;
             }
-            
+
             var verificationResult = await _verifier.VerifyAsync(payload, certStoreResult.Value);
             if (verificationResult.IsFailure)
             {
@@ -167,18 +174,22 @@ public sealed class VerifyCbeffCommand : AsyncCommand<VerifyCbeffCommand.Setting
             else
             {
                 DisplayVerificationResults(result, settings.Verbose);
-                
+
                 // Save report if requested
                 if (!string.IsNullOrEmpty(settings.OutputPath))
                 {
                     var saveResult = await SaveVerificationReport(result, settings.OutputPath);
                     if (saveResult.IsFailure)
                     {
-                        _console.MarkupLine($"[yellow]Warning: Failed to save report: {saveResult.Error}[/]");
+                        _console.MarkupLine(
+                            $"[yellow]Warning: Failed to save report: {saveResult.Error}[/]"
+                        );
                     }
                     else
                     {
-                        _console.MarkupLine($"[green]Verification report saved to: {settings.OutputPath}[/]");
+                        _console.MarkupLine(
+                            $"[green]Verification report saved to: {settings.OutputPath}[/]"
+                        );
                     }
                 }
             }
@@ -211,7 +222,10 @@ public sealed class VerifyCbeffCommand : AsyncCommand<VerifyCbeffCommand.Setting
             return Result.Failure($"Input file not found: {settings.InputPath}");
         }
 
-        if (!string.IsNullOrEmpty(settings.CertificatePath) && !File.Exists(settings.CertificatePath))
+        if (
+            !string.IsNullOrEmpty(settings.CertificatePath)
+            && !File.Exists(settings.CertificatePath)
+        )
         {
             return Result.Failure($"Certificate file not found: {settings.CertificatePath}");
         }
@@ -243,7 +257,7 @@ public sealed class VerifyCbeffCommand : AsyncCommand<VerifyCbeffCommand.Setting
         try
         {
             var certData = await File.ReadAllBytesAsync(certificatePath);
-            
+
             // Try to parse as X.509 certificate
             var certificate = new X509Certificate(certData);
             return Result.Success(certificate);
@@ -271,7 +285,7 @@ public sealed class VerifyCbeffCommand : AsyncCommand<VerifyCbeffCommand.Setting
     private void DisplayVerificationResults(CbeffVerificationResult result, bool verbose)
     {
         _console.WriteLine();
-        
+
         // Display main result
         if (result.IsValid)
         {
@@ -298,7 +312,9 @@ public sealed class VerifyCbeffCommand : AsyncCommand<VerifyCbeffCommand.Setting
         // Display signing time if available
         if (result.SigningTime.HasValue)
         {
-            _console.MarkupLine($"Signing Time: {result.SigningTime.Value:yyyy-MM-dd HH:mm:ss} UTC");
+            _console.MarkupLine(
+                $"Signing Time: {result.SigningTime.Value:yyyy-MM-dd HH:mm:ss} UTC"
+            );
         }
 
         // Display card UUID if available
@@ -334,7 +350,7 @@ public sealed class VerifyCbeffCommand : AsyncCommand<VerifyCbeffCommand.Setting
         _console.MarkupLine("[bold]Verification Details:[/]");
         _console.MarkupLine($"Result: {(result.IsValid ? "Valid" : "Invalid")}");
         _console.MarkupLine($"Error Count: {result.ValidationErrors.Length}");
-        
+
         if (result.SignerCertificate.HasValue)
         {
             var cert = result.SignerCertificate.Value;
@@ -353,24 +369,28 @@ public sealed class VerifyCbeffCommand : AsyncCommand<VerifyCbeffCommand.Setting
         {
             isValid,
             message,
-            signerCertificate = result?.SignerCertificate.HasValue == true ? new
-            {
-                subject = result.SignerCertificate.Value.SubjectDN.ToString(),
-                issuer = result.SignerCertificate.Value.IssuerDN.ToString(),
-                serialNumber = result.SignerCertificate.Value.SerialNumber.ToString(),
-                notBefore = result.SignerCertificate.Value.NotBefore,
-                notAfter = result.SignerCertificate.Value.NotAfter
-            } : null,
-            signingTime = result?.SigningTime.HasValue == true ? result.SigningTime.Value.ToString("yyyy-MM-ddTHH:mm:ssZ") : null,
+            signerCertificate = result?.SignerCertificate.HasValue == true
+                ? new
+                {
+                    subject = result.SignerCertificate.Value.SubjectDN.ToString(),
+                    issuer = result.SignerCertificate.Value.IssuerDN.ToString(),
+                    serialNumber = result.SignerCertificate.Value.SerialNumber.ToString(),
+                    notBefore = result.SignerCertificate.Value.NotBefore,
+                    notAfter = result.SignerCertificate.Value.NotAfter,
+                }
+                : null,
+            signingTime = result?.SigningTime.HasValue == true
+                ? result.SigningTime.Value.ToString("yyyy-MM-ddTHH:mm:ssZ")
+                : null,
             cardUuid = result?.CardUuid.HasValue == true ? result.CardUuid.Value.ToString() : null,
-            validationErrors = result?.ValidationErrors ?? Array.Empty<string>()
+            validationErrors = result?.ValidationErrors ?? Array.Empty<string>(),
         };
 
-        var json = System.Text.Json.JsonSerializer.Serialize(jsonResult, new System.Text.Json.JsonSerializerOptions 
-        { 
-            WriteIndented = true 
-        });
-        
+        var json = System.Text.Json.JsonSerializer.Serialize(
+            jsonResult,
+            new System.Text.Json.JsonSerializerOptions { WriteIndented = true }
+        );
+
         _console.WriteLine(json);
         return isValid ? 0 : 1;
     }
@@ -384,19 +404,22 @@ public sealed class VerifyCbeffCommand : AsyncCommand<VerifyCbeffCommand.Setting
         {
             return "Signature verification passed";
         }
-        
+
         if (result.ValidationErrors.Any())
         {
             return $"Signature verification failed: {result.ValidationErrors.First()}";
         }
-        
+
         return "Signature verification failed";
     }
 
     /// <summary>
     /// Saves a verification report to a file.
     /// </summary>
-    private async Task<Result> SaveVerificationReport(CbeffVerificationResult result, string outputPath)
+    private async Task<Result> SaveVerificationReport(
+        CbeffVerificationResult result,
+        string outputPath
+    )
     {
         try
         {
@@ -420,7 +443,7 @@ public sealed class VerifyCbeffCommand : AsyncCommand<VerifyCbeffCommand.Setting
         sb.AppendLine("=====================================");
         sb.AppendLine($"Generated: {DateTime.UtcNow:yyyy-MM-dd HH:mm:ss} UTC");
         sb.AppendLine();
-        
+
         sb.AppendLine($"Verification Result: {(result.IsValid ? "PASSED" : "FAILED")}");
         sb.AppendLine();
 

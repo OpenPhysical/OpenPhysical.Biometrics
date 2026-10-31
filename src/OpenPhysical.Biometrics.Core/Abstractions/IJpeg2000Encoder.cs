@@ -1,7 +1,7 @@
-using OpenPhysical.Biometrics.Core.Domain.Detection;
+using System.Drawing;
 using JetBrains.Annotations;
-using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.PixelFormats;
+using OpenPhysical.Biometrics.Core.Domain.Detection;
+using OpenPhysical.Biometrics.Imaging;
 
 namespace OpenPhysical.Biometrics.Core.Abstractions;
 
@@ -22,7 +22,7 @@ public interface IJpeg2000Encoder
     /// <param name="roiAlign">Align the ROI with the blocks</param>
     /// <returns>Result containing the encoded byte data or error.</returns>
     Result<byte[]> EncodeWithRoi(
-        Image<Rgba32> image,
+        RgbImage image,
         FacialRoiSet roiSet,
         float baseRate = 1.0f,
         int roiStartLevel = 1,

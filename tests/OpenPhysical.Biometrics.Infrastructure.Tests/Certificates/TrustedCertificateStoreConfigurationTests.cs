@@ -7,7 +7,7 @@ using NUnit.Framework;
 using OpenPhysical.Biometrics.Core.Certificates;
 
 [TestFixture]
-public class TrustedCertificateStoreConfigurationTests
+internal class TrustedCertificateStoreConfigurationTests
 {
     [Test]
     public void DefaultOptions_ShouldUseUserDataDirectory()
@@ -27,10 +27,7 @@ public class TrustedCertificateStoreConfigurationTests
     [Test]
     public void StorePath_CanBeSet()
     {
-        var options = new TrustedCertificateStoreOptions
-        {
-            StorePath = "/custom/cert/store"
-        };
+        var options = new TrustedCertificateStoreOptions { StorePath = "/custom/cert/store" };
 
         options.StorePath.Should().Be("/custom/cert/store");
     }
@@ -38,10 +35,7 @@ public class TrustedCertificateStoreConfigurationTests
     [Test]
     public void AutoInitializeWithDefaults_CanBeSet()
     {
-        var options = new TrustedCertificateStoreOptions
-        {
-            AutoInitializeWithDefaults = false
-        };
+        var options = new TrustedCertificateStoreOptions { AutoInitializeWithDefaults = false };
 
         options.AutoInitializeWithDefaults.Should().BeFalse();
     }
@@ -49,10 +43,7 @@ public class TrustedCertificateStoreConfigurationTests
     [Test]
     public void CreateDirectoryIfNotExists_CanBeSet()
     {
-        var options = new TrustedCertificateStoreOptions
-        {
-            CreateDirectoryIfNotExists = false
-        };
+        var options = new TrustedCertificateStoreOptions { CreateDirectoryIfNotExists = false };
 
         options.CreateDirectoryIfNotExists.Should().BeFalse();
     }
@@ -64,7 +55,7 @@ public class TrustedCertificateStoreConfigurationTests
         {
             StorePath = "/test/path",
             AutoInitializeWithDefaults = false,
-            CreateDirectoryIfNotExists = false
+            CreateDirectoryIfNotExists = false,
         };
 
         options.StorePath.Should().Be("/test/path");

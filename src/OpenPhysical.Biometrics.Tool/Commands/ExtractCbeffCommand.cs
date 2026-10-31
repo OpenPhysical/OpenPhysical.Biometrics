@@ -1,7 +1,5 @@
 namespace OpenPhysical.Biometrics.Tool.Commands;
 
-using Spectre.Console;
-using Spectre.Console.Cli;
 using System;
 using System.ComponentModel;
 using System.IO;
@@ -12,8 +10,10 @@ using OpenPhysical.Biometrics.Core.Cbeff;
 using OpenPhysical.Biometrics.Core.Cbeff.Formats;
 using OpenPhysical.Biometrics.Core.Domain;
 using OpenPhysical.Biometrics.Infrastructure.Cbeff.Formats;
-using OpenPhysical.Domains.Cbeff.Formats.Incits385;
 using OpenPhysical.Domains.Cbeff.Formats.Incits378;
+using OpenPhysical.Domains.Cbeff.Formats.Incits385;
+using Spectre.Console;
+using Spectre.Console.Cli;
 
 /// <summary>
 /// Command to extract images from CBEFF containers.
@@ -76,41 +76,48 @@ public sealed class ExtractCbeffCommand : AsyncCommand<ExtractCbeffCommand.Setti
 
             var cbeffData = await File.ReadAllBytesAsync(settings.FilePath);
             AnsiConsole.MarkupLine($"[green]Reading CBEFF file:[/] {settings.FilePath}");
-            
+
             // Decode the CBEFF data
             var serializer = _serviceProvider.GetRequiredService<ICbeffSerializerExtended>();
             var decodeResult = serializer.DeserializeAutoExtended(cbeffData);
 
             if (decodeResult.IsFailure)
             {
-                AnsiConsole.MarkupLine($"[red]Failed to decode CBEFF data:[/] {decodeResult.Error}");
+                AnsiConsole.MarkupLine(
+                    $"[red]Failed to decode CBEFF data:[/] {decodeResult.Error}"
+                );
                 return 1;
             }
 
             var payload = decodeResult.Value;
-            
+
             // Use the generic biometric format registry to process the data
             var registry = _serviceProvider.GetRequiredService<IBiometricFormatRegistry>();
             var header = payload.Header;
-            
+
             // PIV uses patron format 0x03
             const byte PivPatronFormat = 0x03;
-            
+
             var processingResult = registry.ProcessBiometricData(
                 PivPatronFormat,
                 header.BdbFormatOwner,
                 header.BdbFormatType,
-                payload.BiometricDataBlock);
-                
+                payload.BiometricDataBlock
+            );
+
             if (processingResult.IsFailure)
             {
-                AnsiConsole.MarkupLine($"[red]Failed to process biometric data:[/] {processingResult.Error}");
-                AnsiConsole.MarkupLine($"[dim]Format: Patron=0x{PivPatronFormat:X2}, Owner=0x{header.BdbFormatOwner:X4}, Type=0x{header.BdbFormatType:X4}[/]");
+                AnsiConsole.MarkupLine(
+                    $"[red]Failed to process biometric data:[/] {processingResult.Error}"
+                );
+                AnsiConsole.MarkupLine(
+                    $"[dim]Format: Patron=0x{PivPatronFormat:X2}, Owner=0x{header.BdbFormatOwner:X4}, Type=0x{header.BdbFormatType:X4}[/]"
+                );
                 return 1;
             }
-            
+
             var extraction = processingResult.Value;
-            
+
             // Extract the biometric data using the generic pipeline
             return await ExtractBiometricData(extraction, settings);
         }
@@ -121,12 +128,10 @@ public sealed class ExtractCbeffCommand : AsyncCommand<ExtractCbeffCommand.Setti
         }
     }
 
-    private async Task<int> ExtractBiometricData(
-        BiometricExtraction extraction,
-        Settings settings)
+    private async Task<int> ExtractBiometricData(BiometricExtraction extraction, Settings settings)
     {
         var biometricData = extraction.Data;
-        
+
         // Determine output file path
         var outputPath = settings.OutputPath;
         if (string.IsNullOrEmpty(outputPath))
@@ -139,11 +144,13 @@ public sealed class ExtractCbeffCommand : AsyncCommand<ExtractCbeffCommand.Setti
         try
         {
             await File.WriteAllBytesAsync(outputPath, biometricData.ExtractedData.ToArray());
-            AnsiConsole.MarkupLine($"[green]Extracted {biometricData.ModalityType.ToLower()} data to:[/] {outputPath}");
-            
+            AnsiConsole.MarkupLine(
+                $"[green]Extracted {biometricData.ModalityType.ToLower()} data to:[/] {outputPath}"
+            );
+
             // Display modality-specific information
             DisplayExtractionSummary(biometricData);
-            
+
             // Display validation results if any
             if (!extraction.IsValid && extraction.ValidationResults.Any())
             {
@@ -173,32 +180,34 @@ public sealed class ExtractCbeffCommand : AsyncCommand<ExtractCbeffCommand.Setti
                     FormatName = extraction.SourceFormat.FormatName,
                     PatronFormat = $"0x{extraction.SourceFormat.PatronFormat:X2}",
                     BdbFormatOwner = $"0x{extraction.SourceFormat.BdbFormatOwner:X4}",
-                    BdbFormatType = $"0x{extraction.SourceFormat.BdbFormatType:X4}"
+                    BdbFormatType = $"0x{extraction.SourceFormat.BdbFormatType:X4}",
                 },
                 BiometricData = new
                 {
                     ModalityType = biometricData.ModalityType,
                     FormatIdentifier = biometricData.FormatIdentifier,
                     SuggestedExtension = biometricData.SuggestedExtension,
-                    Metadata = biometricData.Metadata
+                    Metadata = biometricData.Metadata,
                 },
                 AnalysisResults = extraction.AnalysisResults,
                 ValidationResults = extraction.ValidationResults,
-                IsValid = extraction.IsValid
+                IsValid = extraction.IsValid,
             };
 
             try
             {
-                var json = JsonSerializer.Serialize(metadata, new JsonSerializerOptions
-                {
-                    WriteIndented = true
-                });
+                var json = JsonSerializer.Serialize(
+                    metadata,
+                    new JsonSerializerOptions { WriteIndented = true }
+                );
                 await File.WriteAllTextAsync(metadataPath, json);
                 AnsiConsole.MarkupLine($"[green]Saved metadata to:[/] {metadataPath}");
             }
             catch (Exception ex)
             {
-                AnsiConsole.MarkupLine($"[yellow]Warning: Failed to save metadata:[/] {ex.Message}");
+                AnsiConsole.MarkupLine(
+                    $"[yellow]Warning: Failed to save metadata:[/] {ex.Message}"
+                );
             }
         }
 
@@ -210,17 +219,23 @@ public sealed class ExtractCbeffCommand : AsyncCommand<ExtractCbeffCommand.Setti
         switch (biometricData)
         {
             case FacialImageData facialData:
-                AnsiConsole.MarkupLine($"[dim]Format: {GetImageFormatName(facialData.SuggestedExtension)}[/]");
-                AnsiConsole.MarkupLine($"[dim]Dimensions: {facialData.Width}×{facialData.Height}[/]");
+                AnsiConsole.MarkupLine(
+                    $"[dim]Format: {GetImageFormatName(facialData.SuggestedExtension)}[/]"
+                );
+                AnsiConsole.MarkupLine(
+                    $"[dim]Dimensions: {facialData.Width}×{facialData.Height}[/]"
+                );
                 AnsiConsole.MarkupLine($"[dim]Quality: {facialData.Quality}[/]");
                 break;
-                
+
             case FingerprintMinutiaeData fingerprintData:
                 AnsiConsole.MarkupLine($"[dim]Total minutiae: {fingerprintData.TotalMinutiae}[/]");
                 AnsiConsole.MarkupLine($"[dim]Finger views: {fingerprintData.NumberOfViews}[/]");
-                AnsiConsole.MarkupLine($"[dim]Empty template: {fingerprintData.IsEmptyTemplate}[/]");
+                AnsiConsole.MarkupLine(
+                    $"[dim]Empty template: {fingerprintData.IsEmptyTemplate}[/]"
+                );
                 break;
-                
+
             default:
                 AnsiConsole.MarkupLine($"[dim]Format: {biometricData.FormatIdentifier}[/]");
                 AnsiConsole.MarkupLine($"[dim]Size: {biometricData.ExtractedData.Length} bytes[/]");
@@ -228,13 +243,13 @@ public sealed class ExtractCbeffCommand : AsyncCommand<ExtractCbeffCommand.Setti
         }
     }
 
-    private static string GetImageFormatName(string extension) => extension switch
-    {
-        ".jpg" => "JPEG",
-        ".jp2" => "JPEG 2000",
-        ".json" => "JSON (Minutiae)",
-        ".bin" => "Binary",
-        _ => "Unknown"
-    };
-
+    private static string GetImageFormatName(string extension) =>
+        extension switch
+        {
+            ".jpg" => "JPEG",
+            ".jp2" => "JPEG 2000",
+            ".json" => "JSON (Minutiae)",
+            ".bin" => "Binary",
+            _ => "Unknown",
+        };
 }

@@ -4,8 +4,8 @@ using Microsoft.Extensions.Options;
 using OpenPhysical.Biometrics.Core.Abstractions.Pipeline;
 using OpenPhysical.Biometrics.Core.Domain.Pipeline;
 using OpenPhysical.Biometrics.Infrastructure.Pipeline;
-using OpenPhysical.Biometrics.Infrastructure.Pipeline.Steps;
 using OpenPhysical.Biometrics.Infrastructure.Pipeline.Checkpoints;
+using OpenPhysical.Biometrics.Infrastructure.Pipeline.Steps;
 using OpenPhysical.Biometrics.Infrastructure.Services;
 using static OpenPhysical.Biometrics.Core.Domain.Pipeline.BiometricPipelineSteps;
 
@@ -36,7 +36,10 @@ public static class PipelineServiceExtensions
         services.AddScoped<IBiometricPipelineService, BiometricPipelineService>();
 
         // Register composite pipeline
-        services.AddScoped<IBiometricPipeline<BiometricData, ProcessedBiometricData>, CompositeBiometricPipeline<BiometricData, ProcessedBiometricData>>();
+        services.AddScoped<
+            IBiometricPipeline<BiometricData, ProcessedBiometricData>,
+            CompositeBiometricPipeline<BiometricData, ProcessedBiometricData>
+        >();
 
         return services;
     }
@@ -46,7 +49,8 @@ public static class PipelineServiceExtensions
     /// </summary>
     public static IServiceCollection AddBiometricPipelines(
         this IServiceCollection services,
-        Action<BiometricPipelineDefaults> configureDefaults)
+        Action<BiometricPipelineDefaults> configureDefaults
+    )
     {
         services.Configure<BiometricPipelineDefaults>(configureDefaults);
         return services.AddBiometricPipelines();
@@ -69,10 +73,13 @@ public static class PipelineServiceExtensions
     public static IServiceCollection AddConsoleCheckpoints(this IServiceCollection services)
     {
         services.AddInteractiveCheckpoints();
-        
+
         // Override with console-specific implementations
         services.AddScoped<ICheckpoint<QualityMetrics>, ConsoleQualityApprovalCheckpoint>();
-        services.AddScoped<ICheckpoint<IReadOnlyList<DetectedFace>>, ConsoleFaceSelectionCheckpoint>();
+        services.AddScoped<
+            ICheckpoint<IReadOnlyList<DetectedFace>>,
+            ConsoleFaceSelectionCheckpoint
+        >();
 
         return services;
     }
@@ -88,37 +95,42 @@ public sealed class BiometricPipelineDefaults
     /// <summary>
     /// Gets or sets the default biometric processing standards.
     /// </summary>
-    public BiometricProcessingStandards DefaultStandards { get; set; } = BiometricProcessingStandards.Piv;
+    public BiometricProcessingStandards DefaultStandards { get; set; } =
+        BiometricProcessingStandards.Piv;
 
     /// <summary>
     /// Gets or sets the default pipeline execution policy.
     /// </summary>
-    public PipelineExecutionPolicy DefaultPolicy { get; set; } = PipelineExecutionPolicy.Interactive;
+    public PipelineExecutionPolicy DefaultPolicy { get; set; } =
+        PipelineExecutionPolicy.Interactive;
 
     /// <summary>
     /// Creates defaults suitable for PIV processing.
     /// </summary>
-    public static BiometricPipelineDefaults ForPiv() => new()
-    {
-        DefaultStandards = BiometricProcessingStandards.Piv,
-        DefaultPolicy = PipelineExecutionPolicy.Production
-    };
+    public static BiometricPipelineDefaults ForPiv() =>
+        new()
+        {
+            DefaultStandards = BiometricProcessingStandards.Piv,
+            DefaultPolicy = PipelineExecutionPolicy.Production,
+        };
 
     /// <summary>
     /// Creates defaults suitable for ICAO passport processing.
     /// </summary>
-    public static BiometricPipelineDefaults ForIcao() => new()
-    {
-        DefaultStandards = BiometricProcessingStandards.Icao,
-        DefaultPolicy = PipelineExecutionPolicy.Production
-    };
+    public static BiometricPipelineDefaults ForIcao() =>
+        new()
+        {
+            DefaultStandards = BiometricProcessingStandards.Icao,
+            DefaultPolicy = PipelineExecutionPolicy.Production,
+        };
 
     /// <summary>
     /// Creates defaults suitable for interactive development.
     /// </summary>
-    public static BiometricPipelineDefaults ForDevelopment() => new()
-    {
-        DefaultStandards = BiometricProcessingStandards.Lenient,
-        DefaultPolicy = PipelineExecutionPolicy.Debug
-    };
+    public static BiometricPipelineDefaults ForDevelopment() =>
+        new()
+        {
+            DefaultStandards = BiometricProcessingStandards.Lenient,
+            DefaultPolicy = PipelineExecutionPolicy.Debug,
+        };
 }

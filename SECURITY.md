@@ -1,113 +1,59 @@
-# Security Policy
+# Security policy
 
-## Supported Versions
+## Supported versions
 
-We release patches for security vulnerabilities. Which versions are eligible for receiving such patches depends on the CVSS v3.0 Rating:
+Security fixes target `master`. Reports should identify the exact commit or
+package version and the selected NBIS, NFIQ, image-codec, or ONNX dependencies.
+Versioned support commitments are recorded here as releases are adopted.
 
-| Version | Supported          |
-|---------|--------------------|
-| 1.x.x   | :white_check_mark: |
-| < 1.0   | :x:                |
+## Report a vulnerability privately
 
-## Reporting a Vulnerability
+Email [security@mistial.dev](mailto:security@mistial.dev) with a subject such as
+`[OpenPhysical.Biometrics Security] Brief description`.
 
-We take the security of FaceOFFx seriously. If you have discovered a security vulnerability in our project, we appreciate your help in disclosing it to us in a responsible manner.
+Start with a concise description and a reproduction using synthetic data or the
+public NIST fixtures. Include the affected API or command, operating system,
+process architecture, .NET version, dependency versions, and relevant redacted
+diagnostics. Native status codes and sanitizer findings help identify issues in
+the separate algorithm bindings. Include suggested remediation and your credit
+preference when available.
 
-### Reporting Process
+Keep live captures, minutiae, card dumps, personal identity data, credentials,
+and private keys in your protected environment. Arrange an encrypted channel
+with the response team before sharing additional sensitive material. Review
+crash dumps and sanitizer reports for retained buffers and local paths before
+sending them. Coordinate public disclosure with the response team.
 
-**Please do not report security vulnerabilities through public GitHub issues.**
+Vulnerability reports can be submitted directly. Code patches follow the
+[contribution guide](CONTRIBUTING.md).
 
-Instead, please report them via email to:
+## Response and coordination
 
-- <security@mistial.dev>
+Our response targets follow the OpenPhysical reporting policy:
 
-You should receive a response within 48 hours. If for some reason you do not, please follow up via email to ensure we received your original message.
+- Acknowledge reports within five business days.
+- Provide an initial assessment or status update within ten business days.
+- Provide an update at least every fourteen days while an accepted report is open.
 
-Please include the following information in your report:
+We investigate impact, reproduce the issue, coordinate dependency fixes when
+needed, and agree on remediation and disclosure with the reporter. Advisories,
+CVE coordination, and reporter credit follow the confirmed findings and the
+reporter's preferences.
 
-- Type of issue (e.g., buffer overflow, SQL injection, cross-site scripting, etc.)
-- Full paths of source file(s) related to the manifestation of the issue
-- The location of the affected source code (tag/branch/commit or direct URL)
-- Any special configuration required to reproduce the issue
-- Step-by-step instructions to reproduce the issue
-- Proof-of-concept or exploit code (if possible)
-- Impact of the issue, including how an attacker might exploit it
+## Scope
 
-### What to Expect
+This policy covers the biometric library, optional processing packages, and CLI:
 
-When you report a vulnerability, you can expect:
+- Canonical CBEFF, INCITS 378, and INCITS 385 parsing and writing, including
+  bounds, lengths, extensions, profile checks, and buffer ownership.
+- Fingerprint enrollment, quality adaptation, selected-view conversion,
+  comparison policy, and integration with the NBIS and NFIQ packages.
+- Exact signed-content preparation, signature-block attachment, external
+  verification handoffs, and identity binding.
+- Structured inspection and control of sensitive output and operational logs.
+- Facial image preparation, shared image buffers, optional model inference,
+  dependency loading, package contents, and distribution integrity.
 
-1. **Acknowledgment**: We'll acknowledge receipt of your vulnerability report within 48 hours
-2. **Assessment**: We'll assess the vulnerability and determine its severity
-3. **Fix Development**: We'll develop a fix for confirmed vulnerabilities
-4. **Coordination**: We'll coordinate with you regarding public disclosure timing
-5. **Credit**: We'll credit you for the discovery if you wish (unless you prefer to remain anonymous)
-
-### Disclosure Policy
-
-We follow a coordinated disclosure policy:
-
-- We will work with you to understand and validate the issue
-- We will prepare a fix and release it as soon as possible
-- We will publicly disclose the vulnerability after the fix is available
-- We aim to resolve critical issues within 30 days
-- We will credit researchers who report valid security issues (with permission)
-
-## Security Best Practices for Users
-
-### General Usage
-
-1. **Keep Updated**: Always use the latest version of FaceOFFx
-2. **Secure Storage**: Store processed images securely
-3. **Access Control**: Implement proper access controls for image processing
-4. **Audit Logging**: Enable logging for compliance and security monitoring
-5. **Input Validation**: Validate all image inputs before processing
-
-### If Using for Government ID Processing
-
-If you are using FaceOFFx to process government ID photos or PIV cards, you should:
-
-- Ensure proper authorization before processing PIV images
-- Follow FIPS 201-3 guidelines for handling biometric data
-- Implement appropriate data retention policies
-- Use encrypted storage for processed images
-- Maintain audit trails for compliance
-
-## Security Features
-
-FaceOFFx includes several security features:
-
-- **Input Validation**: Validates image formats and dimensions
-- **Memory Safety**: Uses managed memory through .NET
-- **No External Network Calls**: All processing is done locally
-- **Dependency Security**: Regular updates of dependencies
-- **SBOM Generation**: Software Bill of Materials for supply chain transparency
-
-## Known Security Considerations
-
-### ONNX Model Security
-
-- ONNX models are embedded as resources and cannot be tampered with at runtime
-- Models are loaded from embedded resources only, not from external files
-- Model inference runs in a sandboxed environment
-
-### Image Processing
-
-- All image processing is performed locally with validated inputs
-- Input images are validated before processing
-- Memory usage is bounded during processing
-
-## Additional Resources
-
-- [NIST PIV Standards](https://csrc.nist.gov/projects/piv/piv-standards-and-supporting-documentation)
-- [OWASP Security Guidelines](https://owasp.org/www-project-application-security-verification-standard/)
-- [.NET Security Best Practices](https://docs.microsoft.com/en-us/dotnet/standard/security/)
-
-## Contact
-
-For any security-related questions that don't require immediate attention, you can also:
-
-- Open a [GitHub Discussion](https://github.com/mistial-dev/FaceOFFx/discussions) with the "security" tag
-- Check our [Contributing Guidelines](docs/CONTRIBUTING.md) for general questions
-
-Thank you for helping keep FaceOFFx and its users safe!
+The independently maintained [NBIS](https://github.com/OpenPhysical/OpenPhysical.Biometrics.NBIS/blob/master/SECURITY.md)
+and [NFIQ](https://github.com/OpenPhysical/OpenPhysical.Biometrics.NFIQ/blob/master/SECURITY.md)
+policies describe their native algorithm, ABI, model, and runtime scope.

@@ -14,12 +14,12 @@ public interface IJpeg2000MetadataExtractor : IImageMetadataExtractor
     /// Extracts JPEG 2000-specific metadata including JP2 box information.
     /// </summary>
     new Task<Result<Jpeg2000Metadata>> ExtractAsync(ImmutableArray<byte> imageData);
-    
+
     /// <summary>
     /// Extracts JPEG 2000-specific metadata including JP2 box information synchronously.
     /// </summary>
     new Result<Jpeg2000Metadata> Extract(ImmutableArray<byte> imageData);
-    
+
     /// <summary>
     /// Extracts JP2 box structure information.
     /// </summary>

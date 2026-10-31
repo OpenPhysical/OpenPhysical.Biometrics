@@ -1,17 +1,17 @@
 // MIT License
-// 
+//
 // Copyright (c) 2025 FaceOFFx Contributors
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
 // in the Software without restriction, including without limitation the rights
 // to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 // copies of the Software, and to permit persons to whom the Software is
 // furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all
 // copies or substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 // IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 // FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -23,8 +23,8 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Text.Json;
-using OpenPhysical.Biometrics.Core.Domain.Transformations;
 using JetBrains.Annotations;
+using OpenPhysical.Biometrics.Core.Domain.Transformations;
 
 namespace OpenPhysical.Biometrics.Core.Domain.Quality;
 
@@ -40,7 +40,8 @@ public record ComplianceRules(
     float MaxHeadSizePercent,
     float MinIpdPixels,
     float MaxIpdPixels,
-    ImageDimensions ExpectedDimensions)
+    ImageDimensions ExpectedDimensions
+)
 {
     /// <summary>
     /// Converts compliance rules to a Standard record
@@ -56,7 +57,8 @@ public record DualComplianceRules(
     string Name,
     ComplianceRules InputValidation,
     ComplianceRules OutputValidation,
-    ImageDimensions ExpectedDimensions)
+    ImageDimensions ExpectedDimensions
+)
 {
     /// <summary>
     /// Gets rules appropriate for the specified mode
@@ -74,62 +76,66 @@ public static class ComplianceStandards
     /// <summary>
     /// All supported dual compliance standards with input/output validation
     /// </summary>
-    public static readonly IReadOnlyDictionary<string, DualComplianceRules> DualStandards = new Dictionary<string, DualComplianceRules>
-    {
-        ["PIV"] = new DualComplianceRules(
-            Name: "PIV",
-            InputValidation: new ComplianceRules(
-                Name: "PIV-Input",
-                MinSymmetryPercent: 40f,     // Lenient for input photos
-                MinSharpnessPercent: 15f,    // Lenient for input photos
-                MinHeadSizePercent: 25f,     // Wider range for input
-                MaxHeadSizePercent: 85f,
-                MinIpdPixels: 60f,           // Wider range for varied input scales
-                MaxIpdPixels: 200f,
+    public static readonly IReadOnlyDictionary<string, DualComplianceRules> DualStandards =
+        new Dictionary<string, DualComplianceRules>
+        {
+            ["PIV"] = new DualComplianceRules(
+                Name: "PIV",
+                InputValidation: new ComplianceRules(
+                    Name: "PIV-Input",
+                    MinSymmetryPercent: 40f, // Lenient for input photos
+                    MinSharpnessPercent: 15f, // Lenient for input photos
+                    MinHeadSizePercent: 25f, // Wider range for input
+                    MaxHeadSizePercent: 85f,
+                    MinIpdPixels: 60f, // Wider range for varied input scales
+                    MaxIpdPixels: 200f,
+                    ExpectedDimensions: new ImageDimensions(420, 560)
+                ),
+                OutputValidation: new ComplianceRules(
+                    Name: "PIV-Output",
+                    MinSymmetryPercent: 60f, // Strict PIV requirements
+                    MinSharpnessPercent: 25f, // Strict PIV requirements
+                    MinHeadSizePercent: 35f, // Official PIV range
+                    MaxHeadSizePercent: 80f,
+                    MinIpdPixels: 90f, // Official PIV range
+                    MaxIpdPixels: 120f,
+                    ExpectedDimensions: new ImageDimensions(420, 560)
+                ),
                 ExpectedDimensions: new ImageDimensions(420, 560)
             ),
-            OutputValidation: new ComplianceRules(
-                Name: "PIV-Output",
-                MinSymmetryPercent: 60f,     // Strict PIV requirements
-                MinSharpnessPercent: 25f,    // Strict PIV requirements
-                MinHeadSizePercent: 35f,     // Official PIV range
-                MaxHeadSizePercent: 80f,
-                MinIpdPixels: 90f,           // Official PIV range
-                MaxIpdPixels: 120f,
+            ["TWIC"] = new DualComplianceRules(
+                Name: "TWIC",
+                InputValidation: new ComplianceRules(
+                    Name: "TWIC-Input",
+                    MinSymmetryPercent: 45f,
+                    MinSharpnessPercent: 20f,
+                    MinHeadSizePercent: 30f,
+                    MaxHeadSizePercent: 85f,
+                    MinIpdPixels: 60f,
+                    MaxIpdPixels: 200f,
+                    ExpectedDimensions: new ImageDimensions(420, 560)
+                ),
+                OutputValidation: new ComplianceRules(
+                    Name: "TWIC-Output",
+                    MinSymmetryPercent: 65f, // Stricter than PIV
+                    MinSharpnessPercent: 55f, // Stricter than PIV
+                    MinHeadSizePercent: 50f,
+                    MaxHeadSizePercent: 75f,
+                    MinIpdPixels: 90f,
+                    MaxIpdPixels: 120f,
+                    ExpectedDimensions: new ImageDimensions(420, 560)
+                ),
                 ExpectedDimensions: new ImageDimensions(420, 560)
             ),
-            ExpectedDimensions: new ImageDimensions(420, 560)
-        ),
-        ["TWIC"] = new DualComplianceRules(
-            Name: "TWIC",
-            InputValidation: new ComplianceRules(
-                Name: "TWIC-Input",
-                MinSymmetryPercent: 45f,
-                MinSharpnessPercent: 20f,
-                MinHeadSizePercent: 30f,
-                MaxHeadSizePercent: 85f,
-                MinIpdPixels: 60f,
-                MaxIpdPixels: 200f,
-                ExpectedDimensions: new ImageDimensions(420, 560)
-            ),
-            OutputValidation: new ComplianceRules(
-                Name: "TWIC-Output",
-                MinSymmetryPercent: 65f,     // Stricter than PIV
-                MinSharpnessPercent: 55f,    // Stricter than PIV
-                MinHeadSizePercent: 50f,
-                MaxHeadSizePercent: 75f,
-                MinIpdPixels: 90f,
-                MaxIpdPixels: 120f,
-                ExpectedDimensions: new ImageDimensions(420, 560)
-            ),
-            ExpectedDimensions: new ImageDimensions(420, 560)
-        )
-    };
+        };
 
     /// <summary>
     /// All supported compliance standards (legacy single-threshold)
     /// </summary>
-    public static readonly IReadOnlyDictionary<string, ComplianceRules> Standards = new Dictionary<string, ComplianceRules>
+    public static readonly IReadOnlyDictionary<string, ComplianceRules> Standards = new Dictionary<
+        string,
+        ComplianceRules
+    >
     {
         ["PIV"] = new ComplianceRules(
             Name: "PIV",
@@ -143,8 +149,8 @@ public static class ComplianceStandards
         ),
         ["TWIC"] = new ComplianceRules(
             Name: "TWIC",
-            MinSymmetryPercent: 65f,    // Stricter than PIV
-            MinSharpnessPercent: 55f,   // Stricter than PIV
+            MinSymmetryPercent: 65f, // Stricter than PIV
+            MinSharpnessPercent: 55f, // Stricter than PIV
             MinHeadSizePercent: 50f,
             MaxHeadSizePercent: 75f,
             MinIpdPixels: 90f,
@@ -153,24 +159,24 @@ public static class ComplianceStandards
         ),
         ["ICAO"] = new ComplianceRules(
             Name: "ICAO",
-            MinSymmetryPercent: 70f,    // Strictest for passports
-            MinSharpnessPercent: 60f,   // Strictest for passports
+            MinSymmetryPercent: 70f, // Strictest for passports
+            MinSharpnessPercent: 60f, // Strictest for passports
             MinHeadSizePercent: 50f,
             MaxHeadSizePercent: 75f,
             MinIpdPixels: 90f,
             MaxIpdPixels: 120f,
-            ExpectedDimensions: new ImageDimensions(413, 531)  // Different size for passports
+            ExpectedDimensions: new ImageDimensions(413, 531) // Different size for passports
         ),
         ["CAC"] = new ComplianceRules(
             Name: "CAC",
-            MinSymmetryPercent: 60f,    // Same as PIV for military cards
+            MinSymmetryPercent: 60f, // Same as PIV for military cards
             MinSharpnessPercent: 50f,
             MinHeadSizePercent: 50f,
             MaxHeadSizePercent: 75f,
             MinIpdPixels: 90f,
             MaxIpdPixels: 120f,
             ExpectedDimensions: new ImageDimensions(420, 560)
-        )
+        ),
     };
 
     /// <summary>
@@ -180,7 +186,9 @@ public static class ComplianceStandards
     /// <returns>Dual compliance rules if found, null otherwise</returns>
     public static DualComplianceRules? GetDualRules(string standardName)
     {
-        return DualStandards.TryGetValue(standardName.ToUpperInvariant(), out var rules) ? rules : null;
+        return DualStandards.TryGetValue(standardName.ToUpperInvariant(), out var rules)
+            ? rules
+            : null;
     }
 
     /// <summary>
@@ -223,12 +231,13 @@ public static class ComplianceStandards
     public static ComplianceRules LoadCustomStandard(string filePath)
     {
         var json = File.ReadAllText(filePath);
-        var rules = JsonSerializer.Deserialize<ComplianceRules>(json, new JsonSerializerOptions
-        {
-            PropertyNameCaseInsensitive = true
-        });
-        
-        return rules ?? throw new InvalidDataException($"Invalid compliance rules file: {filePath}");
+        var rules = JsonSerializer.Deserialize<ComplianceRules>(
+            json,
+            new JsonSerializerOptions { PropertyNameCaseInsensitive = true }
+        );
+
+        return rules
+            ?? throw new InvalidDataException($"Invalid compliance rules file: {filePath}");
     }
 
     /// <summary>

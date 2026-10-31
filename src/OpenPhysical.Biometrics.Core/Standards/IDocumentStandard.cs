@@ -1,9 +1,9 @@
 namespace OpenPhysical.Biometrics.Core.Standards;
 
 using CSharpFunctionalExtensions;
+using OpenPhysical.Biometrics.Core.Domain.Transformations;
 using OpenPhysical.Domains.Biometrics;
 using OpenPhysical.Domains.Standards;
-using OpenPhysical.Biometrics.Core.Domain.Transformations;
 
 /// <summary>
 /// Defines the interface for document-specific biometric image standards.
@@ -62,8 +62,9 @@ public interface IDocumentStandard
     /// <param name="metadata">Optional metadata about the image.</param>
     /// <returns>A Result indicating success or containing validation errors.</returns>
     Task<Result<ComplianceValidation>> ValidateAsync(
-        byte[] imageData, 
-        Maybe<ImageMetadata> metadata = default);
+        byte[] imageData,
+        Maybe<ImageMetadata> metadata = default
+    );
 
     /// <summary>
     /// Gets the file size constraints for this standard.
@@ -83,7 +84,8 @@ public sealed record ComplianceValidation(
     bool IsCompliant,
     IReadOnlyList<ComplianceViolation> Violations,
     IReadOnlyDictionary<string, float> Measurements,
-    TimeSpan ValidationTime);
+    TimeSpan ValidationTime
+);
 
 /// <summary>
 /// Represents a specific compliance violation.
@@ -91,7 +93,8 @@ public sealed record ComplianceValidation(
 public sealed record ComplianceViolation(
     ComplianceRequirement Requirement,
     float ActualValue,
-    string Description);
+    string Description
+);
 
 /// <summary>
 /// Metadata about an image being processed.
@@ -100,7 +103,8 @@ public sealed record ImageMetadata(
     Maybe<string> SourcePath,
     Maybe<DateTime> CaptureDate,
     Maybe<string> DeviceInfo,
-    IReadOnlyDictionary<string, object> AdditionalData);
+    IReadOnlyDictionary<string, object> AdditionalData
+);
 
 /// <summary>
 /// Interface for processors that transform images according to a standard.
@@ -113,9 +117,7 @@ public interface IImageProcessor
     /// <param name="imageData">The input image data.</param>
     /// <param name="options">Processing options.</param>
     /// <returns>The processed image data.</returns>
-    Task<Result<ProcessedImage>> ProcessAsync(
-        byte[] imageData, 
-        ProcessingOptions options);
+    Task<Result<ProcessedImage>> ProcessAsync(byte[] imageData, ProcessingOptions options);
 }
 
 /// <summary>
@@ -124,4 +126,5 @@ public interface IImageProcessor
 public sealed record ProcessedImage(
     byte[] ImageData,
     OpenPhysical.Domains.Biometrics.ImageDimensions Dimensions,
-    IReadOnlyDictionary<string, object> ProcessingMetadata);
+    IReadOnlyDictionary<string, object> ProcessingMetadata
+);

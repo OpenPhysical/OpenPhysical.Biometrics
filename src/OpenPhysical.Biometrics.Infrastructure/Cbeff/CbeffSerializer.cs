@@ -1,12 +1,12 @@
 namespace OpenPhysical.Biometrics.Infrastructure.Cbeff;
 
+using System;
+using System.Collections.Immutable;
+using System.Linq;
 using CSharpFunctionalExtensions;
 using OpenPhysical.Biometrics.Core.Cbeff;
 using OpenPhysical.Biometrics.Infrastructure.Utilities;
 using OpenPhysical.Domains.Cbeff;
-using System;
-using System.Collections.Immutable;
-using System.Linq;
 
 /// <summary>
 /// Implements CBEFF serialization and deserialization with support for PIV wrappers.
@@ -58,7 +58,8 @@ public sealed class CbeffSerializer : ICbeffSerializer
     /// <returns>Raw CBEFF data without PIV wrapper.</returns>
     public static Result<byte[]> StripPivWrapperIfPresent(byte[] data)
     {
-        return Maybe<byte[]>.From(data)
+        return Maybe<byte[]>
+            .From(data)
             .ToResult("Data cannot be null")
             .Map(d => d.ToImmutableArray())
             .Bind(StripPivWrapperIfPresent)
@@ -82,7 +83,8 @@ public sealed class CbeffSerializer : ICbeffSerializer
     /// <returns>PIV-wrapped CBEFF data with BC tag.</returns>
     public static Result<byte[]> AddPivWrapper(byte[] rawCbeffData)
     {
-        return Maybe<byte[]>.From(rawCbeffData)
+        return Maybe<byte[]>
+            .From(rawCbeffData)
             .ToResult("Data cannot be null")
             .Map(d => d.ToImmutableArray())
             .Bind(AddPivWrapper)
@@ -103,7 +105,8 @@ public sealed class CbeffSerializer : ICbeffSerializer
     /// <inheritdoc />
     public Result<CbeffPayload> Deserialize(byte[] data)
     {
-        return Maybe<byte[]>.From(data)
+        return Maybe<byte[]>
+            .From(data)
             .ToResult("Data cannot be null")
             .Map(d => d.ToImmutableArray())
             .Bind(Deserialize);
@@ -133,7 +136,8 @@ public sealed class CbeffSerializer : ICbeffSerializer
     /// <returns>A Result containing the CbeffPayload or an error.</returns>
     public Result<CbeffPayload> DeserializeAuto(byte[] data)
     {
-        return Maybe<byte[]>.From(data)
+        return Maybe<byte[]>
+            .From(data)
             .ToResult("Data cannot be null")
             .Map(d => d.ToImmutableArray())
             .Bind(DeserializeAuto);
@@ -142,7 +146,8 @@ public sealed class CbeffSerializer : ICbeffSerializer
     /// <inheritdoc />
     public Result<ImmutableArray<byte>> Serialize(CbeffPayload payload)
     {
-        return Maybe<CbeffPayload>.From(payload)
+        return Maybe<CbeffPayload>
+            .From(payload)
             .ToResult("Payload cannot be null")
             .Bind(ValidatePayload)
             .Map(SerializeToBytes);
@@ -157,8 +162,7 @@ public sealed class CbeffSerializer : ICbeffSerializer
     /// <inheritdoc />
     public Result<ImmutableArray<byte>> SerializeWithWrapper(CbeffPayload payload, byte tag)
     {
-        return Serialize(payload)
-            .Bind(data => BerTlv.WrapWithTlv(tag, data));
+        return Serialize(payload).Bind(data => BerTlv.WrapWithTlv(tag, data));
     }
 
     /// <inheritdoc />
@@ -181,7 +185,8 @@ public sealed class CbeffSerializer : ICbeffSerializer
     /// <inheritdoc />
     public Result<bool> ValidateStructure(byte[] data)
     {
-        return Maybe<byte[]>.From(data)
+        return Maybe<byte[]>
+            .From(data)
             .ToResult("Data cannot be null")
             .Map(d => d.ToImmutableArray())
             .Bind(ValidateStructure);
@@ -199,68 +204,72 @@ public sealed class CbeffSerializer : ICbeffSerializer
         return data.Length >= CbeffHeader.StandardHeaderSize
             ? Result.Success(data)
             : Result.Failure<ImmutableArray<byte>>(
-                $"CBEFF data too short: {data.Length} bytes, minimum {CbeffHeader.StandardHeaderSize}");
+                $"CBEFF data too short: {data.Length} bytes, minimum {CbeffHeader.StandardHeaderSize}"
+            );
     }
 
     private static Result<ParsedHeaderData> ParseHeader(ImmutableArray<byte> data)
     {
         var headerBytes = data.Take(CbeffHeader.StandardHeaderSize).ToArray();
-        
-        return CbeffHeaderSerializer.FromBytes(headerBytes)
+
+        return CbeffHeaderSerializer
+            .FromBytes(headerBytes)
             .Map(header => new ParsedHeaderData(header, data));
     }
 
     private static Result<ParsedHeaderData> ValidateDataLength(ParsedHeaderData data)
     {
-        var expectedLength = CbeffHeader.StandardHeaderSize + 
-            data.Header.BdbLength + 
-            data.Header.SbLength;
-            
+        var expectedLength =
+            CbeffHeader.StandardHeaderSize + data.Header.BdbLength + data.Header.SbLength;
+
         return data.RawData.Length == expectedLength
             ? Result.Success(data)
             : Result.Failure<ParsedHeaderData>(
-                $"CBEFF data length mismatch: expected {expectedLength}, got {data.RawData.Length}");
+                $"CBEFF data length mismatch: expected {expectedLength}, got {data.RawData.Length}"
+            );
     }
 
     private static Result<ExtractedComponents> ExtractComponents(ParsedHeaderData data)
     {
         var offset = CbeffHeader.StandardHeaderSize;
-        
+
         return ExtractBiometricDataBlock(data, offset)
             .Bind(tuple => ExtractSignature(tuple.data, tuple.bdb, tuple.offset))
             .Map(components => new ExtractedComponents(
                 data.Header,
                 components.bdb,
-                components.signature));
+                components.signature
+            ));
     }
 
-    private static Result<(ParsedHeaderData data, ImmutableArray<byte> bdb, int offset)> 
-        ExtractBiometricDataBlock(ParsedHeaderData data, int offset)
+    private static Result<(
+        ParsedHeaderData data,
+        ImmutableArray<byte> bdb,
+        int offset
+    )> ExtractBiometricDataBlock(ParsedHeaderData data, int offset)
     {
         if (data.Header.BdbLength == 0)
             return Result.Failure<(ParsedHeaderData, ImmutableArray<byte>, int)>(
-                "CBEFF header indicates zero-length biometric data block");
+                "CBEFF header indicates zero-length biometric data block"
+            );
 
-        var bdb = data.RawData
-            .Skip(offset)
-            .Take((int)data.Header.BdbLength)
-            .ToImmutableArray();
-            
+        var bdb = data.RawData.Skip(offset).Take((int)data.Header.BdbLength).ToImmutableArray();
+
         return Result.Success((data, bdb, offset + (int)data.Header.BdbLength));
     }
 
-    private static Result<(ImmutableArray<byte> bdb, Maybe<CbeffSignature> signature)> 
-        ExtractSignature(ParsedHeaderData data, ImmutableArray<byte> bdb, int offset)
+    private static Result<(
+        ImmutableArray<byte> bdb,
+        Maybe<CbeffSignature> signature
+    )> ExtractSignature(ParsedHeaderData data, ImmutableArray<byte> bdb, int offset)
     {
         if (data.Header.SbLength == 0)
             return Result.Success((bdb, Maybe<CbeffSignature>.None));
 
-        var signatureBytes = data.RawData
-            .Skip(offset)
-            .Take(data.Header.SbLength)
-            .ToArray();
-            
-        return CbeffSignature.Create(signatureBytes)
+        var signatureBytes = data.RawData.Skip(offset).Take(data.Header.SbLength).ToArray();
+
+        return CbeffSignature
+            .Create(signatureBytes)
             .Map(sig => (bdb, Maybe<CbeffSignature>.From(sig)));
     }
 
@@ -269,7 +278,8 @@ public sealed class CbeffSerializer : ICbeffSerializer
         return CbeffPayload.Create(
             components.Header,
             components.BiometricDataBlock.ToArray(),
-            components.Signature);
+            components.Signature
+        );
     }
 
     // Serialization logic
@@ -278,7 +288,7 @@ public sealed class CbeffSerializer : ICbeffSerializer
     {
         if (!payload.IsValid())
             return Result.Failure<CbeffPayload>("Invalid CBEFF payload structure");
-            
+
         return Result.Success(payload);
     }
 
@@ -286,22 +296,21 @@ public sealed class CbeffSerializer : ICbeffSerializer
     {
         var headerBytes = CbeffHeaderSerializer.ToBytes(payload.Header);
         var bdbBytes = payload.GetBiometricDataBlock();
-        
-        var result = ImmutableArray.Create<byte>()
-            .AddRange(headerBytes)
-            .AddRange(bdbBytes);
-            
-        return payload.Signature
-            .Map(sig => result.AddRange(sig.SignatureData))
+
+        var result = ImmutableArray.Create<byte>().AddRange(headerBytes).AddRange(bdbBytes);
+
+        return payload
+            .Signature.Map(sig => result.AddRange(sig.SignatureData))
             .GetValueOrDefault(result);
     }
 
     // Helper types for pipeline data flow
 
     private sealed record ParsedHeaderData(CbeffHeader Header, ImmutableArray<byte> RawData);
-    
+
     private sealed record ExtractedComponents(
         CbeffHeader Header,
         ImmutableArray<byte> BiometricDataBlock,
-        Maybe<CbeffSignature> Signature);
+        Maybe<CbeffSignature> Signature
+    );
 }

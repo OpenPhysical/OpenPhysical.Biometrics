@@ -1,16 +1,16 @@
+using System.Collections.Immutable;
+using System.Drawing;
 using JetBrains.Annotations;
 using Microsoft.Extensions.Logging;
 using OpenPhysical.Biometrics.Core.Abstractions.Pipeline;
-using OpenPhysical.Biometrics.Core.Domain.Pipeline;
 using OpenPhysical.Biometrics.Core.Domain.Common;
+using OpenPhysical.Biometrics.Core.Domain.Pipeline;
 using OpenPhysical.Biometrics.Core.Domain.Transformations;
+using OpenPhysical.Biometrics.Imaging;
 using OpenPhysical.Biometrics.Infrastructure.Services;
-using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.PixelFormats;
-using System.Collections.Immutable;
 using static OpenPhysical.Biometrics.Core.Domain.Pipeline.BiometricPipelineSteps;
-using DomainImageDimensions = OpenPhysical.Domains.Biometrics.ImageDimensions;
 using CoreImageDimensions = OpenPhysical.Biometrics.Core.Domain.Transformations.ImageDimensions;
+using DomainImageDimensions = OpenPhysical.Domains.Biometrics.ImageDimensions;
 
 namespace OpenPhysical.Biometrics.Infrastructure.Pipeline.Steps;
 
@@ -35,7 +35,7 @@ public sealed class ImageTransformationStep : IImageTransformStep
     public string Description => "Transforms image to meet standard dimensions and requirements";
 
     /// <inheritdoc />
-    public DomainImageDimensions TargetDimensions => 
+    public DomainImageDimensions TargetDimensions =>
         DomainImageDimensions.Create(_targetDimensions.Width, _targetDimensions.Height).Value;
 
     /// <inheritdoc />
@@ -49,7 +49,8 @@ public sealed class ImageTransformationStep : IImageTransformStep
         ILogger<ImageTransformationStep> logger,
         CoreImageDimensions? targetDimensions = null,
         TransformationOptions? options = null,
-        float maxRotationDegrees = 15.0f)
+        float maxRotationDegrees = 15.0f
+    )
     {
         _imageProcessingService = imageProcessingService;
         _logger = logger;
@@ -60,29 +61,39 @@ public sealed class ImageTransformationStep : IImageTransformStep
 
     /// <inheritdoc />
     public async Task<Result<ProcessedBiometricData>> ExecuteAsync(
-        ProcessedBiometricData input, 
-        IPipelineContext context, 
-        CancellationToken cancellationToken = default)
+        ProcessedBiometricData input,
+        IPipelineContext context,
+        CancellationToken cancellationToken = default
+    )
     {
-        _logger.LogDebug("Starting image transformation for execution {ExecutionId}", context.ExecutionId);
+        _logger.LogDebug(
+            new EventId(264100, "ImageTransformationStep"),
+            "ImageTransformationStep processing started."
+        );
 
         try
         {
             // Get target dimensions from context or use default
-            var targetDims = context.Metadata.TryGetValue("target_dimensions", out var dims) && dims is CoreImageDimensions dimensions
-                ? dimensions
-                : _targetDimensions;
+            var targetDims =
+                context.Metadata.TryGetValue("target_dimensions", out var dims)
+                && dims is CoreImageDimensions dimensions
+                    ? dimensions
+                    : _targetDimensions;
 
             // Transform the image
             var result = await _imageProcessingService.TransformToStandardAsync(
                 input.Data.RawData,
                 targetDims,
                 _options,
-                cancellationToken);
+                cancellationToken
+            );
 
             if (result.IsFailure)
             {
-                _logger.LogError("Image transformation failed: {Error}", result.Error);
+                _logger.LogError(
+                    new EventId(264101, "ImageTransformationStep"),
+                    "ImageTransformationStep processing failed."
+                );
                 return Result.Failure<ProcessedBiometricData>(result.Error);
             }
 
@@ -93,36 +104,50 @@ public sealed class ImageTransformationStep : IImageTransformStep
                 transformed.ImageData,
                 input.Data.DataType,
                 input.Data.Format,
-                input.Data.Metadata
-                    .SetItem("transformed", true)
-                    .SetItem("original_dimensions", $"{input.Data.Metadata.GetValueOrDefault("width")}x{input.Data.Metadata.GetValueOrDefault("height")}")
-                    .SetItem("target_dimensions", $"{transformed.Dimensions.Width}x{transformed.Dimensions.Height}"));
+                input
+                    .Data.Metadata.SetItem("transformed", true)
+                    .SetItem(
+                        "original_dimensions",
+                        $"{input.Data.Metadata.GetValueOrDefault("width")}x{input.Data.Metadata.GetValueOrDefault("height")}"
+                    )
+                    .SetItem(
+                        "target_dimensions",
+                        $"{transformed.Dimensions.Width}x{transformed.Dimensions.Height}"
+                    )
+            );
 
             // Create ROI set based on transformed dimensions
             var roiSet = FacialRoiSet.CalculateRoiForDimensions(
-                transformed.Dimensions.Width, 
-                transformed.Dimensions.Height);
+                transformed.Dimensions.Width,
+                transformed.Dimensions.Height
+            );
 
             var processedData = input with
             {
                 Data = transformedData,
-                ProcessingMetadata = input.ProcessingMetadata
-                    .SetItem("transformation_step", StepId)
+                ProcessingMetadata = input
+                    .ProcessingMetadata.SetItem("transformation_step", StepId)
                     .SetItem("transformed_dimensions", transformed.Dimensions)
                     .SetItem("transformation_type", transformed.Type.ToString())
-                    .SetItem("roi_set", roiSet)
+                    .SetItem("roi_set", roiSet),
             };
 
             _logger.LogInformation(
-                "Image transformed from original to {Width}x{Height}",
-                transformed.Dimensions.Width, transformed.Dimensions.Height);
+                new EventId(264102, "ImageTransformationStep"),
+                "ImageTransformationStep processing status changed."
+            );
 
             return Result.Success(processedData);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Image transformation step failed with exception");
-            return Result.Failure<ProcessedBiometricData>($"Image transformation failed: {ex.Message}");
+            _logger.LogError(
+                new EventId(264103, "ImageTransformationStep"),
+                "Image transformation step failed with exception"
+            );
+            return Result.Failure<ProcessedBiometricData>(
+                $"Image transformation failed: {ex.Message}"
+            );
         }
     }
 

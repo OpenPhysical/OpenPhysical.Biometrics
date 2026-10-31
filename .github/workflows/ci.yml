@@ -1,61 +1,191 @@
-name: CI Build
-
-on:
-  push:
-    branches: [main, develop]
-  pull_request:
-    branches: [main]
-
+name: Biometric build and test
+on: [push, pull_request, workflow_dispatch]
 permissions:
   contents: read
-
+concurrency:
+  group: biometrics-${{ github.ref }}
+  cancel-in-progress: true
 env:
-  DOTNET_VERSION: "8.0.x"
-  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
-  DOTNET_CLI_TELEMETRY_OPTOUT: true
-
+  NBIS_SOURCE_REVISION: d8e67d61af827d179beac51ddc4d933f75d4c695
+  NFIQ_SOURCE_REVISION: 5e9e3e68edc92030a6c8914f47cc4779afb5c682
 jobs:
-  build:
+  runtime:
     strategy:
+      fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
-
+        include:
+          - { os: ubuntu-22.04, rid: linux-x64 }
+          - { os: ubuntu-22.04-arm, rid: linux-arm64 }
+          - { os: macos-15-intel, rid: osx-x64 }
+          - { os: macos-15, rid: osx-arm64 }
+          - { os: windows-latest, rid: win-x64 }
     runs-on: ${{ matrix.os }}
-
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
+          path: OpenPhysical.Biometrics
           lfs: true
-
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v4
+      - uses: actions/checkout@v4
         with:
-          dotnet-version: ${{ env.DOTNET_VERSION }}
-
-      - name: Restore dependencies
-        run: dotnet restore
-
-      - name: Build
-        run: dotnet build --configuration Release --no-restore
-
-      - name: Test
-        run: dotnet test --configuration Release --no-build --verbosity normal --logger "trx;LogFileName=test-results.trx"
-
-      - name: Upload test results
+          repository: OpenPhysical/OpenPhysical.Biometrics.NBIS
+          ref: ${{ env.NBIS_SOURCE_REVISION }}
+          path: OpenPhysical.Biometrics.NBIS
+      - uses: actions/checkout@v4
+        with:
+          repository: OpenPhysical/OpenPhysical.Biometrics.NFIQ
+          ref: ${{ env.NFIQ_SOURCE_REVISION }}
+          path: OpenPhysical.Biometrics.NFIQ
+          submodules: recursive
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: msys2/setup-msys2@v2
+        id: msys2
+        if: runner.os == 'Windows'
+        with:
+          msystem: UCRT64
+          install: mingw-w64-ucrt-x86_64-gcc mingw-w64-ucrt-x86_64-cmake mingw-w64-ucrt-x86_64-ninja
+      - name: Select Windows native toolchain
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: Add-Content $env:GITHUB_PATH "${{ steps.msys2.outputs.msys2-location }}\ucrt64\bin"
+      - name: Build pinned development dependencies
+        working-directory: OpenPhysical.Biometrics
+        run: python scripts/build-development-dependencies.py
+      - name: Restore formatter
+        working-directory: OpenPhysical.Biometrics
+        run: dotnet tool restore
+      - name: Check CSharpier formatting
+        working-directory: OpenPhysical.Biometrics
+        run: dotnet csharpier check .
+      - name: Verify optional facial model assets
+        working-directory: OpenPhysical.Biometrics
+        run: python scripts/verify-models.py
+      - name: Prove public API documentation gate
+        working-directory: OpenPhysical.Biometrics
+        run: python scripts/verify-documentation-gate.py
+      - name: Modern contracts and workflow coverage
+        working-directory: OpenPhysical.Biometrics
+        run: |
+          dotnet build OpenPhysical.Biometrics.sln -c Release -m:1 -nr:false -p:UseSharedCompilation=false
+          dotnet test OpenPhysical.Biometrics.sln -c Release --no-build -m:1 -nr:false --collect:"XPlat Code Coverage" --results-directory artifacts/test-results/modern
+      - name: Facial pipeline and compatibility coverage
+        working-directory: OpenPhysical.Biometrics
+        run: dotnet test OpenPhysical.Biometrics.Compatibility.sln -c Release -m:1 -nr:false -p:UseSharedCompilation=false --collect:"XPlat Code Coverage" --results-directory artifacts/test-results/compatibility
+      - name: Run paired capture example
+        working-directory: OpenPhysical.Biometrics
+        run: dotnet run --project examples/OpenPhysical.Biometrics.Examples -c Release --no-build -- ../OpenPhysical.Biometrics.NBIS/tests/fixtures/sd04/f0005_03.gray8 ../OpenPhysical.Biometrics.NBIS/tests/fixtures/sd04/s0005_03.gray8 512 512
+      - name: Run paired acceptance and different-finger rejection example
+        working-directory: OpenPhysical.Biometrics
+        run: dotnet run --project examples/OpenPhysical.Biometrics.Examples -c Release --no-build -- --sd04 ../OpenPhysical.Biometrics.NBIS/tests/fixtures/sd04
+      - name: Pack and consume outside the repository
+        working-directory: OpenPhysical.Biometrics
+        run: python scripts/test-package.py
+      - name: Upload release native assets
         uses: actions/upload-artifact@v4
+        with:
+          name: native-runtimes-${{ matrix.rid }}
+          path: |
+            OpenPhysical.Biometrics.NBIS/artifacts/runtimes/
+            OpenPhysical.Biometrics.NFIQ/artifacts/runtimes/
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: test-results-${{ matrix.os }}
-          path: "**/*.trx"
-
-      - name: Pack (Ubuntu only)
-        if: matrix.os == 'ubuntu-latest'
-        run: |
-          dotnet pack src/FaceOFFx.Cli/FaceOFFx.Cli.csproj --configuration Release --no-build --output ./artifacts
-
-      - name: Test tool installation (Ubuntu only)
-        if: matrix.os == 'ubuntu-latest'
-        run: |
-          dotnet tool install --global --add-source ./artifacts FaceOFFx.Cli
-          faceoffx --version
+          name: biometrics-${{ matrix.rid }}
+          path: |
+            OpenPhysical.Biometrics/artifacts/test-results/
+  packages:
+    needs: runtime
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: OpenPhysical.Biometrics
+          lfs: true
+      - uses: actions/checkout@v4
+        with:
+          repository: OpenPhysical/OpenPhysical.Biometrics.NBIS
+          ref: ${{ env.NBIS_SOURCE_REVISION }}
+          path: OpenPhysical.Biometrics.NBIS
+      - uses: actions/checkout@v4
+        with:
+          repository: OpenPhysical/OpenPhysical.Biometrics.NFIQ
+          ref: ${{ env.NFIQ_SOURCE_REVISION }}
+          path: OpenPhysical.Biometrics.NFIQ
+          submodules: recursive
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Gather all five native runtime builds
+        uses: actions/download-artifact@v4
+        with:
+          pattern: native-runtimes-*
+          merge-multiple: true
+          path: .
+      - name: Pack complete algorithm dependencies
+        working-directory: OpenPhysical.Biometrics
+        run: python scripts/build-development-dependencies.py --skip-native --complete-runtimes
+      - name: Restore formatter
+        working-directory: OpenPhysical.Biometrics
+        run: dotnet tool restore
+      - name: Pack and verify complete product packages
+        working-directory: OpenPhysical.Biometrics
+        run: python scripts/test-package.py --require-all-runtimes
+      - name: Upload complete release packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: complete-beta-packages
+          path: |
+            OpenPhysical.Biometrics/artifacts/packages/*.nupkg
+            OpenPhysical.Biometrics.NBIS/artifacts/packages/*.nupkg
+            OpenPhysical.Biometrics.NFIQ/artifacts/packages/*.nupkg
+          if-no-files-found: error
+  consumers:
+    needs: packages
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: ubuntu-22.04, rid: linux-x64 }
+          - { os: ubuntu-22.04-arm, rid: linux-arm64 }
+          - { os: macos-15-intel, rid: osx-x64 }
+          - { os: macos-15, rid: osx-arm64 }
+          - { os: windows-latest, rid: win-x64 }
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: OpenPhysical.Biometrics
+          lfs: true
+      - uses: actions/checkout@v4
+        with:
+          repository: OpenPhysical/OpenPhysical.Biometrics.NBIS
+          ref: ${{ env.NBIS_SOURCE_REVISION }}
+          path: OpenPhysical.Biometrics.NBIS
+      - uses: actions/checkout@v4
+        with:
+          repository: OpenPhysical/OpenPhysical.Biometrics.NFIQ
+          ref: ${{ env.NFIQ_SOURCE_REVISION }}
+          path: OpenPhysical.Biometrics.NFIQ
+          submodules: recursive
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Download the same complete packages on every runtime
+        uses: actions/download-artifact@v4
+        with:
+          name: complete-beta-packages
+          path: .
+      - name: Consume complete packages outside the repository
+        working-directory: OpenPhysical.Biometrics
+        run: python scripts/test-package.py --skip-pack --require-all-runtimes

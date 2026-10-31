@@ -1,13 +1,12 @@
+using System.Collections.Immutable;
+using System.Drawing;
 using JetBrains.Annotations;
 using Microsoft.Extensions.Logging;
 using OpenPhysical.Biometrics.Core.Abstractions;
-using OpenPhysical.Biometrics.Core.Domain.Transformations;
-using OpenPhysical.Biometrics.Core.Domain.Detection;
 using OpenPhysical.Biometrics.Core.Domain.Common;
-using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.PixelFormats;
-using SixLabors.ImageSharp.Processing;
-using System.Collections.Immutable;
+using OpenPhysical.Biometrics.Core.Domain.Detection;
+using OpenPhysical.Biometrics.Core.Domain.Transformations;
+using OpenPhysical.Biometrics.Imaging;
 
 namespace OpenPhysical.Biometrics.Infrastructure.Services;
 
@@ -25,7 +24,8 @@ public interface IImageProcessingService
         ImmutableArray<byte> imageData,
         ImageDimensions targetDimensions,
         TransformationOptions options,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken = default
+    );
 
     /// <summary>
     /// Crops an image to focus on detected biometric features.
@@ -34,7 +34,8 @@ public interface IImageProcessingService
         ImmutableArray<byte> imageData,
         DetectedFace face,
         CropOptions options,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken = default
+    );
 
     /// <summary>
     /// Rotates an image to align biometric features properly.
@@ -43,7 +44,8 @@ public interface IImageProcessingService
         ImmutableArray<byte> imageData,
         float rotationDegrees,
         RotationOptions options,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken = default
+    );
 
     /// <summary>
     /// Resizes an image while maintaining aspect ratio.
@@ -52,7 +54,8 @@ public interface IImageProcessingService
         ImmutableArray<byte> imageData,
         ImageDimensions targetDimensions,
         ResizeOptions options,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken = default
+    );
 
     /// <summary>
     /// Applies a series of transformations in sequence.
@@ -60,7 +63,8 @@ public interface IImageProcessingService
     Task<Result<TransformedImage>> ApplyTransformationPipelineAsync(
         ImmutableArray<byte> imageData,
         ImmutableList<IImageTransformation> transformations,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken = default
+    );
 }
 
 /// <summary>
@@ -84,32 +88,43 @@ public sealed class ImageProcessingService : IImageProcessingService
         ImmutableArray<byte> imageData,
         ImageDimensions targetDimensions,
         TransformationOptions options,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default
+    )
     {
         try
         {
-            _logger.LogDebug("Starting standard transformation to {Width}x{Height}", 
-                targetDimensions.Width, targetDimensions.Height);
+            _logger.LogDebug(
+                new EventId(279000, "ImageProcessingService"),
+                "ImageProcessingService processing started."
+            );
 
-            using var image = Image.Load<Rgba32>(imageData.ToArray());
+            using var image = RgbImage.Load(imageData.ToArray());
             var originalDimensions = new ImageDimensions(image.Width, image.Height);
 
             // Calculate scaling to fit target dimensions
-            var scale = CalculateScaleToFit(originalDimensions, targetDimensions, options.MaintainAspectRatio);
-            
+            var scale = CalculateScaleToFit(
+                originalDimensions,
+                targetDimensions,
+                options.MaintainAspectRatio
+            );
+
             // Apply transformations
             image.Mutate(x =>
             {
                 if (options.MaintainAspectRatio)
                 {
                     x.Resize(new Size((int)(image.Width * scale), (int)(image.Height * scale)));
-                    
+
                     // Center crop if needed
-                    if (image.Width != targetDimensions.Width || image.Height != targetDimensions.Height)
+                    if (
+                        image.Width != targetDimensions.Width
+                        || image.Height != targetDimensions.Height
+                    )
                     {
                         var cropRect = CalculateCenterCrop(
-                            new ImageDimensions(image.Width, image.Height), 
-                            targetDimensions);
+                            new ImageDimensions(image.Width, image.Height),
+                            targetDimensions
+                        );
                         x.Crop(cropRect);
                     }
                 }
@@ -128,10 +143,10 @@ public sealed class ImageProcessingService : IImageProcessingService
             // Convert to bytes
             using var ms = new MemoryStream();
             await image.SaveAsPngAsync(ms, cancellationToken);
-            
+
             var transformedData = ImmutableArray.Create(ms.ToArray());
-            var metadata = ImmutableDictionary<string, object>.Empty
-                .Add("OriginalDimensions", originalDimensions)
+            var metadata = ImmutableDictionary<string, object>
+                .Empty.Add("OriginalDimensions", originalDimensions)
                 .Add("TargetDimensions", targetDimensions)
                 .Add("Scale", scale)
                 .Add("AspectRatioMaintained", options.MaintainAspectRatio);
@@ -140,14 +155,21 @@ public sealed class ImageProcessingService : IImageProcessingService
                 transformedData,
                 targetDimensions,
                 TransformationType.StandardCompliance,
-                metadata);
+                metadata
+            );
 
-            _logger.LogDebug("Standard transformation completed successfully");
+            _logger.LogDebug(
+                new EventId(279001, "ImageProcessingService"),
+                "Standard transformation completed successfully"
+            );
             return Result.Success(result);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Standard transformation failed");
+            _logger.LogError(
+                new EventId(279002, "ImageProcessingService"),
+                "Standard transformation failed"
+            );
             return Result.Failure<TransformedImage>($"Transformation failed: {ex.Message}");
         }
     }
@@ -157,21 +179,24 @@ public sealed class ImageProcessingService : IImageProcessingService
         ImmutableArray<byte> imageData,
         DetectedFace face,
         CropOptions options,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default
+    )
     {
         try
         {
-            _logger.LogDebug("Starting biometric crop for face at ({X},{Y}) {Width}x{Height}", 
-                face.BoundingBox.X, face.BoundingBox.Y, 
-                face.BoundingBox.Width, face.BoundingBox.Height);
+            _logger.LogDebug(
+                new EventId(279003, "ImageProcessingService"),
+                "ImageProcessingService processing started."
+            );
 
-            using var image = Image.Load<Rgba32>(imageData.ToArray());
-            
+            using var image = RgbImage.Load(imageData.ToArray());
+
             // Calculate crop region with padding
             var cropRect = CalculateBiometricCrop(
                 face.BoundingBox,
                 new ImageDimensions(image.Width, image.Height),
-                options);
+                options
+            );
 
             // Apply crop
             image.Mutate(x => x.Crop(cropRect));
@@ -179,22 +204,29 @@ public sealed class ImageProcessingService : IImageProcessingService
             // Convert to bytes
             using var ms = new MemoryStream();
             await image.SaveAsPngAsync(ms, cancellationToken);
-            
+
             var croppedData = ImmutableArray.Create(ms.ToArray());
             var croppedDimensions = new ImageDimensions(cropRect.Width, cropRect.Height);
-            
+
             var result = new CroppedImage(
                 croppedData,
                 croppedDimensions,
                 face.BoundingBox,
-                cropRect);
+                cropRect
+            );
 
-            _logger.LogDebug("Biometric crop completed successfully");
+            _logger.LogDebug(
+                new EventId(279004, "ImageProcessingService"),
+                "Biometric crop completed successfully"
+            );
             return Result.Success(result);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Biometric crop failed");
+            _logger.LogError(
+                new EventId(279005, "ImageProcessingService"),
+                "Biometric crop failed"
+            );
             return Result.Failure<CroppedImage>($"Crop failed: {ex.Message}");
         }
     }
@@ -204,54 +236,55 @@ public sealed class ImageProcessingService : IImageProcessingService
         ImmutableArray<byte> imageData,
         float rotationDegrees,
         RotationOptions options,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default
+    )
     {
         try
         {
-            _logger.LogDebug("Starting rotation by {Degrees} degrees", rotationDegrees);
+            _logger.LogDebug(
+                new EventId(279006, "ImageProcessingService"),
+                "ImageProcessingService processing started."
+            );
 
-            using var image = Image.Load<Rgba32>(imageData.ToArray());
-            
-            // Apply rotation
-            image.Mutate(x =>
+            using var image = RgbImage.Load(imageData.ToArray());
+
+            var originalSize = new Size(image.Width, image.Height);
+            image.Rotate(rotationDegrees);
+            if (options.CropToOriginalSize)
             {
-                x.Rotate(rotationDegrees);
-                
-                if (options.CropToOriginalSize)
-                {
-                    // Calculate center crop to maintain original dimensions
-                    var originalSize = new Size(image.Width, image.Height);
-                    var bounds = image.Bounds;
-                    if (bounds.Width > originalSize.Width || bounds.Height > originalSize.Height)
-                    {
-                        var cropRect = new Rectangle(
-                            (bounds.Width - originalSize.Width) / 2,
-                            (bounds.Height - originalSize.Height) / 2,
-                            originalSize.Width,
-                            originalSize.Height);
-                        x.Crop(cropRect);
-                    }
-                }
-            });
+                // A quarter turn can make one side narrower than the original canvas.
+                image.Pad(
+                    Math.Max(image.Width, originalSize.Width),
+                    Math.Max(image.Height, originalSize.Height)
+                );
+                image.Crop(
+                    new Rectangle(
+                        (image.Width - originalSize.Width) / 2,
+                        (image.Height - originalSize.Height) / 2,
+                        originalSize.Width,
+                        originalSize.Height
+                    )
+                );
+            }
 
             // Convert to bytes
             using var ms = new MemoryStream();
             await image.SaveAsPngAsync(ms, cancellationToken);
-            
+
             var rotatedData = ImmutableArray.Create(ms.ToArray());
             var rotatedDimensions = new ImageDimensions(image.Width, image.Height);
-            
-            var result = new RotatedImage(
-                rotatedData,
-                rotatedDimensions,
-                rotationDegrees);
 
-            _logger.LogDebug("Rotation completed successfully");
+            var result = new RotatedImage(rotatedData, rotatedDimensions, rotationDegrees);
+
+            _logger.LogDebug(
+                new EventId(279007, "ImageProcessingService"),
+                "Rotation completed successfully"
+            );
             return Result.Success(result);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Rotation failed");
+            _logger.LogError(new EventId(279008, "ImageProcessingService"), "Rotation failed");
             return Result.Failure<RotatedImage>($"Rotation failed: {ex.Message}");
         }
     }
@@ -261,36 +294,42 @@ public sealed class ImageProcessingService : IImageProcessingService
         ImmutableArray<byte> imageData,
         ImageDimensions targetDimensions,
         ResizeOptions options,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default
+    )
     {
         try
         {
-            _logger.LogDebug("Starting resize to {Width}x{Height}", 
-                targetDimensions.Width, targetDimensions.Height);
+            _logger.LogDebug(
+                new EventId(279009, "ImageProcessingService"),
+                "ImageProcessingService processing started."
+            );
 
-            using var image = Image.Load<Rgba32>(imageData.ToArray());
+            using var image = RgbImage.Load(imageData.ToArray());
             var originalDimensions = new ImageDimensions(image.Width, image.Height);
 
             // Calculate new dimensions maintaining aspect ratio
             var (newWidth, newHeight) = CalculateAspectRatioSize(
-                originalDimensions, 
-                targetDimensions, 
-                options.ResizeMode);
+                originalDimensions,
+                targetDimensions,
+                options.ResizeMode
+            );
 
             // Apply resize
             image.Mutate(x =>
             {
                 x.Resize(new Size(newWidth, newHeight));
-                
+
                 // Apply padding if needed
-                if (options.PadToTarget && 
-                    (newWidth < targetDimensions.Width || newHeight < targetDimensions.Height))
+                if (
+                    options.PadToTarget
+                    && (newWidth < targetDimensions.Width || newHeight < targetDimensions.Height)
+                )
                 {
                     var padLeft = (targetDimensions.Width - newWidth) / 2;
                     var padTop = (targetDimensions.Height - newHeight) / 2;
-                    
+
                     x.Pad(targetDimensions.Width, targetDimensions.Height);
-                    
+
                     if (options.PaddingColor.HasValue)
                     {
                         x.BackgroundColor(options.PaddingColor.Value);
@@ -301,23 +340,22 @@ public sealed class ImageProcessingService : IImageProcessingService
             // Convert to bytes
             using var ms = new MemoryStream();
             await image.SaveAsPngAsync(ms, cancellationToken);
-            
+
             var resizedData = ImmutableArray.Create(ms.ToArray());
             var finalDimensions = new ImageDimensions(image.Width, image.Height);
             var scale = (float)newWidth / originalDimensions.Width;
-            
-            var result = new ResizedImage(
-                resizedData,
-                finalDimensions,
-                originalDimensions,
-                scale);
 
-            _logger.LogDebug("Resize completed successfully");
+            var result = new ResizedImage(resizedData, finalDimensions, originalDimensions, scale);
+
+            _logger.LogDebug(
+                new EventId(279010, "ImageProcessingService"),
+                "Resize completed successfully"
+            );
             return Result.Success(result);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Resize failed");
+            _logger.LogError(new EventId(279011, "ImageProcessingService"), "Resize failed");
             return Result.Failure<ResizedImage>($"Resize failed: {ex.Message}");
         }
     }
@@ -326,39 +364,50 @@ public sealed class ImageProcessingService : IImageProcessingService
     public async Task<Result<TransformedImage>> ApplyTransformationPipelineAsync(
         ImmutableArray<byte> imageData,
         ImmutableList<IImageTransformation> transformations,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default
+    )
     {
         try
         {
-            _logger.LogDebug("Starting transformation pipeline with {Count} steps", transformations.Count);
+            _logger.LogDebug(
+                new EventId(279012, "ImageProcessingService"),
+                "ImageProcessingService processing started."
+            );
 
             var currentData = imageData;
             var metadata = ImmutableDictionary<string, object>.Empty;
             ImageDimensions currentDimensions;
 
-            using (var image = Image.Load<Rgba32>(currentData.ToArray()))
+            using (var image = RgbImage.Load(currentData.ToArray()))
             {
                 currentDimensions = new ImageDimensions(image.Width, image.Height);
             }
 
             foreach (var transformation in transformations)
             {
-                _logger.LogDebug("Applying transformation: {Type}", transformation.GetType().Name);
-                
+                _logger.LogDebug(
+                    new EventId(279013, "ImageProcessingService"),
+                    "ImageProcessingService processing status changed."
+                );
+
                 var result = await transformation.ApplyAsync(currentData, cancellationToken);
                 if (result.IsFailure)
                 {
                     return Result.Failure<TransformedImage>(
-                        $"Pipeline failed at {transformation.GetType().Name}: {result.Error}");
+                        $"Pipeline failed at {transformation.GetType().Name}: {result.Error}"
+                    );
                 }
 
                 currentData = result.Value.ImageData;
                 currentDimensions = result.Value.Dimensions;
-                
+
                 // Merge metadata
                 foreach (var kvp in result.Value.Metadata)
                 {
-                    metadata = metadata.SetItem($"{transformation.GetType().Name}.{kvp.Key}", kvp.Value);
+                    metadata = metadata.SetItem(
+                        $"{transformation.GetType().Name}.{kvp.Key}",
+                        kvp.Value
+                    );
                 }
             }
 
@@ -366,22 +415,30 @@ public sealed class ImageProcessingService : IImageProcessingService
                 currentData,
                 currentDimensions,
                 TransformationType.Pipeline,
-                metadata.Add("TransformationCount", transformations.Count));
+                metadata.Add("TransformationCount", transformations.Count)
+            );
 
-            _logger.LogDebug("Transformation pipeline completed successfully");
+            _logger.LogDebug(
+                new EventId(279014, "ImageProcessingService"),
+                "Transformation pipeline completed successfully"
+            );
             return Result.Success(finalResult);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Transformation pipeline failed");
+            _logger.LogError(
+                new EventId(279015, "ImageProcessingService"),
+                "Transformation pipeline failed"
+            );
             return Result.Failure<TransformedImage>($"Pipeline failed: {ex.Message}");
         }
     }
 
     private static float CalculateScaleToFit(
-        ImageDimensions source, 
-        ImageDimensions target, 
-        bool maintainAspectRatio)
+        ImageDimensions source,
+        ImageDimensions target,
+        bool maintainAspectRatio
+    )
     {
         if (!maintainAspectRatio)
         {
@@ -390,7 +447,7 @@ public sealed class ImageProcessingService : IImageProcessingService
 
         var scaleX = (float)target.Width / source.Width;
         var scaleY = (float)target.Height / source.Height;
-        
+
         // Use larger scale to ensure image fills target (will crop excess)
         return Math.Max(scaleX, scaleY);
     }
@@ -399,73 +456,78 @@ public sealed class ImageProcessingService : IImageProcessingService
     {
         var x = (source.Width - target.Width) / 2;
         var y = (source.Height - target.Height) / 2;
-        
+
         return new Rectangle(
             Math.Max(0, x),
             Math.Max(0, y),
             Math.Min(target.Width, source.Width),
-            Math.Min(target.Height, source.Height));
+            Math.Min(target.Height, source.Height)
+        );
     }
 
     private static Rectangle CalculateBiometricCrop(
         FaceBox face,
         ImageDimensions imageDimensions,
-        CropOptions options)
+        CropOptions options
+    )
     {
         // Apply padding
         var paddingX = (int)(face.Width * options.PaddingFactor);
         var paddingY = (int)(face.Height * options.PaddingFactor);
-        
+
         var x = Math.Max(0, face.X - paddingX);
         var y = Math.Max(0, face.Y - paddingY);
         var width = Math.Min(imageDimensions.Width - x, face.Width + 2 * paddingX);
         var height = Math.Min(imageDimensions.Height - y, face.Height + 2 * paddingY);
-        
+
         // Ensure minimum size
         if (options.MinimumSize.HasValue)
         {
             width = Math.Max(width, options.MinimumSize.Value.Width);
             height = Math.Max(height, options.MinimumSize.Value.Height);
         }
-        
+
         return new Rectangle((int)x, (int)y, (int)width, (int)height);
     }
 
     private static (int Width, int Height) CalculateAspectRatioSize(
         ImageDimensions source,
         ImageDimensions target,
-        ResizeMode mode)
+        ResizeMode mode
+    )
     {
         var aspectRatio = (float)source.Width / source.Height;
-        
+
         return mode switch
         {
             ResizeMode.Fit => CalculateFitSize(source, target),
             ResizeMode.Fill => CalculateFillSize(source, target),
             ResizeMode.Stretch => (target.Width, target.Height),
-            _ => throw new ArgumentOutOfRangeException(nameof(mode))
+            _ => throw new ArgumentOutOfRangeException(nameof(mode)),
         };
     }
 
     private static (int Width, int Height) CalculateFitSize(
         ImageDimensions source,
-        ImageDimensions target)
+        ImageDimensions target
+    )
     {
         var scaleX = (float)target.Width / source.Width;
         var scaleY = (float)target.Height / source.Height;
         var scale = Math.Min(scaleX, scaleY);
-        
+
         return ((int)(source.Width * scale), (int)(source.Height * scale));
     }
 
     private static (int Width, int Height) CalculateFillSize(
         ImageDimensions source,
-        ImageDimensions target)
+        ImageDimensions target
+    )
     {
         var scaleX = (float)target.Width / source.Width;
         var scaleY = (float)target.Height / source.Height;
         var scale = Math.Max(scaleX, scaleY);
-        
+
         return ((int)(source.Width * scale), (int)(source.Height * scale));
     }
 }
@@ -492,9 +554,7 @@ public sealed record CropOptions(
 /// Options for image rotation operations.
 /// </summary>
 [PublicAPI]
-public sealed record RotationOptions(
-    bool CropToOriginalSize = true
-);
+public sealed record RotationOptions(bool CropToOriginalSize = true);
 
 /// <summary>
 /// Options for image resizing operations.
@@ -516,16 +576,16 @@ public enum ResizeMode
     /// Fit image within target dimensions (may have padding).
     /// </summary>
     Fit,
-    
+
     /// <summary>
     /// Fill target dimensions (may crop).
     /// </summary>
     Fill,
-    
+
     /// <summary>
     /// Stretch to exact dimensions (ignores aspect ratio).
     /// </summary>
-    Stretch
+    Stretch,
 }
 
 /// <summary>
@@ -581,16 +641,16 @@ public enum TransformationType
     /// Transformation to meet standard requirements.
     /// </summary>
     StandardCompliance,
-    
+
     /// <summary>
     /// Multiple transformations applied in sequence.
     /// </summary>
     Pipeline,
-    
+
     /// <summary>
     /// Custom transformation.
     /// </summary>
-    Custom
+    Custom,
 }
 
 /// <summary>
@@ -604,7 +664,8 @@ public interface IImageTransformation
     /// </summary>
     Task<Result<TransformationResult>> ApplyAsync(
         ImmutableArray<byte> imageData,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken = default
+    );
 }
 
 /// <summary>

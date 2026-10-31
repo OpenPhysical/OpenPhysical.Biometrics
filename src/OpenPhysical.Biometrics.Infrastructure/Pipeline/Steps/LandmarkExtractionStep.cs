@@ -1,12 +1,12 @@
+using System.Drawing;
 using JetBrains.Annotations;
 using OpenPhysical.Biometrics.Core.Abstractions;
 using OpenPhysical.Biometrics.Core.Abstractions.Pipeline;
-using OpenPhysical.Biometrics.Core.Domain.Pipeline;
-using OpenPhysical.Biometrics.Core.Domain.Detection;
-using OpenPhysical.Biometrics.Core.Domain.Quality;
 using OpenPhysical.Biometrics.Core.Domain.Common;
-using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.PixelFormats;
+using OpenPhysical.Biometrics.Core.Domain.Detection;
+using OpenPhysical.Biometrics.Core.Domain.Pipeline;
+using OpenPhysical.Biometrics.Core.Domain.Quality;
+using OpenPhysical.Biometrics.Imaging;
 using static OpenPhysical.Biometrics.Core.Domain.Pipeline.BiometricPipelineSteps;
 
 namespace OpenPhysical.Biometrics.Infrastructure.Pipeline.Steps;
@@ -52,7 +52,8 @@ public sealed class LandmarkExtractionStep : ILandmarkExtractionStep
         ILandmarkExtractor landmarkExtractor,
         ILogger<LandmarkExtractionStep> logger,
         int landmarkCount = 68,
-        LandmarkModelType modelType = LandmarkModelType.iBug68Point)
+        LandmarkModelType modelType = LandmarkModelType.iBug68Point
+    )
     {
         _landmarkExtractor = landmarkExtractor;
         _logger = logger;
@@ -64,47 +65,60 @@ public sealed class LandmarkExtractionStep : ILandmarkExtractionStep
     /// Executes landmark extraction on the processed biometric data.
     /// </summary>
     public async Task<Result<ProcessedBiometricData>> ExecuteAsync(
-        ProcessedBiometricData input, 
-        IPipelineContext context, 
-        CancellationToken cancellationToken = default)
+        ProcessedBiometricData input,
+        IPipelineContext context,
+        CancellationToken cancellationToken = default
+    )
     {
-        _logger.LogDebug("Starting landmark extraction for execution {ExecutionId}", context.ExecutionId);
+        _logger.LogDebug(
+            new EventId(305700, "LandmarkExtractionStep"),
+            "LandmarkExtractionStep processing started."
+        );
 
         if (!CanProcess(input))
         {
-            var error = "Cannot process biometric data without detected faces for landmark extraction";
-            _logger.LogWarning(error);
+            var error =
+                "Cannot process biometric data without detected faces for landmark extraction";
+            _logger.LogWarning(
+                new EventId(305701, "LandmarkExtractionStep"),
+                "Biometric processing status changed."
+            );
             return Result.Failure<ProcessedBiometricData>(error);
         }
 
         try
         {
-            // Convert biometric data to ImageSharp format for landmark extraction
-            using var image = Image.Load<Rgba32>(input.Data.RawData.ToArray());
-            
+            // Convert biometric data to owned RGB pixels for landmark extraction
+            using var image = RgbImage.Load(input.Data.RawData.ToArray());
+
             // Extract landmarks for the primary detected face
             var primaryFace = input.DetectedFaces.OrderByDescending(f => f.Confidence).First();
-            
+
             var landmarkResult = await _landmarkExtractor.ExtractLandmarksAsync(
-                image, 
-                primaryFace.BoundingBox, 
-                cancellationToken);
-            
+                image,
+                primaryFace.BoundingBox,
+                cancellationToken
+            );
+
             if (landmarkResult.IsFailure)
             {
-                _logger.LogError("Landmark extraction failed: {Error}", landmarkResult.Error);
+                _logger.LogError(
+                    new EventId(305702, "LandmarkExtractionStep"),
+                    "LandmarkExtractionStep processing failed."
+                );
                 return Result.Failure<ProcessedBiometricData>(landmarkResult.Error);
             }
 
             var landmarks = landmarkResult.Value;
-            
+
             _logger.LogInformation(
-                "Landmark extraction completed: {LandmarkCount} points extracted using {ModelType}",
-                LandmarkCount, ModelType);
+                new EventId(305703, "LandmarkExtractionStep"),
+                "LandmarkExtractionStep processing completed."
+            );
 
             // Validate landmark quality (basic sanity checks)
             var landmarkQuality = ValidateLandmarkQuality(landmarks);
-            
+
             // Update processed data with landmarks
             var processedData = input
                 .WithLandmarks(landmarks)
@@ -116,20 +130,28 @@ public sealed class LandmarkExtractionStep : ILandmarkExtractionStep
             // Add landmark-based quality metrics if they're reasonable
             if (landmarkQuality.Value >= 0.5f)
             {
-                var enhancedQuality = processedData.Quality
-                    .WithAdditionalMetric("landmark_quality", landmarkQuality)
+                var enhancedQuality = processedData
+                    .Quality.WithAdditionalMetric("landmark_quality", landmarkQuality)
                     .WithGeometry(landmarkQuality);
 
                 processedData = processedData with { Quality = enhancedQuality };
             }
 
-            _logger.LogDebug("Landmark extraction step completed successfully");
+            _logger.LogDebug(
+                new EventId(305704, "LandmarkExtractionStep"),
+                "Landmark extraction step completed successfully"
+            );
             return Result.Success(processedData);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Landmark extraction step failed with exception");
-            return Result.Failure<ProcessedBiometricData>($"Landmark extraction failed: {ex.Message}");
+            _logger.LogError(
+                new EventId(305705, "LandmarkExtractionStep"),
+                "Landmark extraction step failed with exception"
+            );
+            return Result.Failure<ProcessedBiometricData>(
+                $"Landmark extraction failed: {ex.Message}"
+            );
         }
     }
 
@@ -139,8 +161,8 @@ public sealed class LandmarkExtractionStep : ILandmarkExtractionStep
     public bool CanProcess(ProcessedBiometricData input)
     {
         // Can process data that has detected faces and is a facial image
-        return input.DetectedFaces.Count > 0 && 
-               input.Data.DataType == BiometricDataType.FacialImage;
+        return input.DetectedFaces.Count > 0
+            && input.Data.DataType == BiometricDataType.FacialImage;
     }
 
     /// <summary>
@@ -152,22 +174,19 @@ public sealed class LandmarkExtractionStep : ILandmarkExtractionStep
         {
             // Basic validation: check if landmarks form reasonable facial structure
             var points = landmarks.Points;
-            
+
             if (points.Count < 68)
                 return QualityScore.Create(0.0f).Value;
 
             // Check if eye landmarks are positioned reasonably
             var leftEye = points.Skip(36).Take(6).ToList(); // Left eye (36-41)
             var rightEye = points.Skip(42).Take(6).ToList(); // Right eye (42-47)
-            
+
             if (leftEye.Count < 6 || rightEye.Count < 6)
                 return QualityScore.Create(0.3f).Value;
 
             // Calculate eye center positions
-            var leftEyeCenter = new Point2D(
-                leftEye.Average(p => p.X),
-                leftEye.Average(p => p.Y)
-            );
+            var leftEyeCenter = new Point2D(leftEye.Average(p => p.X), leftEye.Average(p => p.Y));
             var rightEyeCenter = new Point2D(
                 rightEye.Average(p => p.X),
                 rightEye.Average(p => p.Y)
@@ -175,8 +194,8 @@ public sealed class LandmarkExtractionStep : ILandmarkExtractionStep
 
             // Check reasonable eye distance (should be positive and reasonable)
             var eyeDistance = Math.Sqrt(
-                Math.Pow(rightEyeCenter.X - leftEyeCenter.X, 2) + 
-                Math.Pow(rightEyeCenter.Y - leftEyeCenter.Y, 2)
+                Math.Pow(rightEyeCenter.X - leftEyeCenter.X, 2)
+                    + Math.Pow(rightEyeCenter.Y - leftEyeCenter.Y, 2)
             );
 
             if (eyeDistance < 20 || eyeDistance > 200)
@@ -185,7 +204,7 @@ public sealed class LandmarkExtractionStep : ILandmarkExtractionStep
             // Check if nose tip (point 30) is between eyes vertically
             var noseTip = points[30];
             var avgEyeY = (leftEyeCenter.Y + rightEyeCenter.Y) / 2;
-            
+
             if (noseTip.Y < avgEyeY - 50 || noseTip.Y > avgEyeY + 100)
                 return QualityScore.Create(0.5f).Value;
 

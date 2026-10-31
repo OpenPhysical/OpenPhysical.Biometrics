@@ -15,7 +15,8 @@ public static class ModelRegistry
     /// <summary>
     /// PFLD model for 68-point facial landmark detection.
     /// </summary>
-    public const string FaceLandmarks68 = "OpenPhysical.Biometrics.Onnx.Resources.landmarks_68_pfld.onnx";
+    public const string FaceLandmarks68 =
+        "OpenPhysical.Biometrics.Onnx.Resources.landmarks_68_pfld.onnx";
 
     /// <summary>
     /// Gets a model as a byte array from embedded resources

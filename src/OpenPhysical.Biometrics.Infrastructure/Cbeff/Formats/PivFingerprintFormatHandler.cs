@@ -1,10 +1,11 @@
 namespace OpenPhysical.Biometrics.Infrastructure.Cbeff.Formats;
 
+using System.Collections.Immutable;
 using CSharpFunctionalExtensions;
+using Microsoft.Extensions.Logging;
 using OpenPhysical.Biometrics.Core.Cbeff.Formats;
 using OpenPhysical.Biometrics.Infrastructure.Utilities;
 using OpenPhysical.Domains.Cbeff.Formats.Incits378;
-using System.Collections.Immutable;
 
 /// <summary>
 /// Format handler for PIV fingerprint templates (INCITS 378) using the new generic architecture.
@@ -12,113 +13,88 @@ using System.Collections.Immutable;
 [BiometricFormat(0x03, 0x001B, 0x0201, "PIV Fingerprint Minutiae (INCITS 378)")]
 public sealed class PivFingerprintFormatHandler : IBiometricFormatHandler<FingerprintRecord>
 {
+    private readonly ILogger<PivFingerprintFormatHandler> _logger;
+
+    /// <summary>Creates the service with its processing dependencies and operational diagnostics.</summary>
+    /// <param name="logger">Operational diagnostics for this service.</param>
+    public PivFingerprintFormatHandler(ILogger<PivFingerprintFormatHandler> logger)
+    {
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+    }
+
     /// <inheritdoc />
     public string FormatName => "PIV Fingerprint Minutiae (INCITS 378)";
-    
+
     /// <inheritdoc />
     public byte PatronFormat => 0x03; // PIV patron format
-    
+
     /// <inheritdoc />
     public ushort BdbFormatOwner => 0x001B; // INCITS
-    
+
     /// <inheritdoc />
-    public ushort BdbFormatType => 0x0201; // Fingerprint minutiae
-    
+    public ushort BdbFormatType => 0x0201; // Default to no extended data format
+
+    /// <summary>
+    /// Determines the CBEFF Format Type based on extended data presence.
+    /// Per INCITS 378-2004 Introduction (page vii):
+    /// "The sixteen-bit value 0x0201 is used for records with no extended data area
+    /// (as determined by the Extended Data Block Length in 6.6.1.1 represented as
+    /// the sixteen-bit value 0x0000) and the sixteen-bit value 0x0202 is used for
+    /// records that contain an extended data area."
+    /// </summary>
+    /// <param name="record">The fingerprint record to check.</param>
+    /// <returns>0x0201 for no extended data, 0x0202 for records with extended data.</returns>
+    public static ushort DetermineCbeffFormatType(FingerprintRecord record)
+    {
+        // Check if any finger view has extended data
+        var hasExtendedData = record.HasExtendedData;
+
+        // Per INCITS 378-2004 page vii
+        return hasExtendedData ? (ushort)0x0202 : (ushort)0x0201;
+    }
+
     /// <inheritdoc />
     public Result<FingerprintRecord> ParseBiometricData(ImmutableArray<byte> data)
     {
-        return Incits378Parser.ParseIncits378Record(data);
+        return Incits378Parser.ParseIncits378Record(data, _logger);
     }
-    
+
     /// <inheritdoc />
     public Result<ImmutableArray<byte>> SerializeBiometricData(FingerprintRecord record)
     {
-        return SerializeIncits378Record(record);
+        ArgumentNullException.ThrowIfNull(record);
+        try
+        {
+            return Result.Success(
+                OpenPhysical
+                    .Biometrics.Formats.Fingerprints.Incits378Codec.Write(
+                        LegacyFingerprintProjection.ToCanonical(record)
+                    )
+                    .ToImmutableArray()
+            );
+        }
+        catch (Exception error)
+            when (error
+                    is ArgumentException
+                        or InvalidOperationException
+                        or ResultFailureException
+                        or OverflowException
+            )
+        {
+            return Result.Failure<ImmutableArray<byte>>("INCITS378.CompatibilityProjection");
+        }
     }
-    
+
     /// <inheritdoc />
     public Result ValidateBiometricData(ImmutableArray<byte> data)
     {
-        return ParseBiometricData(data)
-            .Bind(record => record.ValidateFormat());
-    }
-    
-    private static Result<ImmutableArray<byte>> SerializeIncits378Record(FingerprintRecord record)
-    {
-        var buffer = new List<byte>();
-        
-        // Serialize general record header
-        buffer.AddRange(record.Header.FormatIdentifier);
-        buffer.AddRange(record.Header.VersionNumber);
-        
-        // Serialize record length (2 or 6 bytes depending on value)
-        if (record.Header.RecordLength <= 65535)
-        {
-            // 2-byte format
-            buffer.AddRange(GetBytes((ushort)record.Header.RecordLength));
-        }
-        else
-        {
-            // 6-byte format: 0x0000 followed by 4-byte length
-            buffer.AddRange(GetBytes((ushort)0));
-            buffer.AddRange(GetBytes(record.Header.RecordLength));
-        }
-        buffer.AddRange(GetBytes(record.Header.ProductOwner));
-        buffer.AddRange(GetBytes(record.Header.ProductType));
-        buffer.AddRange(GetBytes(record.Header.CaptureEquipmentCompliance));
-        buffer.AddRange(GetBytes(record.Header.ImageSizeX));
-        buffer.AddRange(GetBytes(record.Header.ImageSizeY));
-        buffer.AddRange(GetBytes(record.Header.XResolution));
-        buffer.AddRange(GetBytes(record.Header.YResolution));
-        buffer.Add(record.Header.NumberOfFingerRecords);
-        buffer.Add(record.Header.Reserved);
-        
-        // Serialize finger view records
-        foreach (var viewRecord in record.ViewRecords)
-        {
-            buffer.Add(viewRecord.FingerPosition);
-            buffer.Add(viewRecord.ViewNumber);
-            buffer.Add(viewRecord.ImpressionType);
-            buffer.Add(viewRecord.FingerQuality);
-            buffer.Add(viewRecord.NumberOfMinutiae);
-            buffer.Add(viewRecord.Reserved);
-            
-            // Serialize minutiae
-            foreach (var minutia in viewRecord.Minutiae)
-            {
-                // Pack type and X coordinate
-                var typeAndX = (ushort)((minutia.MinutiaType << 14) | (minutia.XCoordinate & 0x3FFF));
-                buffer.AddRange(GetBytes(typeAndX));
-                
-                // Pack reserved and Y coordinate  
-                var reservedAndY = (ushort)(minutia.YCoordinate & 0x3FFF);
-                buffer.AddRange(GetBytes(reservedAndY));
-                
-                buffer.Add(minutia.Angle);
-                buffer.Add(minutia.Quality);
-            }
-        }
-        
-        return Result.Success(buffer.ToImmutableArray());
-    }
-    
-    private static byte[] GetBytes(ushort value)
-    {
-        return new[]
-        {
-            (byte)(value >> 8),
-            (byte)value
-        };
-    }
-    
-    private static byte[] GetBytes(uint value)
-    {
-        return new[]
-        {
-            (byte)(value >> 24),
-            (byte)(value >> 16),
-            (byte)(value >> 8),
-            (byte)value
-        };
+        var parsed = OpenPhysical.Biometrics.Formats.Fingerprints.Incits378Codec.Parse(
+            data.AsSpan()
+        );
+        return parsed.IsSuccess
+            ? Result.Success()
+            : Result.Failure(
+                string.Join("; ", parsed.Diagnostics.Select(diagnostic => diagnostic.Code))
+            );
     }
 }

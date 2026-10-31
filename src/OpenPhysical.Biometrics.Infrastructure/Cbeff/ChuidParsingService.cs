@@ -1,15 +1,15 @@
 namespace OpenPhysical.Biometrics.Infrastructure.Cbeff;
 
+using System;
+using System.Collections.Generic;
+using System.Globalization;
+using System.Linq;
 using CSharpFunctionalExtensions;
 using Microsoft.Extensions.Logging;
 using OpenPhysical.Biometrics.Core.Cbeff;
 using OpenPhysical.Biometrics.Infrastructure.Utilities;
 using Org.BouncyCastle.Cms;
 using Org.BouncyCastle.X509;
-using System;
-using System.Collections.Generic;
-using System.Globalization;
-using System.Linq;
 
 /// <summary>
 /// Service for parsing CHUID (Card Holder Unique Identifier) structures.
@@ -27,6 +27,7 @@ public sealed class ChuidParsingService : IChuidParsingService
     {
         _logger = logger;
     }
+
     /// <summary>
     /// Parses a CHUID structure from raw bytes.
     /// </summary>
@@ -42,7 +43,9 @@ public sealed class ChuidParsingService : IChuidParsingService
                 var extractResult = BerTlv.ExtractValueIfTagged(data, 0xBC);
                 if (extractResult.IsFailure)
                 {
-                    return Result.Failure<ChuidStructure>($"Failed to extract CHUID from BC tag: {extractResult.Error}");
+                    return Result.Failure<ChuidStructure>(
+                        $"Failed to extract CHUID from BC tag: {extractResult.Error}"
+                    );
                 }
                 chuidData = extractResult.Value;
             }
@@ -58,7 +61,8 @@ public sealed class ChuidParsingService : IChuidParsingService
             while (offset < chuidData.Length)
             {
                 // Handle long form TLV encoding
-                if (offset + 2 > chuidData.Length) break;
+                if (offset + 2 > chuidData.Length)
+                    break;
 
                 var tag = chuidData[offset];
                 var lengthByteCount = 1;
@@ -78,12 +82,16 @@ public sealed class ChuidParsingService : IChuidParsingService
                     var numLengthBytes = lengthByte & 0x7F;
                     if (numLengthBytes == 0 || numLengthBytes > 4)
                     {
-                        return Result.Failure<ChuidStructure>($"Invalid long form length encoding: {numLengthBytes} bytes");
+                        return Result.Failure<ChuidStructure>(
+                            $"Invalid long form length encoding: {numLengthBytes} bytes"
+                        );
                     }
 
                     if (offset + 1 + numLengthBytes >= chuidData.Length)
                     {
-                        return Result.Failure<ChuidStructure>("Truncated length field in CHUID TLV");
+                        return Result.Failure<ChuidStructure>(
+                            "Truncated length field in CHUID TLV"
+                        );
                     }
 
                     // Reconstruct length from multiple bytes (big-endian)
@@ -98,7 +106,9 @@ public sealed class ChuidParsingService : IChuidParsingService
 
                 if (offset + length > chuidData.Length)
                 {
-                    return Result.Failure<ChuidStructure>($"Invalid TLV length in CHUID data: tag 0x{tag:X2}, length {length}, remaining data {chuidData.Length - offset}");
+                    return Result.Failure<ChuidStructure>(
+                        $"Invalid TLV length in CHUID data: tag 0x{tag:X2}, length {length}, remaining data {chuidData.Length - offset}"
+                    );
                 }
 
                 var value = new byte[length];
@@ -121,7 +131,10 @@ public sealed class ChuidParsingService : IChuidParsingService
                         break;
                     case 0x3E: // Asymmetric Signature
                         asymmetricSignature = value;
-                        _logger.LogDebug("Found CHUID asymmetric signature with {Length} bytes", value.Length);
+                        _logger.LogDebug(
+                            new EventId(843312, "ChuidParsingService"),
+                            "ChuidParsingService stage completed."
+                        );
                         break;
                     case 0xFE: // LRC (Error Detection Code)
                         lrcSignature = value;
@@ -130,7 +143,15 @@ public sealed class ChuidParsingService : IChuidParsingService
                 }
             }
 
-            return Result.Success(new ChuidStructure(fascN, cardUuid, expirationDate, asymmetricSignature, lrcSignature));
+            return Result.Success(
+                new ChuidStructure(
+                    fascN,
+                    cardUuid,
+                    expirationDate,
+                    asymmetricSignature,
+                    lrcSignature
+                )
+            );
         }
         catch (Exception ex)
         {
@@ -147,11 +168,11 @@ public sealed class ChuidParsingService : IChuidParsingService
         {
             // The asymmetric signature is a CMS SignedData structure
             var cmsSignedData = new CmsSignedData(signatureData);
-            
+
             // Get certificates from the CMS structure
             var certificates = cmsSignedData.GetCertificates();
             var certList = new List<X509Certificate>(certificates.EnumerateMatches(null));
-            
+
             if (certList.Count == 0)
             {
                 return Result.Failure<X509Certificate>("No certificates found in CHUID signature");
@@ -163,14 +184,16 @@ public sealed class ChuidParsingService : IChuidParsingService
             }
 
             // If multiple certificates, find the signing certificate
-            // Per FIPS 201-3: "If the signature on the biometric was generated with a different key 
+            // Per FIPS 201-3: "If the signature on the biometric was generated with a different key
             // than the signature on the CHUID, the certificates field shall include only a single certificate"
             var signers = cmsSignedData.GetSignerInfos();
             var signerList = signers.Cast<SignerInformation>().ToList();
-            
+
             if (signerList.Count != 1)
             {
-                return Result.Failure<X509Certificate>($"Expected exactly one signer, found {signerList.Count}");
+                return Result.Failure<X509Certificate>(
+                    $"Expected exactly one signer, found {signerList.Count}"
+                );
             }
 
             var signerInfo = signerList[0];
@@ -185,7 +208,9 @@ public sealed class ChuidParsingService : IChuidParsingService
                 }
             }
 
-            return Result.Failure<X509Certificate>("Could not find signing certificate matching signer ID");
+            return Result.Failure<X509Certificate>(
+                "Could not find signing certificate matching signer ID"
+            );
         }
         catch (Exception ex)
         {
@@ -202,10 +227,19 @@ public sealed class ChuidParsingService : IChuidParsingService
         try
         {
             // CHUID dates are in YYYYMMDD format (8 bytes)
-            if (dateBytes.Length != 8) return null;
+            if (dateBytes.Length != 8)
+                return null;
 
             var dateString = System.Text.Encoding.ASCII.GetString(dateBytes);
-            if (DateTime.TryParseExact(dateString, "yyyyMMdd", null, DateTimeStyles.None, out var date))
+            if (
+                DateTime.TryParseExact(
+                    dateString,
+                    "yyyyMMdd",
+                    null,
+                    DateTimeStyles.None,
+                    out var date
+                )
+            )
             {
                 return date;
             }

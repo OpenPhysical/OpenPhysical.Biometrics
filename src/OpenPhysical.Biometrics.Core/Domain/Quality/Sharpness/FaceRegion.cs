@@ -1,17 +1,17 @@
 // MIT License
-// 
+//
 // Copyright (c) 2025 FaceOFFx Contributors
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
 // in the Software without restriction, including without limitation the rights
 // to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 // copies of the Software, and to permit persons to whom the Software is
 // furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all
 // copies or substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 // IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 // FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -34,39 +34,39 @@ public enum FaceRegion
     /// The entire face region including all features
     /// </summary>
     FullFace = 0,
-    
+
     /// <summary>
     /// The eye region including both eyes and eyebrows
     /// </summary>
     Eyes = 1,
-    
+
     /// <summary>
     /// The nose region including bridge and nostrils
     /// </summary>
     Nose = 2,
-    
+
     /// <summary>
     /// The mouth region including lips
     /// </summary>
     Mouth = 3,
-    
+
     /// <summary>
     /// The forehead region above the eyebrows
     /// </summary>
     Forehead = 4,
-    
+
     /// <summary>
     /// The left cheek region
     /// </summary>
     LeftCheek = 5,
-    
+
     /// <summary>
     /// The right cheek region
     /// </summary>
     RightCheek = 6,
-    
+
     /// <summary>
     /// The chin region below the mouth
     /// </summary>
-    Chin = 7
+    Chin = 7,
 }

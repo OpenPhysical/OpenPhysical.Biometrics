@@ -16,28 +16,28 @@ public interface IBiometricModalityHandler<TDomainRecord, TExtractionResult>
     /// Gets the modality name for display purposes.
     /// </summary>
     string ModalityName { get; }
-    
+
     /// <summary>
     /// Determines if this handler can process the given domain record type.
     /// </summary>
     /// <param name="record">The domain record to check.</param>
     /// <returns>True if this handler can process the record.</returns>
     bool CanHandle(TDomainRecord record);
-    
+
     /// <summary>
     /// Extracts biometric data from the domain record for external use.
     /// </summary>
     /// <param name="record">The parsed domain record.</param>
     /// <returns>The extracted biometric data or error.</returns>
     Result<TExtractionResult> ExtractBiometricData(TDomainRecord record);
-    
+
     /// <summary>
     /// Analyzes the biometric data and returns quality or analysis information.
     /// </summary>
     /// <param name="record">The parsed domain record.</param>
     /// <returns>Analysis results or error.</returns>
     Result<string> AnalyzeBiometricData(TDomainRecord record);
-    
+
     /// <summary>
     /// Validates the biometric data meets modality-specific requirements.
     /// </summary>

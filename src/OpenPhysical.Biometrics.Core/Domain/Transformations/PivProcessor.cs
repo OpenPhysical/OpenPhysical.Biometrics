@@ -1,34 +1,19 @@
+using System.Drawing;
+using JetBrains.Annotations;
 using OpenPhysical.Biometrics.Core.Abstractions;
 using OpenPhysical.Biometrics.Core.Domain.Detection;
-using JetBrains.Annotations;
-using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.PixelFormats;
-using SixLabors.ImageSharp.Processing;
+using OpenPhysical.Biometrics.Imaging;
 
 namespace OpenPhysical.Biometrics.Core.Domain.Transformations;
 
 /// <summary>
-/// Processes facial images to comply with PIV (Personal Identity Verification) standards as defined in FIPS 201-3.
-/// Performs face detection, landmark extraction, rotation correction, cropping, and resizing to produce
-/// a 420x560 pixel image suitable for government ID cards and credentials.
+/// Prepares facial portraits for PIV credential workflows using face detection,
+/// landmark alignment, cropping and JPEG 2000 encoding.
 /// </summary>
 /// <remarks>
-/// <para>
-/// The PIV processor ensures compliance with FIPS 201-3 (Federal Information Processing Standards) requirements:
-/// - Output dimensions: 420x560 pixels (3:4 aspect ratio)
-/// - Face width: Minimum 240 pixels (approximately 57% of image width)
-/// - Eye position: 45-65% from top of image
-/// - Rotation correction: Maximum ±5 degrees
-/// - Face centering: Properly centered with appropriate margins
-/// </para>
-/// <para>
-/// Processing pipeline:
-/// 1. Face detection using RetinaFace to identify frontal faces
-/// 2. 68-point facial landmark extraction for precise eye positioning
-/// 3. Rotation calculation and correction based on eye alignment
-/// 4. Intelligent cropping to center face with proper proportions
-/// 5. Final resize to exact 420x560 PIV dimensions
-/// </para>
+/// The default processing profile produces a 420 by 560 pixel portrait. Its settings
+/// control face selection, permitted rotation and compression. The returned transform
+/// and metadata support capture review and application issuance policy.
 /// </remarks>
 [PublicAPI]
 public static class PivProcessor
@@ -50,21 +35,9 @@ public static class PivProcessor
     /// - Failure: Error message describing what went wrong (no face detected, landmarks extraction failed, etc.)
     /// </returns>
     /// <remarks>
-    /// <para>
-    /// This method implements the complete PIV processing pipeline:
-    /// 1. Detects faces using the provided face detector (typically RetinaFace)
-    /// 2. Extracts 68 facial landmarks for precise feature location
-    /// 3. Calculates rotation needed to level the eyes (limited to ±5 degrees)
-    /// 4. Crops the image to center the face with proper proportions
-    /// 5. Resizes to final 420x560 dimensions as required by FIPS 201-3
-    /// </para>
-    /// <para>
-    /// The resulting image meets all PIV requirements including:
-    /// - Proper face size (approximately 70% of frame width)
-    /// - Eye position at 45% from top of frame
-    /// - Level head orientation (rotation corrected)
-    /// - High quality output suitable for biometric matching
-    /// </para>
+    /// The pipeline detects the subject, estimates eye alignment, applies the configured
+    /// rotation limit, crops the portrait and encodes its final pixels. Output geometry
+    /// follows the configured profile; the options also control selection and compression.
     /// </remarks>
     /// <example>
     /// <code>
@@ -72,18 +45,19 @@ public static class PivProcessor
     ///     sourceImage,
     ///     faceDetector,
     ///     landmarkExtractor,
+    ///     jpeg2000Encoder,
     ///     PivProcessingOptions.HighQuality);
     ///
     /// if (result.IsSuccess)
     /// {
-    ///     var pivImage = result.Value.Image;
-    ///     // Save or use the PIV-compatible image
+    ///     var encodedPortrait = result.Value.ImageData;
+    ///     // Pass the encoded portrait to the credential issuance workflow.
     /// }
     /// </code>
     /// </example>
     [PublicAPI]
     public static async Task<Result<PivResult>> ProcessAsync(
-        Image<Rgba32> sourceImage,
+        RgbImage sourceImage,
         IFaceDetector faceDetector,
         ILandmarkExtractor landmarkExtractor,
         IJpeg2000Encoder jpeg2000Encoder,
@@ -94,34 +68,22 @@ public static class PivProcessor
     )
     {
         options ??= PivProcessingOptions.Default;
-        logger?.LogDebug(
-            "Starting PIV processing with options: EnableRoi={EnableRoi}, RoiAlign={RoiAlign}",
-            enableRoi,
-            roiAlign
-        );
+        logger?.LogDebug("PIV processing stage completed.");
 
         var sourceDimensions = new ImageDimensions(sourceImage.Width, sourceImage.Height);
-        logger?.LogDebug(
-            "Source image dimensions: {Width}x{Height}",
-            sourceDimensions.Width,
-            sourceDimensions.Height
-        );
+        logger?.LogDebug("PIV processing stage completed.");
 
         // Step 1: Detect faces using the simple approach
         logger?.LogDebug("Step 1: Starting face detection");
         var detectedFaces = await DetectFacesSimple(sourceImage, faceDetector, options, logger);
         if (detectedFaces.IsFailure)
         {
-            logger?.LogWarning("Face detection failed: {Error}", detectedFaces.Error);
+            logger?.LogWarning("PIV processing stage requires review.");
             return Result.Failure<PivResult>(detectedFaces.Error);
         }
 
         var face = detectedFaces.Value;
-        logger?.LogDebug(
-            "Face detected with confidence: {Confidence}, bounding box: {Box}",
-            face.Confidence,
-            face.BoundingBox
-        );
+        logger?.LogDebug("PIV processing stage completed.");
 
         // Step 2: Use unified PIV landmark processor for accurate results
         logger?.LogDebug("Step 2: Starting PIV landmark processing");
@@ -134,20 +96,13 @@ public static class PivProcessor
         );
         if (pivLandmarkResult.IsFailure)
         {
-            logger?.LogWarning("PIV landmark processing failed: {Error}", pivLandmarkResult.Error);
+            logger?.LogWarning("PIV processing stage requires review.");
             return Result.Failure<PivResult>(pivLandmarkResult.Error);
         }
 
         var pivData = pivLandmarkResult.Value;
-        logger?.LogDebug(
-            "PIV landmark processing completed: rotation={Rotation:F2}°, crop=({X},{Y},{Width}x{Height}), landmarks={LandmarkCount}",
-            pivData.AppliedRotation,
-            pivData.FaceCrop.X,
-            pivData.FaceCrop.Y,
-            pivData.FaceCrop.Width,
-            pivData.FaceCrop.Height,
-            pivData.Landmarks.Points.Count
-        );
+        using var ownedPortrait = pivData.PivImage;
+        logger?.LogDebug("PIV processing stage completed.");
 
         // Step 3: Create metadata with all relevant information
         logger?.LogDebug("Step 3: Creating metadata");
@@ -183,11 +138,7 @@ public static class PivProcessor
         };
 
         // Step 5: Encode the image to JPEG 2000
-        logger?.LogDebug(
-            "Step 5: Encoding to JPEG 2000 with ROI. BaseRate={BaseRate}, RoiStartLevel={RoiStartLevel}",
-            options.BaseRate,
-            options.RoiStartLevel
-        );
+        logger?.LogDebug("PIV processing stage completed.");
         var encodingResult = jpeg2000Encoder.EncodeWithRoi(
             pivData.PivImage,
             pivData.RoiSet,
@@ -198,13 +149,10 @@ public static class PivProcessor
         );
         if (encodingResult.IsFailure)
         {
-            logger?.LogError("JPEG 2000 encoding failed: {Error}", encodingResult.Error);
+            logger?.LogError("PIV processing stage failed.");
             return Result.Failure<PivResult>(encodingResult.Error);
         }
-        logger?.LogDebug(
-            "JPEG 2000 encoding successful, data size: {Size} bytes",
-            encodingResult.Value.Length
-        );
+        logger?.LogDebug("PIV processing stage completed.");
 
         // Step 6: Create result with encoded data
         logger?.LogDebug("Step 6: Creating final PIV result");
@@ -222,14 +170,11 @@ public static class PivProcessor
         var validationResult = result.Validate().Map(() => result);
         if (validationResult.IsSuccess)
         {
-            logger?.LogInformation(
-                "PIV processing completed successfully. Summary: {Summary}",
-                pivData.ProcessingSummary
-            );
+            logger?.LogInformation("PIV processing stage completed.");
         }
         else
         {
-            logger?.LogWarning("PIV result validation failed: {Error}", validationResult.Error);
+            logger?.LogWarning("PIV processing stage requires review.");
         }
         return validationResult;
     }
@@ -253,7 +198,7 @@ public static class PivProcessor
     /// - Respecting the minimum confidence threshold from options
     /// </remarks>
     private static async Task<Result<DetectedFace>> DetectFacesSimple(
-        Image<Rgba32> image,
+        RgbImage image,
         IFaceDetector detector,
         PivProcessingOptions options,
         ILogger? logger = null
@@ -264,7 +209,7 @@ public static class PivProcessor
         var faces = await detector.DetectFacesAsync(image);
         if (faces.IsFailure)
         {
-            logger?.LogWarning("Face detection service failed: {Error}", faces.Error);
+            logger?.LogWarning("PIV processing stage requires review.");
             return Result.Failure<DetectedFace>(faces.Error);
         }
 
@@ -274,15 +219,11 @@ public static class PivProcessor
             return Result.Failure<DetectedFace>("No faces detected");
         }
 
-        logger?.LogDebug("Detected {Count} face(s) in the image", faces.Value.Count);
+        logger?.LogDebug("PIV processing stage completed.");
 
         // Return the first (highest confidence) face
         var selectedFace = faces.Value.First();
-        logger?.LogDebug(
-            "Selected face with highest confidence: {Confidence}, box: {Box}",
-            selectedFace.Confidence,
-            selectedFace.BoundingBox
-        );
+        logger?.LogDebug("PIV processing stage completed.");
         return Result.Success(selectedFace);
     }
 
@@ -323,31 +264,25 @@ public static class PivProcessor
         // Extract eye positions
         var leftEye = landmarks.LeftEyeCenter;
         var rightEye = landmarks.RightEyeCenter;
-        logger?.LogDebug(
-            "Eye positions - Left: ({LeftX}, {LeftY}), Right: ({RightX}, {RightY})",
-            leftEye.X,
-            leftEye.Y,
-            rightEye.X,
-            rightEye.Y
-        );
+        logger?.LogDebug("PIV processing stage completed.");
 
         // Use pure calculation functions
         var rotationDegrees = PivTransformCalculator.CalculateRotationFromEyes(leftEye, rightEye);
-        logger?.LogDebug("Calculated rotation angle: {Rotation}°", rotationDegrees);
+        logger?.LogDebug("PIV processing stage completed.");
 
         var scaleFactor = PivTransformCalculator.CalculateScaleFactor(sourceDimensions);
-        logger?.LogDebug("Calculated scale factor: {Scale}", scaleFactor);
+        logger?.LogDebug("PIV processing stage completed.");
 
         // Calculate eye center and account for rotation
         var eyeCenter = PivTransformCalculator.CalculateEyeCenter(leftEye, rightEye);
-        logger?.LogDebug("Eye center position: ({X}, {Y})", eyeCenter.X, eyeCenter.Y);
+        logger?.LogDebug("PIV processing stage completed.");
 
         var rotatedEyeCenter = PivTransformCalculator.RotatePointAroundImageCenter(
             eyeCenter,
             rotationDegrees,
             sourceDimensions
         );
-        logger?.LogDebug("Rotated eye center: ({X}, {Y})", rotatedEyeCenter.X, rotatedEyeCenter.Y);
+        logger?.LogDebug("PIV processing stage completed.");
 
         // Calculate crop region using the rotated eye center
         var cropRegion = PivTransformCalculator.CalculatePivCrop(
@@ -355,13 +290,7 @@ public static class PivProcessor
             face.BoundingBox,
             sourceDimensions
         );
-        logger?.LogDebug(
-            "Calculated crop region: Left={Left}, Top={Top}, Width={Width}, Height={Height}",
-            cropRegion.Left,
-            cropRegion.Top,
-            cropRegion.Width,
-            cropRegion.Height
-        );
+        logger?.LogDebug("PIV processing stage completed.");
 
         var transform = new PivTransform
         {
@@ -379,7 +308,7 @@ public static class PivProcessor
         }
         else
         {
-            logger?.LogWarning("PIV transform validation failed: {Error}", result.Error);
+            logger?.LogWarning("PIV processing stage requires review.");
         }
         return result;
     }
@@ -408,8 +337,8 @@ public static class PivProcessor
     /// is maintained throughout the transformation process.
     /// </para>
     /// </remarks>
-    private static Result<Image<Rgba32>> ApplyPivTransformation(
-        Image<Rgba32> sourceImage,
+    private static Result<RgbImage> ApplyPivTransformation(
+        RgbImage sourceImage,
         PivTransform transform,
         PivProcessingOptions options,
         ILogger? logger = null
@@ -437,11 +366,7 @@ public static class PivProcessor
                 // Ensure crop dimensions maintain PIV aspect ratio (3:4)
                 var pivAspectRatio = 3.0f / 4.0f;
                 var currentAspectRatio = (float)cropWidth / cropHeight;
-                logger?.LogDebug(
-                    "Current crop aspect ratio: {Current}, target PIV ratio: {Target}",
-                    currentAspectRatio,
-                    pivAspectRatio
-                );
+                logger?.LogDebug("PIV processing stage completed.");
 
                 if (currentAspectRatio > pivAspectRatio)
                 {
@@ -463,28 +388,18 @@ public static class PivProcessor
                 cropY = Math.Max(0, Math.Min(cropY, imageHeight - cropHeight));
 
                 ctx.Crop(new Rectangle(cropX, cropY, cropWidth, cropHeight));
-                logger?.LogDebug(
-                    "Applied crop: x={X}, y={Y}, width={Width}, height={Height}",
-                    cropX,
-                    cropY,
-                    cropWidth,
-                    cropHeight
-                );
+                logger?.LogDebug("PIV processing stage completed.");
             }
 
             // Step 2: Rotate if needed (after cropping to minimize black border area)
             if (Math.Abs(transform.RotationDegrees) > 0.1f)
             {
-                logger?.LogDebug("Applying rotation: {Degrees}°", transform.RotationDegrees);
+                logger?.LogDebug("PIV processing stage completed.");
                 ctx.Rotate(transform.RotationDegrees);
             }
 
             // Step 3: Resize to final PIV dimensions (420x560)
-            logger?.LogDebug(
-                "Resizing to PIV dimensions: {Width}x{Height}",
-                transform.TargetDimensions.Width,
-                transform.TargetDimensions.Height
-            );
+            logger?.LogDebug("PIV processing stage completed.");
             ctx.Resize(transform.TargetDimensions.Width, transform.TargetDimensions.Height);
         });
 
@@ -573,7 +488,7 @@ public static class PivProcessor
     )
     {
         // Load the JPEG image
-        using var sourceImage = await Image.LoadAsync<Rgba32>(inputJpegPath);
+        using var sourceImage = await RgbImage.LoadAsync(inputJpegPath);
 
         // Process with default 20KB level 3 ROI settings (no alignment for smoothest transitions)
         var result = await ProcessAsync(

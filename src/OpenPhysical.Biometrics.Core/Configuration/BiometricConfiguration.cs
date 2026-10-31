@@ -267,12 +267,14 @@ public sealed record StandardPresetsConfiguration
     /// <summary>
     /// PIV card minimum size for cards with limited space
     /// </summary>
-    public TargetSizePreset PivMin { get; init; } = new(12000, "PIV card minimum space compatibility");
+    public TargetSizePreset PivMin { get; init; } =
+        new(12000, "PIV card minimum space compatibility");
 
     /// <summary>
     /// PIV balanced quality/size ratio (recommended default)
     /// </summary>
-    public TargetSizePreset PivBalanced { get; init; } = new(22000, "PIV card balanced quality/size");
+    public TargetSizePreset PivBalanced { get; init; } =
+        new(22000, "PIV card balanced quality/size");
 
     /// <summary>
     /// PIV high quality for enhanced detail
@@ -294,10 +296,7 @@ public sealed record StandardPresetsConfiguration
 /// Target size preset with description
 /// </summary>
 [PublicAPI]
-public sealed record TargetSizePreset(
-    int TargetBytes,
-    string Description
-);
+public sealed record TargetSizePreset(int TargetBytes, string Description);
 
 /// <summary>
 /// Performance and timeout configuration
@@ -433,10 +432,10 @@ public sealed record ImageDimensions(int Width, int Height)
     /// Validates that dimensions are within acceptable ranges
     /// </summary>
     public bool IsValid(ValidationConfiguration validation) =>
-        Width >= validation.MinImageWidth &&
-        Width <= validation.MaxImageWidth &&
-        Height >= validation.MinImageHeight &&
-        Height <= validation.MaxImageHeight;
+        Width >= validation.MinImageWidth
+        && Width <= validation.MaxImageWidth
+        && Height >= validation.MinImageHeight
+        && Height <= validation.MaxImageHeight;
 }
 
 /// <summary>
@@ -448,8 +447,7 @@ public static class BiometricConfigurationExtensions
     /// <summary>
     /// Creates default ProcessingOptions from BiometricConfiguration
     /// </summary>
-    public static ProcessingOptions GetDefaultProcessingOptions(
-        this BiometricConfiguration config)
+    public static ProcessingOptions GetDefaultProcessingOptions(this BiometricConfiguration config)
     {
         return new ProcessingOptions
         {
@@ -462,8 +460,7 @@ public static class BiometricConfigurationExtensions
             EnableRoi = config.Encoding.Jpeg2000.EnableRoiByDefault,
             AlignRoi = config.Encoding.Jpeg2000.AlignRoiByDefault,
             MaxRotationDegrees = config.FaceDetection.MaxRotationDegrees,
-            Strategy = EncodingStrategy.TargetSize(config.Standards.PivBalanced.TargetBytes)
+            Strategy = EncodingStrategy.TargetSize(config.Standards.PivBalanced.TargetBytes),
         };
     }
 }
-

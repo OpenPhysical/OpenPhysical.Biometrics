@@ -1,17 +1,17 @@
 // MIT License
-// 
+//
 // Copyright (c) 2025 FaceOFFx Contributors
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
 // in the Software without restriction, including without limitation the rights
 // to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 // copies of the Software, and to permit persons to whom the Software is
 // furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all
 // copies or substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 // IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 // FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -22,8 +22,8 @@
 
 using System;
 using System.Collections.Immutable;
-using OpenPhysical.Biometrics.Core.Domain.Common;
 using JetBrains.Annotations;
+using OpenPhysical.Biometrics.Core.Domain.Common;
 
 namespace OpenPhysical.Biometrics.Core.Domain.Quality.Sharpness;
 
@@ -36,7 +36,8 @@ public record SharpnessAnalysis(
     CannyEdgeMetrics Edges,
     FrequencyMetrics Frequency,
     ImmutableDictionary<FaceRegion, RegionMetrics> RegionalAnalysis,
-    TimeSpan ProcessingTime)
+    TimeSpan ProcessingTime
+)
 {
     /// <summary>
     /// Gets a summary of the most significant quality issues detected
@@ -44,22 +45,22 @@ public record SharpnessAnalysis(
     public ImmutableArray<string> GetQualityIssues()
     {
         var issues = ImmutableArray.CreateBuilder<string>();
-        
+
         if (Laplacian.Variance < 0.001f)
             issues.Add("Very low image sharpness detected");
-            
+
         if (Edges.EdgeDensity < 100)
             issues.Add("Insufficient edge detail for reliable feature detection");
-            
+
         if (Frequency.HighFrequencyEnergy < 0.1f)
             issues.Add("Image lacks fine detail (possible motion blur or defocus)");
-            
+
         foreach (var (region, metrics) in RegionalAnalysis)
         {
             if (region == FaceRegion.Eyes && metrics.LocalSharpness < 0.3f)
                 issues.Add("Eye region is not sufficiently sharp for reliable identification");
         }
-        
+
         return issues.ToImmutable();
     }
 }
@@ -73,35 +74,35 @@ public record LaplacianMetrics(
     float StandardDeviation,
     float Kurtosis,
     float MaxResponse,
-    ImmutableArray<float> ResponseHistogram)
+    ImmutableArray<float> ResponseHistogram
+)
 {
     /// <summary>
     /// Normalized variance (0-1) using sigmoid function for perceptually accurate quality assessment
-    /// 
+    ///
     /// Mathematical Foundation:
     /// - Sigmoid: 1 / (1 + exp(-(variance - midpoint) * steepness))
     /// - Parameters calibrated for proper masked elliptical analysis
-    /// 
+    ///
     /// This follows Weber-Fechner law of human perception where quality changes are:
     /// - Most noticeable in low-variance (blurry) region (steep slope)
     /// - Moderately noticeable in mid-variance (acceptable) region
     /// - Least noticeable in high-variance (sharp) region (asymptotic)
-    /// 
+    ///
     /// Calibration based on empirical masked elliptical analysis:
     /// - Very blurry (blur_5+): less than 0.0002 variance
     /// - Blurry (blur_2): ~0.00018 variance
     /// - Acceptable boundary: ~0.0005 variance
     /// - Good photos (blur_0): ~0.001-0.0015 variance
     /// - Excellent photos: greater than 0.0015 variance
-    /// 
+    ///
     /// Parameters: midpoint=0.0008, steepness=2500
     /// This provides:
     /// - blur_0 (original): ~84% score (good quality)
     /// - blur_2: ~6% score (clearly blurry)
     /// - blur_5+: less than 1% score (very blurry)
     /// </summary>
-    public float NormalizedVariance => 
-        1.0f / (1.0f + MathF.Exp(-(Variance - 0.0008f) * 2500f));
+    public float NormalizedVariance => 1.0f / (1.0f + MathF.Exp(-(Variance - 0.0008f) * 2500f));
 }
 
 /// <summary>
@@ -114,27 +115,26 @@ public record CannyEdgeMetrics(
     float EdgeDensity,
     float EdgeContinuity,
     float MeanGradientMagnitude,
-    ImmutableArray<EdgeSegment> EdgeSegments)
+    ImmutableArray<EdgeSegment> EdgeSegments
+)
 {
     /// <summary>
     /// Total number of edge pixels detected
     /// </summary>
     public int TotalEdgeCount => StrongEdgeCount + WeakEdgeCount;
-    
+
     /// <summary>
     /// Ratio of strong edges to total edges (quality indicator)
     /// </summary>
-    public float StrongEdgeRatio => TotalEdgeCount > 0 ? StrongEdgeCount / (float)TotalEdgeCount : 0;
+    public float StrongEdgeRatio =>
+        TotalEdgeCount > 0 ? StrongEdgeCount / (float)TotalEdgeCount : 0;
 }
 
 /// <summary>
 /// Represents a connected edge segment
 /// </summary>
 [PublicAPI]
-public record EdgeSegment(
-    ImmutableArray<Point2D> Points,
-    float AverageStrength,
-    float Length)
+public record EdgeSegment(ImmutableArray<Point2D> Points, float AverageStrength, float Length)
 {
     /// <summary>
     /// Indicates if this is a significant edge (long and strong)
@@ -150,13 +150,14 @@ public record FrequencyMetrics(
     float HighFrequencyEnergy,
     float MidFrequencyEnergy,
     float LowFrequencyEnergy,
-    float SpectralFalloff)
+    float SpectralFalloff
+)
 {
     /// <summary>
     /// Total energy across all frequency bands
     /// </summary>
     public float TotalEnergy => HighFrequencyEnergy + MidFrequencyEnergy + LowFrequencyEnergy;
-    
+
     /// <summary>
     /// Ratio of high frequency to total energy (sharpness indicator)
     /// </summary>
@@ -171,7 +172,8 @@ public record RegionMetrics(
     FaceRegion Region,
     float LocalSharpness,
     float EdgeDensity,
-    float TextureComplexity)
+    float TextureComplexity
+)
 {
     /// <summary>
     /// Overall quality score for this region (0-1)
@@ -186,7 +188,8 @@ public record RegionMetrics(
 public record AnalysisProgress(
     int PercentComplete,
     string CurrentStep,
-    TimeSpan? EstimatedTimeRemaining = null)
+    TimeSpan? EstimatedTimeRemaining = null
+)
 {
     /// <summary>
     /// Indicates if the analysis is complete

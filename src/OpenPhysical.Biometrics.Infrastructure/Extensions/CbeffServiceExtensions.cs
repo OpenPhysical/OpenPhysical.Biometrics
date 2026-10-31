@@ -1,12 +1,12 @@
 namespace OpenPhysical.Biometrics.Infrastructure.Extensions;
 
+using System.Reflection;
 using Microsoft.Extensions.DependencyInjection;
 using OpenPhysical.Biometrics.Core.Cbeff;
 using OpenPhysical.Biometrics.Core.Cbeff.Formats;
 using OpenPhysical.Biometrics.Infrastructure.Cbeff;
 using OpenPhysical.Biometrics.Infrastructure.Cbeff.Formats;
 using OpenPhysical.Biometrics.Infrastructure.Extensions;
-using System.Reflection;
 
 /// <summary>
 /// Extension methods for registering CBEFF services.
@@ -22,25 +22,21 @@ public static class CbeffServiceExtensions
     {
         // Add the new generic biometric format registry with auto-discovery
         services.AddBiometricFormats(Assembly.GetExecutingAssembly());
-        
+
         // Register basic serializer
         services.AddSingleton<ICbeffSerializer, CbeffSerializer>();
-        
+
         // Register extended serializer
         services.AddSingleton<ICbeffSerializerExtended, CbeffSerializerExtended>();
-        
+
         // Register CBEFF services
         services.AddScoped<ICbeffEncoder, CbeffEncoderService>();
         services.AddScoped<ICbeffDecoder, CbeffDecoderService>();
-        services.AddScoped<ICbeffSigner, CbeffSignerService>();
-        services.AddScoped<ICbeffVerifier, CbeffVerifierService>();
         services.AddScoped<ICbeffBuilder, CbeffBuilderService>();
-        
+
         // Register PIV cross-validation services
         services.AddScoped<IChuidParsingService, ChuidParsingService>();
-        services.AddScoped<ICertificateDiscoveryService, CertificateDiscoveryService>();
-        services.AddScoped<IPivCrossValidationService, PivCrossValidationService>();
-        
+
         return services;
     }
 }

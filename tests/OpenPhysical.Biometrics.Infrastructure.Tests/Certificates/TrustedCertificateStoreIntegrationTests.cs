@@ -3,8 +3,8 @@ namespace OpenPhysical.Biometrics.Infrastructure.Tests.Certificates;
 using System;
 using System.IO;
 using System.Linq;
-using CSharpFunctionalExtensions;
 using AwesomeAssertions;
+using CSharpFunctionalExtensions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NUnit.Framework;
@@ -14,7 +14,7 @@ using Org.BouncyCastle.Utilities.Collections;
 using Org.BouncyCastle.X509;
 
 [TestFixture]
-public class TrustedCertificateStoreIntegrationTests
+internal class TrustedCertificateStoreIntegrationTests
 {
     private string _tempDirectory = null!;
     private TrustedCertificateStore _store = null!;
@@ -34,14 +34,18 @@ public class TrustedCertificateStoreIntegrationTests
         {
             StorePath = _tempDirectory,
             AutoInitializeWithDefaults = false,
-            CreateDirectoryIfNotExists = true
+            CreateDirectoryIfNotExists = true,
         };
 
         // Create a simple provider that returns test certificates
         var provider = new SimpleTestCertificateProvider();
         _certificateProvider = new Lazy<ITrustedCertificateProvider>(() => provider);
 
-        _store = new TrustedCertificateStore(_logger, Options.Create(_options), _certificateProvider);
+        _store = new TrustedCertificateStore(
+            _logger,
+            Options.Create(_options),
+            _certificateProvider
+        );
     }
 
     [TearDown]
@@ -90,11 +94,11 @@ public class TrustedCertificateStoreIntegrationTests
         var result = _store.AddCertificate(testCert);
 
         result.IsSuccess.Should().BeTrue();
-        
+
         // File should be created
         var newCount = Directory.GetFiles(_tempDirectory, "*.crt").Length;
         newCount.Should().Be(1);
-        
+
         // Verify file exists with expected name (serial number as filename)
         var expectedFile = Path.Combine(_tempDirectory, "1.crt");
         File.Exists(expectedFile).Should().BeTrue();
@@ -104,18 +108,18 @@ public class TrustedCertificateStoreIntegrationTests
     public void RemoveCertificate_ShouldDeleteFile()
     {
         _store.InitializeWithDefaults();
-        
+
         // Get a certificate to remove
         var certsResult = _store.GetTrustedCertificates();
         var testCert = certsResult.Value.EnumerateMatches(null).First();
         var serialNumber = testCert.SerialNumber.ToString();
-        
+
         var originalCount = Directory.GetFiles(_tempDirectory, "*.crt").Length;
 
         var result = _store.RemoveCertificate(serialNumber);
 
         result.IsSuccess.Should().BeTrue();
-        
+
         // Verify file was deleted
         var newCount = Directory.GetFiles(_tempDirectory, "*.crt").Length;
         newCount.Should().Be(originalCount - 1);
@@ -142,9 +146,11 @@ public class TrustedCertificateStoreIntegrationTests
         // Retrieve certificates
         var retrieveResult = _store.GetTrustedCertificates();
         retrieveResult.IsSuccess.Should().BeTrue();
-        
+
         var retrievedCerts = retrieveResult.Value.EnumerateMatches(null).ToList();
-        var retrievedCert = retrievedCerts.First(c => c.SerialNumber.Equals(originalCert.SerialNumber));
+        var retrievedCert = retrievedCerts.First(c =>
+            c.SerialNumber.Equals(originalCert.SerialNumber)
+        );
 
         // Verify certificate data is preserved
         retrievedCert.SubjectDN.ToString().Should().Be(originalCert.SubjectDN.ToString());
@@ -164,7 +170,9 @@ public class TrustedCertificateStoreIntegrationTests
         result.IsSuccess.Should().BeTrue();
         var certificates = result.Value.EnumerateMatches(null).ToList();
         certificates.Should().HaveCountGreaterThan(0);
-        certificates.Should().OnlyContain(cert => cert.IssuerDN.ToString().Contains("Test Root CA"));
+        certificates
+            .Should()
+            .OnlyContain(cert => cert.IssuerDN.ToString().Contains("Test Root CA"));
     }
 
     [Test]
@@ -189,10 +197,14 @@ public class TrustedCertificateStoreIntegrationTests
         {
             StorePath = nonExistentPath,
             AutoInitializeWithDefaults = false,
-            CreateDirectoryIfNotExists = false
+            CreateDirectoryIfNotExists = false,
         };
 
-        var store = new TrustedCertificateStore(_logger, Options.Create(options), _certificateProvider);
+        var store = new TrustedCertificateStore(
+            _logger,
+            Options.Create(options),
+            _certificateProvider
+        );
 
         // Get a test certificate
         var testCert = TestCertificates.RootCA;
@@ -213,24 +225,30 @@ public class TrustedCertificateStoreIntegrationTests
             {
                 TestCertificates.RootCA,
                 TestCertificates.IntermediateCA,
-                TestCertificates.ContentSigner
+                TestCertificates.ContentSigner,
             };
-            
+
             return Result.Success(CollectionUtilities.CreateStore(certificates));
         }
 
-        public Result<IStore<Org.BouncyCastle.X509.X509Certificate>> GetCertificatesByName(string namePattern)
+        public Result<IStore<Org.BouncyCastle.X509.X509Certificate>> GetCertificatesByName(
+            string namePattern
+        )
         {
             var allCerts = new[]
             {
                 TestCertificates.RootCA,
                 TestCertificates.IntermediateCA,
-                TestCertificates.ContentSigner
+                TestCertificates.ContentSigner,
             };
-            
-            var filtered = allCerts.Where(cert =>
-                cert.SubjectDN.ToString().Contains(namePattern, StringComparison.OrdinalIgnoreCase) ||
-                cert.IssuerDN.ToString().Contains(namePattern, StringComparison.OrdinalIgnoreCase))
+
+            var filtered = allCerts
+                .Where(cert =>
+                    cert.SubjectDN.ToString()
+                        .Contains(namePattern, StringComparison.OrdinalIgnoreCase)
+                    || cert.IssuerDN.ToString()
+                        .Contains(namePattern, StringComparison.OrdinalIgnoreCase)
+                )
                 .ToList();
 
             return Result.Success(CollectionUtilities.CreateStore(filtered));

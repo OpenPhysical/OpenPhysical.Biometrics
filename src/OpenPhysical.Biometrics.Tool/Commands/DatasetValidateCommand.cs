@@ -1,17 +1,17 @@
 // MIT License
-// 
+//
 // Copyright (c) 2025 FaceOFFx
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
 // in the Software without restriction, including without limitation the rights
 // to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 // copies of the Software, and to permit persons to whom the Software is
 // furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all
 // copies or substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 // IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 // FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -22,22 +22,21 @@
 
 using System.ComponentModel;
 using System.Diagnostics;
+using System.Drawing;
 using System.Text;
 using System.Text.Json;
-using OpenPhysical.Biometrics.Tool.Services;
+using Microsoft.Extensions.Logging;
 using OpenPhysical.Biometrics.Core.Abstractions;
+using OpenPhysical.Biometrics.Core.Domain.Quality;
 using OpenPhysical.Biometrics.Core.Domain.Standards;
 using OpenPhysical.Biometrics.Core.Domain.Transformations;
-using static OpenPhysical.Biometrics.Core.Domain.Transformations.PivResult;
-using OpenPhysical.Biometrics.Core.Domain.Quality;
+using OpenPhysical.Biometrics.Imaging;
 using OpenPhysical.Biometrics.Infrastructure.Services;
-using Microsoft.Extensions.Logging;
-using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.PixelFormats;
-using SixLabors.ImageSharp.Processing;
-using SixLabors.ImageSharp.Drawing.Processing;
+using OpenPhysical.Biometrics.Tool.Drawing;
+using OpenPhysical.Biometrics.Tool.Services;
 using Spectre.Console;
 using Spectre.Console.Cli;
+using static OpenPhysical.Biometrics.Core.Domain.Transformations.PivResult;
 
 namespace OpenPhysical.Biometrics.Tool.Commands;
 
@@ -65,7 +64,8 @@ public class DatasetValidateCommand : AsyncCommand<DatasetValidateCommand.Settin
         ILandmarkExtractor landmarkExtractor,
         IJpeg2000Encoder jpeg2000Encoder,
         IQualityAssessor qualityAssessor,
-        ILogger<DatasetValidateCommand> logger)
+        ILogger<DatasetValidateCommand> logger
+    )
     {
         _faceDetector = faceDetector;
         _landmarkExtractor = landmarkExtractor;
@@ -203,21 +203,27 @@ public class DatasetValidateCommand : AsyncCommand<DatasetValidateCommand.Settin
             // Validate input directory
             if (!Directory.Exists(settings.DatasetPath))
             {
-                AnsiConsole.MarkupLine($"[red]Error: Dataset directory not found: {settings.DatasetPath}[/]");
+                AnsiConsole.MarkupLine(
+                    $"[red]Error: Dataset directory not found: {settings.DatasetPath}[/]"
+                );
                 return 1;
             }
 
             // Set up output directory
-            var datasetName = Path.GetFileName(settings.DatasetPath.TrimEnd(Path.DirectorySeparatorChar));
+            var datasetName = Path.GetFileName(
+                settings.DatasetPath.TrimEnd(Path.DirectorySeparatorChar)
+            );
             var outputPath = settings.OutputPath ?? $"processed_{datasetName}";
-            
+
             // Clean up existing output directory if it exists
             if (Directory.Exists(outputPath))
             {
-                AnsiConsole.MarkupLine($"[yellow]Cleaning up existing output directory: {outputPath}[/]");
+                AnsiConsole.MarkupLine(
+                    $"[yellow]Cleaning up existing output directory: {outputPath}[/]"
+                );
                 Directory.Delete(outputPath, recursive: true);
             }
-            
+
             // Create fresh output directory structure
             Directory.CreateDirectory(Path.Combine(outputPath, "passed"));
             Directory.CreateDirectory(Path.Combine(outputPath, "failed"));
@@ -228,13 +234,16 @@ public class DatasetValidateCommand : AsyncCommand<DatasetValidateCommand.Settin
 
             // Find all matching files
             var searchOption = SearchOption.AllDirectories;
-            var files = Directory.GetFiles(settings.DatasetPath, settings.Pattern, searchOption)
+            var files = Directory
+                .GetFiles(settings.DatasetPath, settings.Pattern, searchOption)
                 .Where(f => !f.Contains("processed_", StringComparison.OrdinalIgnoreCase))
                 .ToArray();
 
             if (files.Length == 0)
             {
-                AnsiConsole.MarkupLine($"[yellow]No files matching pattern '{settings.Pattern}' found in {settings.DatasetPath}[/]");
+                AnsiConsole.MarkupLine(
+                    $"[yellow]No files matching pattern '{settings.Pattern}' found in {settings.DatasetPath}[/]"
+                );
                 return 0;
             }
 
@@ -244,15 +253,21 @@ public class DatasetValidateCommand : AsyncCommand<DatasetValidateCommand.Settin
             var results = new List<ProcessingResult>();
             var parallelOptions = new ParallelOptions
             {
-                MaxDegreeOfParallelism = settings.ParallelThreads == -1 
-                    ? Environment.ProcessorCount 
-                    : settings.ParallelThreads
+                MaxDegreeOfParallelism =
+                    settings.ParallelThreads == -1
+                        ? Environment.ProcessorCount
+                        : settings.ParallelThreads,
             };
 
             if (settings.Interactive)
             {
                 // Interactive mode - process in batches
-                results = await ProcessInteractiveAsync(files, settings, outputPath, parallelOptions);
+                results = await ProcessInteractiveAsync(
+                    files,
+                    settings,
+                    outputPath,
+                    parallelOptions
+                );
             }
             else
             {
@@ -270,44 +285,55 @@ public class DatasetValidateCommand : AsyncCommand<DatasetValidateCommand.Settin
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Dataset validation failed");
+            _logger.LogError(
+                new EventId(689181, "DatasetValidateCommand"),
+                "DatasetValidateCommand failed."
+            );
             AnsiConsole.WriteException(ex);
             return 1;
         }
     }
 
     private async Task<List<ProcessingResult>> ProcessBatchAsync(
-        string[] files, 
-        Settings settings, 
+        string[] files,
+        Settings settings,
         string outputPath,
-        ParallelOptions parallelOptions)
+        ParallelOptions parallelOptions
+    )
     {
         var results = new List<ProcessingResult>();
         var progressLock = new object();
 
-        await AnsiConsole.Progress()
-            .Columns(new ProgressColumn[]
-            {
-                new TaskDescriptionColumn(),
-                new ProgressBarColumn(),
-                new PercentageColumn(),
-                new RemainingTimeColumn(),
-                new SpinnerColumn(),
-            })
+        await AnsiConsole
+            .Progress()
+            .Columns(
+                new ProgressColumn[]
+                {
+                    new TaskDescriptionColumn(),
+                    new ProgressBarColumn(),
+                    new PercentageColumn(),
+                    new RemainingTimeColumn(),
+                    new SpinnerColumn(),
+                }
+            )
             .StartAsync(async ctx =>
             {
                 var task = ctx.AddTask("[green]Processing dataset[/]", maxValue: files.Length);
 
-                await Parallel.ForEachAsync(files, parallelOptions, async (file, ct) =>
-                {
-                    var result = await ProcessSingleFileAsync(file, settings, outputPath);
-                    
-                    lock (progressLock)
+                await Parallel.ForEachAsync(
+                    files,
+                    parallelOptions,
+                    async (file, ct) =>
                     {
-                        results.Add(result);
-                        task.Increment(1);
+                        var result = await ProcessSingleFileAsync(file, settings, outputPath);
+
+                        lock (progressLock)
+                        {
+                            results.Add(result);
+                            task.Increment(1);
+                        }
                     }
-                });
+                );
             });
 
         return results;
@@ -317,7 +343,8 @@ public class DatasetValidateCommand : AsyncCommand<DatasetValidateCommand.Settin
         string[] files,
         Settings settings,
         string outputPath,
-        ParallelOptions parallelOptions)
+        ParallelOptions parallelOptions
+    )
     {
         var allResults = new List<ProcessingResult>();
         var batches = files.Chunk(settings.BatchSize).ToArray();
@@ -328,8 +355,13 @@ public class DatasetValidateCommand : AsyncCommand<DatasetValidateCommand.Settin
             AnsiConsole.MarkupLine($"\n[cyan]Processing batch {i + 1} of {batches.Length}[/]");
 
             // Process batch
-            var batchResults = await ProcessBatchAsync(batch, settings, outputPath, parallelOptions);
-            
+            var batchResults = await ProcessBatchAsync(
+                batch,
+                settings,
+                outputPath,
+                parallelOptions
+            );
+
             // Generate batch HTML for review
             var batchHtmlPath = Path.Combine(outputPath, $"batch_{i + 1}.html");
             await GenerateBatchReviewHtml(batchResults, batchHtmlPath);
@@ -358,7 +390,11 @@ public class DatasetValidateCommand : AsyncCommand<DatasetValidateCommand.Settin
         return allResults;
     }
 
-    private async Task<ProcessingResult> ProcessSingleFileAsync(string filePath, Settings settings, string outputPath)
+    private async Task<ProcessingResult> ProcessSingleFileAsync(
+        string filePath,
+        Settings settings,
+        string outputPath
+    )
     {
         var stopwatch = Stopwatch.StartNew();
         var fileName = Path.GetFileName(filePath);
@@ -367,7 +403,7 @@ public class DatasetValidateCommand : AsyncCommand<DatasetValidateCommand.Settin
         {
             // Read image
             var imageData = await File.ReadAllBytesAsync(filePath);
-            using var image = Image.Load<Rgba32>(imageData);
+            using var image = RgbImage.Load(imageData);
 
             // Quick quality pre-check if requested
             if (settings.FilterQuality)
@@ -381,7 +417,7 @@ public class DatasetValidateCommand : AsyncCommand<DatasetValidateCommand.Settin
                         FileName = fileName,
                         Success = false,
                         ErrorMessage = quickCheck.reason,
-                        ProcessingTime = stopwatch.Elapsed.TotalSeconds
+                        ProcessingTime = stopwatch.Elapsed.TotalSeconds,
                     };
                 }
             }
@@ -396,13 +432,16 @@ public class DatasetValidateCommand : AsyncCommand<DatasetValidateCommand.Settin
                     FileName = fileName,
                     Success = false,
                     ErrorMessage = $"Face detection failed: {detectionResult.Error}",
-                    ProcessingTime = stopwatch.Elapsed.TotalSeconds
+                    ProcessingTime = stopwatch.Elapsed.TotalSeconds,
                 };
             }
 
-            var faces = detectionResult.Value
-                .Where(f => f.Confidence >= settings.MinConfidence)
-                .Where(f => f.BoundingBox.Width >= settings.MinFaceSize && f.BoundingBox.Height >= settings.MinFaceSize)
+            var faces = detectionResult
+                .Value.Where(f => f.Confidence >= settings.MinConfidence)
+                .Where(f =>
+                    f.BoundingBox.Width >= settings.MinFaceSize
+                    && f.BoundingBox.Height >= settings.MinFaceSize
+                )
                 .ToArray();
 
             if (faces.Length == 0)
@@ -414,7 +453,7 @@ public class DatasetValidateCommand : AsyncCommand<DatasetValidateCommand.Settin
                     Success = false,
                     ErrorMessage = "No suitable faces found",
                     FaceCount = 0,
-                    ProcessingTime = stopwatch.Elapsed.TotalSeconds
+                    ProcessingTime = stopwatch.Elapsed.TotalSeconds,
                 };
             }
 
@@ -426,16 +465,17 @@ public class DatasetValidateCommand : AsyncCommand<DatasetValidateCommand.Settin
                     FilePath = filePath,
                     FileName = fileName,
                     Success = false,
-                    ErrorMessage = $"Multiple faces detected ({faces.Length}), PIV/TWIC requires single face",
+                    ErrorMessage =
+                        $"Multiple faces detected ({faces.Length}), PIV/TWIC requires single face",
                     FaceCount = faces.Length,
-                    ProcessingTime = stopwatch.Elapsed.TotalSeconds
+                    ProcessingTime = stopwatch.Elapsed.TotalSeconds,
                 };
             }
 
             // Process the face
             var face = faces.First();
             var processingOptions = GetProcessingOptions(settings);
-            
+
             // Process the face using PivProcessor with appropriate options
             var outputFileName = Path.GetFileNameWithoutExtension(fileName) + "_processed";
             var jp2Path = Path.Combine(outputPath, "passed", outputFileName + ".jp2");
@@ -448,7 +488,8 @@ public class DatasetValidateCommand : AsyncCommand<DatasetValidateCommand.Settin
                 _jpeg2000Encoder,
                 processingOptions,
                 enableRoi: true,
-                logger: _logger);
+                logger: _logger
+            );
 
             if (pivResult.IsSuccess)
             {
@@ -465,12 +506,10 @@ public class DatasetValidateCommand : AsyncCommand<DatasetValidateCommand.Settin
                     var cropBottom = (int)(transform.CropRegion.Bottom * image.Height);
                     var cropWidth = cropRight - cropLeft;
                     var cropHeight = cropBottom - cropTop;
-                    
-                    ctx.Crop(new SixLabors.ImageSharp.Rectangle(
-                        cropLeft,
-                        cropTop,
-                        cropWidth,
-                        cropHeight));
+
+                    ctx.Crop(
+                        new System.Drawing.Rectangle(cropLeft, cropTop, cropWidth, cropHeight)
+                    );
                     ctx.Resize(300, 400);
                 });
 
@@ -484,14 +523,18 @@ public class DatasetValidateCommand : AsyncCommand<DatasetValidateCommand.Settin
                         FilePath = filePath,
                         FileName = fileName,
                         Success = false,
-                        ErrorMessage = "Failed to detect face in processed image for quality assessment",
+                        ErrorMessage =
+                            "Failed to detect face in processed image for quality assessment",
                         FaceCount = faces.Length,
-                        ProcessingTime = stopwatch.Elapsed.TotalSeconds
+                        ProcessingTime = stopwatch.Elapsed.TotalSeconds,
                     };
                 }
 
                 var processedFace = processedDetectionResult.Value.First();
-                var processedLandmarksResult = await _landmarkExtractor.ExtractLandmarksAsync(processedImage, processedFace.BoundingBox);
+                var processedLandmarksResult = await _landmarkExtractor.ExtractLandmarksAsync(
+                    processedImage,
+                    processedFace.BoundingBox
+                );
                 if (processedLandmarksResult.IsFailure)
                 {
                     return new ProcessingResult
@@ -499,9 +542,10 @@ public class DatasetValidateCommand : AsyncCommand<DatasetValidateCommand.Settin
                         FilePath = filePath,
                         FileName = fileName,
                         Success = false,
-                        ErrorMessage = $"Failed to extract landmarks for quality assessment: {processedLandmarksResult.Error}",
+                        ErrorMessage =
+                            $"Failed to extract landmarks for quality assessment: {processedLandmarksResult.Error}",
                         FaceCount = faces.Length,
-                        ProcessingTime = stopwatch.Elapsed.TotalSeconds
+                        ProcessingTime = stopwatch.Elapsed.TotalSeconds,
                     };
                 }
 
@@ -510,15 +554,16 @@ public class DatasetValidateCommand : AsyncCommand<DatasetValidateCommand.Settin
                     Standard = Iso19794Standard.Piv,
                     EnforceCompliance = false, // We'll check thresholds manually
                     MinQualityThreshold = 0.5f,
-                    EnableParallelAssessment = true
+                    EnableParallelAssessment = true,
                 };
 
                 var qualityResult = await _qualityAssessor.AssessAsync(
-                    processedImage, 
-                    processedFace, 
-                    processedLandmarksResult.Value, 
-                    qualityOptions);
-                
+                    processedImage,
+                    processedFace,
+                    processedLandmarksResult.Value,
+                    qualityOptions
+                );
+
                 if (qualityResult.IsFailure)
                 {
                     return new ProcessingResult
@@ -528,16 +573,16 @@ public class DatasetValidateCommand : AsyncCommand<DatasetValidateCommand.Settin
                         Success = false,
                         ErrorMessage = $"Quality assessment failed: {qualityResult.Error}",
                         FaceCount = faces.Length,
-                        ProcessingTime = stopwatch.Elapsed.TotalSeconds
+                        ProcessingTime = stopwatch.Elapsed.TotalSeconds,
                     };
                 }
 
                 var qualityAssessment = qualityResult.Value;
-                
+
                 // Check if quality meets minimum thresholds
                 var minSharpnessThreshold = settings.SharpnessThreshold;
                 const double MinOverallQuality = 0.6; // Fail if overall quality below 60%
-                
+
                 if (qualityAssessment.Sharpness.Overall.Value < minSharpnessThreshold)
                 {
                     return new ProcessingResult
@@ -545,15 +590,16 @@ public class DatasetValidateCommand : AsyncCommand<DatasetValidateCommand.Settin
                         FilePath = filePath,
                         FileName = fileName,
                         Success = false,
-                        ErrorMessage = $"Image too blurry: sharpness score {qualityAssessment.Sharpness.Overall.Value:F2} below threshold {minSharpnessThreshold:F2}",
+                        ErrorMessage =
+                            $"Image too blurry: sharpness score {qualityAssessment.Sharpness.Overall.Value:F2} below threshold {minSharpnessThreshold:F2}",
                         FaceCount = faces.Length,
                         ProcessingTime = stopwatch.Elapsed.TotalSeconds,
                         QualityScore = qualityAssessment.Sharpness.Overall.Value,
                         Metadata = new Dictionary<string, object>
                         {
                             ["QualityAssessment"] = qualityAssessment,
-                            ["FailureReason"] = "LowSharpness"
-                        }
+                            ["FailureReason"] = "LowSharpness",
+                        },
                     };
                 }
 
@@ -564,15 +610,16 @@ public class DatasetValidateCommand : AsyncCommand<DatasetValidateCommand.Settin
                         FilePath = filePath,
                         FileName = fileName,
                         Success = false,
-                        ErrorMessage = $"Image quality too low: overall score {qualityAssessment.Overall.Value:F2} below threshold {MinOverallQuality:F2}",
+                        ErrorMessage =
+                            $"Image quality too low: overall score {qualityAssessment.Overall.Value:F2} below threshold {MinOverallQuality:F2}",
                         FaceCount = faces.Length,
                         ProcessingTime = stopwatch.Elapsed.TotalSeconds,
                         QualityScore = qualityAssessment.Overall.Value,
                         Metadata = new Dictionary<string, object>
                         {
                             ["QualityAssessment"] = qualityAssessment,
-                            ["FailureReason"] = "LowOverallQuality"
-                        }
+                            ["FailureReason"] = "LowOverallQuality",
+                        },
                     };
                 }
 
@@ -595,7 +642,7 @@ public class DatasetValidateCommand : AsyncCommand<DatasetValidateCommand.Settin
                     ["FileSize"] = pivResult.Value.ImageData.Length,
                     ["QualityAssessment"] = qualityAssessment,
                     ["SharpnessScore"] = qualityAssessment.Sharpness.Overall.Value,
-                    ["OverallQuality"] = qualityAssessment.Overall.Value
+                    ["OverallQuality"] = qualityAssessment.Overall.Value,
                 };
 
                 return new ProcessingResult
@@ -608,7 +655,7 @@ public class DatasetValidateCommand : AsyncCommand<DatasetValidateCommand.Settin
                     FaceCount = faces.Length,
                     ProcessingTime = stopwatch.Elapsed.TotalSeconds,
                     QualityScore = qualityAssessment.Overall.Value,
-                    Metadata = metadata
+                    Metadata = metadata,
                 };
             }
             else
@@ -620,20 +667,23 @@ public class DatasetValidateCommand : AsyncCommand<DatasetValidateCommand.Settin
                     Success = false,
                     ErrorMessage = pivResult.Error,
                     FaceCount = faces.Length,
-                    ProcessingTime = stopwatch.Elapsed.TotalSeconds
+                    ProcessingTime = stopwatch.Elapsed.TotalSeconds,
                 };
             }
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error processing file: {FilePath}", filePath);
+            _logger.LogError(
+                new EventId(707691, "DatasetValidateCommand"),
+                "DatasetValidateCommand failed."
+            );
             return new ProcessingResult
             {
                 FilePath = filePath,
                 FileName = fileName,
                 Success = false,
                 ErrorMessage = ex.Message,
-                ProcessingTime = stopwatch.Elapsed.TotalSeconds
+                ProcessingTime = stopwatch.Elapsed.TotalSeconds,
             };
         }
     }
@@ -645,9 +695,9 @@ public class DatasetValidateCommand : AsyncCommand<DatasetValidateCommand.Settin
             "PIV" => PivProcessingOptions.Default,
             "TWIC" => PivProcessingOptions.Default with { BaseRate = 0.5f }, // Lower rate for TWIC
             "ICAO" => PivProcessingOptions.HighQuality,
-            _ => PivProcessingOptions.Default
+            _ => PivProcessingOptions.Default,
         };
-        
+
         if (settings.RelaxedCrop)
         {
             // Use adaptive options for pre-cropped faces or when relaxed cropping is requested
@@ -657,14 +707,14 @@ public class DatasetValidateCommand : AsyncCommand<DatasetValidateCommand.Settin
                 MinEyeDistance = 50, // Reduced from default
                 AllowPreCropped = true,
                 BaseRate = options.BaseRate, // Preserve base rate from standard
-                MinFaceConfidence = settings.MinConfidence
+                MinFaceConfidence = settings.MinConfidence,
             };
         }
 
         return options;
     }
 
-    private Task<(bool passed, string reason)> PerformQuickQualityCheck(Image<Rgba32> image)
+    private Task<(bool passed, string reason)> PerformQuickQualityCheck(RgbImage image)
     {
         // Basic quality checks
         if (image.Width < 100 || image.Height < 100)
@@ -675,36 +725,43 @@ public class DatasetValidateCommand : AsyncCommand<DatasetValidateCommand.Settin
     }
 
     private string GenerateVisualization(
-        Image<Rgba32> image, 
+        RgbImage image,
         Core.Domain.Detection.DetectedFace face,
         string outputPath,
-        string fileName)
+        string fileName
+    )
     {
         var vizFileName = Path.GetFileNameWithoutExtension(fileName) + "_viz.png";
         var vizPath = Path.Combine(outputPath, "visualizations", vizFileName);
 
         // Clone image for visualization
         using var visualImage = image.Clone();
-        
+
         // Draw face bounding box
         var box = face.BoundingBox;
         visualImage.Mutate(ctx =>
         {
-            var rect = new SixLabors.ImageSharp.Rectangle(
-                (int)box.X, 
-                (int)box.Y, 
-                (int)box.Width, 
-                (int)box.Height);
-            
-            ctx.Draw(SixLabors.ImageSharp.Color.Green, 3f, rect);
+            var rect = new System.Drawing.Rectangle(
+                (int)box.X,
+                (int)box.Y,
+                (int)box.Width,
+                (int)box.Height
+            );
+
+            ctx.Draw(System.Drawing.Color.Green, 3f, rect);
         });
 
         // Draw confidence text
-        var font = SixLabors.Fonts.SystemFonts.CreateFont("Arial", 16);
+        var font = OverlayFonts.CreateFont("Arial", 16);
         visualImage.Mutate(ctx =>
         {
             var text = $"Confidence: {face.Confidence:F2}";
-            ctx.DrawText(text, font, SixLabors.ImageSharp.Color.Green, new SixLabors.ImageSharp.PointF(box.X, box.Y - 20));
+            ctx.DrawText(
+                text,
+                font,
+                System.Drawing.Color.Green,
+                new System.Drawing.PointF(box.X, box.Y - 20)
+            );
         });
 
         visualImage.SaveAsPng(vizPath);
@@ -714,7 +771,8 @@ public class DatasetValidateCommand : AsyncCommand<DatasetValidateCommand.Settin
     private async Task GenerateReportAsync(
         List<ProcessingResult> results,
         string outputPath,
-        string datasetName)
+        string datasetName
+    )
     {
         // Generate JSON results
         var jsonPath = Path.Combine(outputPath, "results.json");
@@ -725,12 +783,14 @@ public class DatasetValidateCommand : AsyncCommand<DatasetValidateCommand.Settin
         var csvPath = Path.Combine(outputPath, "results.csv");
         var csvBuilder = new StringBuilder();
         csvBuilder.AppendLine("FileName,Success,ErrorMessage,FaceCount,ProcessingTime,OutputPath");
-        
+
         foreach (var result in results)
         {
-            csvBuilder.AppendLine($"{result.FileName},{result.Success},\"{result.ErrorMessage ?? ""}\",{result.FaceCount ?? 0},{result.ProcessingTime:F3},{result.OutputPath ?? ""}");
+            csvBuilder.AppendLine(
+                $"{result.FileName},{result.Success},\"{result.ErrorMessage ?? ""}\",{result.FaceCount ?? 0},{result.ProcessingTime:F3},{result.OutputPath ?? ""}"
+            );
         }
-        
+
         await File.WriteAllTextAsync(csvPath, csvBuilder.ToString());
 
         // Generate HTML report
@@ -742,13 +802,15 @@ public class DatasetValidateCommand : AsyncCommand<DatasetValidateCommand.Settin
         List<ProcessingResult> results,
         string htmlPath,
         string datasetName,
-        string outputPath)
+        string outputPath
+    )
     {
         var successCount = results.Count(r => r.Success);
         var failureCount = results.Count - successCount;
         var avgProcessingTime = results.Average(r => r.ProcessingTime);
 
-        var html = $@"<!DOCTYPE html>
+        var html =
+            $@"<!DOCTYPE html>
 <html>
 <head>
     <title>FaceOFFx Dataset Validation Report - {datasetName}</title>
@@ -885,11 +947,13 @@ public class DatasetValidateCommand : AsyncCommand<DatasetValidateCommand.Settin
         {
             var jp2Path = Path.GetRelativePath(outputPath, result.OutputPath!);
             var pngPath = Path.ChangeExtension(jp2Path, ".png");
-            var vizPath = result.VisualizationPath != null 
-                ? Path.GetRelativePath(outputPath, result.VisualizationPath) 
-                : null;
-            
-            gallery.AppendLine($@"
+            var vizPath =
+                result.VisualizationPath != null
+                    ? Path.GetRelativePath(outputPath, result.VisualizationPath)
+                    : null;
+
+            gallery.AppendLine(
+                $@"
                 <div class='col-md-3 mb-4'>
                     <div class='card'>
                         <img src='{pngPath}' class='card-img-top' alt='{result.FileName}' style='max-height: 200px; object-fit: contain;'>
@@ -907,15 +971,18 @@ public class DatasetValidateCommand : AsyncCommand<DatasetValidateCommand.Settin
                             </div>
                         </div>
                     </div>
-                </div>");
+                </div>"
+            );
         }
 
         if (results.Count(r => r.Success) > 20)
         {
-            gallery.AppendLine($@"
+            gallery.AppendLine(
+                $@"
                 <div class='col-12'>
                     <p class='text-center text-muted'>... and {results.Count(r => r.Success) - 20} more successful images</p>
-                </div>");
+                </div>"
+            );
         }
 
         return gallery.ToString();
@@ -923,7 +990,8 @@ public class DatasetValidateCommand : AsyncCommand<DatasetValidateCommand.Settin
 
     private string GenerateFailureAnalysisRows(List<ProcessingResult> results)
     {
-        var failures = results.Where(r => !r.Success && r.ErrorMessage != null)
+        var failures = results
+            .Where(r => !r.Success && r.ErrorMessage != null)
             .GroupBy(r => GetErrorCategory(r.ErrorMessage!))
             .OrderByDescending(g => g.Count());
 
@@ -933,12 +1001,14 @@ public class DatasetValidateCommand : AsyncCommand<DatasetValidateCommand.Settin
         foreach (var group in failures)
         {
             var percentage = totalFailures > 0 ? (double)group.Count() / totalFailures * 100 : 0;
-            rows.AppendLine($@"
+            rows.AppendLine(
+                $@"
                 <tr>
                     <td>{group.Key}</td>
                     <td>{group.Count()}</td>
                     <td>{percentage:F1}%</td>
-                </tr>");
+                </tr>"
+            );
         }
 
         return rows.ToString();
@@ -954,8 +1024,10 @@ public class DatasetValidateCommand : AsyncCommand<DatasetValidateCommand.Settin
             return "Image Too Small";
         if (errorMessage.Contains("Face detection failed", StringComparison.OrdinalIgnoreCase))
             return "Detection Failed";
-        if (errorMessage.Contains("too blurry", StringComparison.OrdinalIgnoreCase) || 
-            errorMessage.Contains("sharpness", StringComparison.OrdinalIgnoreCase))
+        if (
+            errorMessage.Contains("too blurry", StringComparison.OrdinalIgnoreCase)
+            || errorMessage.Contains("sharpness", StringComparison.OrdinalIgnoreCase)
+        )
             return "Too Blurry";
         if (errorMessage.Contains("quality too low", StringComparison.OrdinalIgnoreCase))
             return "Low Quality";
@@ -967,22 +1039,24 @@ public class DatasetValidateCommand : AsyncCommand<DatasetValidateCommand.Settin
     private string GenerateDetailedResultRows(List<ProcessingResult> results)
     {
         var rows = new StringBuilder();
-        
+
         foreach (var result in results.Take(100)) // Limit to first 100 for performance
         {
-            var statusBadge = result.Success 
-                ? "<span class='badge bg-success'>Passed</span>" 
+            var statusBadge = result.Success
+                ? "<span class='badge bg-success'>Passed</span>"
                 : "<span class='badge bg-danger'>Failed</span>";
-            
-            var outputLink = result.Success && result.OutputPath != null
-                ? $"<a href='{Path.GetFileName(result.OutputPath)}' target='_blank'>View</a>"
+
+            var outputLink =
+                result.Success && result.OutputPath != null
+                    ? $"<a href='{Path.GetFileName(result.OutputPath)}' target='_blank'>View</a>"
+                    : "-";
+
+            var qualityDisplay = result.QualityScore.HasValue
+                ? $"{result.QualityScore.Value:F2}"
                 : "-";
-            
-            var qualityDisplay = result.QualityScore.HasValue 
-                ? $"{result.QualityScore.Value:F2}" 
-                : "-";
-            
-            rows.AppendLine($@"
+
+            rows.AppendLine(
+                $@"
                 <tr>
                     <td>{result.FileName}</td>
                     <td>{statusBadge}</td>
@@ -991,17 +1065,20 @@ public class DatasetValidateCommand : AsyncCommand<DatasetValidateCommand.Settin
                     <td>{result.ProcessingTime:F3}</td>
                     <td>{result.ErrorMessage ?? "-"}</td>
                     <td>{outputLink}</td>
-                </tr>");
+                </tr>"
+            );
         }
 
         if (results.Count > 100)
         {
-            rows.AppendLine($@"
+            rows.AppendLine(
+                $@"
                 <tr>
                     <td colspan='5' class='text-center text-muted'>
                         ... and {results.Count - 100} more results
                     </td>
-                </tr>");
+                </tr>"
+            );
         }
 
         return rows.ToString();
@@ -1009,7 +1086,8 @@ public class DatasetValidateCommand : AsyncCommand<DatasetValidateCommand.Settin
 
     private string GenerateFailureChartScript(List<ProcessingResult> results)
     {
-        var failureGroups = results.Where(r => !r.Success && r.ErrorMessage != null)
+        var failureGroups = results
+            .Where(r => !r.Success && r.ErrorMessage != null)
             .GroupBy(r => GetErrorCategory(r.ErrorMessage!))
             .OrderByDescending(g => g.Count())
             .ToList();
@@ -1048,7 +1126,8 @@ public class DatasetValidateCommand : AsyncCommand<DatasetValidateCommand.Settin
     private async Task GenerateBatchReviewHtml(List<ProcessingResult> results, string htmlPath)
     {
         // Similar to GenerateHtmlReport but focused on batch review
-        var html = $@"<!DOCTYPE html>
+        var html =
+            $@"<!DOCTYPE html>
 <html>
 <head>
     <title>FaceOFFx Batch Review</title>
@@ -1088,19 +1167,21 @@ public class DatasetValidateCommand : AsyncCommand<DatasetValidateCommand.Settin
     private string GenerateBatchImageCards(List<ProcessingResult> results)
     {
         var cards = new StringBuilder();
-        
+
         foreach (var result in results)
         {
             var cardClass = result.Success ? "success" : "failure";
             var statusText = result.Success ? "Passed" : "Failed";
-            
-            cards.AppendLine($@"
+
+            cards.AppendLine(
+                $@"
                 <div class=""image-card {cardClass}"">
                     <h6>{result.FileName}</h6>
                     <p class=""mb-1""><strong>{statusText}</strong></p>
                     {(result.ErrorMessage != null ? $"<p class='small text-danger'>{result.ErrorMessage}</p>" : "")}
                     <p class=""small text-muted"">Faces: {result.FaceCount ?? 0}</p>
-                </div>");
+                </div>"
+            );
         }
 
         return cards.ToString();
@@ -1113,15 +1194,18 @@ public class DatasetValidateCommand : AsyncCommand<DatasetValidateCommand.Settin
 
         AnsiConsole.WriteLine();
         AnsiConsole.Write(new Rule("[yellow]Processing Summary[/]"));
-        
-        var table = new Table()
-            .Border(TableBorder.Rounded)
-            .AddColumn("Metric")
-            .AddColumn("Value");
+
+        var table = new Table().Border(TableBorder.Rounded).AddColumn("Metric").AddColumn("Value");
 
         table.AddRow("Total Images", results.Count.ToString());
-        table.AddRow("[green]Passed[/]", $"{successCount} ({(double)successCount / results.Count:P1})");
-        table.AddRow("[red]Failed[/]", $"{failureCount} ({(double)failureCount / results.Count:P1})");
+        table.AddRow(
+            "[green]Passed[/]",
+            $"{successCount} ({(double)successCount / results.Count:P1})"
+        );
+        table.AddRow(
+            "[red]Failed[/]",
+            $"{failureCount} ({(double)failureCount / results.Count:P1})"
+        );
         table.AddRow("Avg Processing Time", $"{results.Average(r => r.ProcessingTime):F2}s");
         table.AddRow("Total Processing Time", $"{results.Sum(r => r.ProcessingTime):F1}s");
 
@@ -1137,7 +1221,8 @@ public class DatasetValidateCommand : AsyncCommand<DatasetValidateCommand.Settin
                 .AddColumn("Error Type")
                 .AddColumn("Count");
 
-            var failureGroups = results.Where(r => !r.Success && r.ErrorMessage != null)
+            var failureGroups = results
+                .Where(r => !r.Success && r.ErrorMessage != null)
                 .GroupBy(r => GetErrorCategory(r.ErrorMessage!))
                 .OrderByDescending(g => g.Count());
 

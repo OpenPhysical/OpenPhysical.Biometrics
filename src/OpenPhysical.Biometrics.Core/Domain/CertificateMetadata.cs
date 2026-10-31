@@ -76,7 +76,9 @@ public sealed record CertificateMetadata
             var subjectKeyId = Maybe<ImmutableArray<byte>>.None;
             if (skiBytes != null)
             {
-                var ski = Org.BouncyCastle.Asn1.X509.SubjectKeyIdentifier.GetInstance(Org.BouncyCastle.Asn1.Asn1OctetString.GetInstance(skiBytes).GetOctets());
+                var ski = Org.BouncyCastle.Asn1.X509.SubjectKeyIdentifier.GetInstance(
+                    Org.BouncyCastle.Asn1.Asn1OctetString.GetInstance(skiBytes).GetOctets()
+                );
                 subjectKeyId = Maybe.From(ski.GetKeyIdentifier().ToImmutableArray());
             }
 
@@ -85,7 +87,9 @@ public sealed record CertificateMetadata
             var authorityKeyId = Maybe<ImmutableArray<byte>>.None;
             if (akiBytes != null)
             {
-                var aki = Org.BouncyCastle.Asn1.X509.AuthorityKeyIdentifier.GetInstance(Org.BouncyCastle.Asn1.Asn1OctetString.GetInstance(akiBytes).GetOctets());
+                var aki = Org.BouncyCastle.Asn1.X509.AuthorityKeyIdentifier.GetInstance(
+                    Org.BouncyCastle.Asn1.Asn1OctetString.GetInstance(akiBytes).GetOctets()
+                );
                 if (aki.GetKeyIdentifier() != null)
                 {
                     authorityKeyId = Maybe.From(aki.GetKeyIdentifier().ToImmutableArray());
@@ -101,14 +105,16 @@ public sealed record CertificateMetadata
                 SubjectDN = certificate.SubjectDN.ToString(),
                 IssuerDN = certificate.IssuerDN.ToString(),
                 NotBefore = certificate.NotBefore,
-                NotAfter = certificate.NotAfter
+                NotAfter = certificate.NotAfter,
             };
 
             return Result.Success(metadata);
         }
         catch (Exception ex)
         {
-            return Result.Failure<CertificateMetadata>($"Failed to extract certificate metadata: {ex.Message}");
+            return Result.Failure<CertificateMetadata>(
+                $"Failed to extract certificate metadata: {ex.Message}"
+            );
         }
     }
 
@@ -120,7 +126,7 @@ public sealed record CertificateMetadata
     /// <summary>
     /// Gets a hex string representation of the Subject Key Identifier.
     /// </summary>
-    public Maybe<string> GetSubjectKeyIdentifierHex() => 
+    public Maybe<string> GetSubjectKeyIdentifierHex() =>
         SubjectKeyIdentifier.Map(ski => Convert.ToHexString(ski.AsSpan()));
 
     /// <summary>

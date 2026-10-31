@@ -21,7 +21,8 @@ public interface ICbeffEncoder
         byte[] biometricData,
         BiometricModality modality,
         BiometricFormat format,
-        CbeffMetadata metadata);
+        CbeffMetadata metadata
+    );
 
     /// <summary>
     /// Creates a CBEFF header for the given parameters.
@@ -37,5 +38,6 @@ public interface ICbeffEncoder
         ushort signatureLength,
         BiometricModality modality,
         BiometricFormat format,
-        CbeffMetadata metadata);
+        CbeffMetadata metadata
+    );
 }

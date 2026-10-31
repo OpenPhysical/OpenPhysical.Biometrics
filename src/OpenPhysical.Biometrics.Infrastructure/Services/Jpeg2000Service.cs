@@ -1,11 +1,11 @@
+using System.Collections.Immutable;
+using System.Drawing;
 using JetBrains.Annotations;
 using Microsoft.Extensions.Logging;
 using OpenPhysical.Biometrics.Core.Abstractions;
-using OpenPhysical.Biometrics.Core.Domain.Transformations;
 using OpenPhysical.Biometrics.Core.Domain.Common;
-using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.PixelFormats;
-using System.Collections.Immutable;
+using OpenPhysical.Biometrics.Core.Domain.Transformations;
+using OpenPhysical.Biometrics.Imaging;
 
 namespace OpenPhysical.Biometrics.Infrastructure.Services;
 
@@ -22,7 +22,8 @@ public interface IJpeg2000Service
     Task<Result<EncodedJpeg2000>> EncodeAsync(
         ImmutableArray<byte> imageData,
         Jpeg2000Options options,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken = default
+    );
 
     /// <summary>
     /// Encodes an image with Region of Interest (ROI) prioritization.
@@ -31,7 +32,8 @@ public interface IJpeg2000Service
         ImmutableArray<byte> imageData,
         FacialRoiSet roiSet,
         Jpeg2000Options options,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken = default
+    );
 
     /// <summary>
     /// Encodes an image to meet a target file size.
@@ -41,7 +43,8 @@ public interface IJpeg2000Service
         int targetSizeBytes,
         Maybe<FacialRoiSet> roiSet,
         TargetSizeOptions options,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken = default
+    );
 
     /// <summary>
     /// Calculates optimal compression settings for given constraints.
@@ -49,7 +52,8 @@ public interface IJpeg2000Service
     Task<Result<CompressionRecommendation>> CalculateOptimalSettingsAsync(
         ImmutableArray<byte> imageData,
         CompressionConstraints constraints,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken = default
+    );
 }
 
 /// <summary>
@@ -64,9 +68,7 @@ public sealed class Jpeg2000Service : IJpeg2000Service
     /// <summary>
     /// Initializes a new instance of the JPEG 2000 service.
     /// </summary>
-    public Jpeg2000Service(
-        IJpeg2000Encoder encoder,
-        ILogger<Jpeg2000Service> logger)
+    public Jpeg2000Service(IJpeg2000Encoder encoder, ILogger<Jpeg2000Service> logger)
     {
         _encoder = encoder;
         _logger = logger;
@@ -76,14 +78,18 @@ public sealed class Jpeg2000Service : IJpeg2000Service
     public async Task<Result<EncodedJpeg2000>> EncodeAsync(
         ImmutableArray<byte> imageData,
         Jpeg2000Options options,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default
+    )
     {
         try
         {
-            _logger.LogDebug("Starting JPEG 2000 encoding with rate {Rate} bpp", options.CompressionRate);
+            _logger.LogDebug(
+                new EventId(920300, "Jpeg2000Service"),
+                "Jpeg2000Service processing started."
+            );
 
-            using var image = Image.Load<Rgba32>(imageData.ToArray());
-            
+            using var image = RgbImage.Load(imageData.ToArray());
+
             // For non-ROI encoding, we just use the EncodeWithRoi method with ROI disabled
             // Create a minimal ROI set that covers the entire image
             var emptyRoi = FacialRoiSet.CalculateRoiForDimensions(image.Width, image.Height);
@@ -93,28 +99,40 @@ public sealed class Jpeg2000Service : IJpeg2000Service
                 options.CompressionRate,
                 options.RoiStartLevel,
                 false, // ROI disabled
-                options.AlignRoi);
+                options.AlignRoi
+            );
             if (result.IsFailure)
             {
-                return Result.Failure<EncodedJpeg2000>($"JPEG 2000 encoding failed: {result.Error}");
+                return Result.Failure<EncodedJpeg2000>(
+                    $"JPEG 2000 encoding failed: {result.Error}"
+                );
             }
 
             var encodedData = ImmutableArray.Create(result.Value);
-            var metadata = CreateMetadata(image, encodedData.Length, options.CompressionRate, false);
+            var metadata = CreateMetadata(
+                image,
+                encodedData.Length,
+                options.CompressionRate,
+                false
+            );
 
             var encoded = new EncodedJpeg2000(
                 encodedData,
                 new ImageDimensions(image.Width, image.Height),
                 options.CompressionRate,
                 encodedData.Length,
-                metadata);
+                metadata
+            );
 
-            _logger.LogDebug("JPEG 2000 encoding completed. Size: {Size} bytes", encodedData.Length);
+            _logger.LogDebug(
+                new EventId(920301, "Jpeg2000Service"),
+                "Jpeg2000Service processing completed."
+            );
             return Result.Success(encoded);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "JPEG 2000 encoding failed");
+            _logger.LogError(new EventId(920302, "Jpeg2000Service"), "JPEG 2000 encoding failed");
             return Result.Failure<EncodedJpeg2000>($"Encoding failed: {ex.Message}");
         }
     }
@@ -124,24 +142,31 @@ public sealed class Jpeg2000Service : IJpeg2000Service
         ImmutableArray<byte> imageData,
         FacialRoiSet roiSet,
         Jpeg2000Options options,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default
+    )
     {
         try
         {
-            _logger.LogDebug("Starting JPEG 2000 encoding with ROI, rate {Rate} bpp", options.CompressionRate);
+            _logger.LogDebug(
+                new EventId(920303, "Jpeg2000Service"),
+                "Jpeg2000Service processing started."
+            );
 
-            using var image = Image.Load<Rgba32>(imageData.ToArray());
-            
+            using var image = RgbImage.Load(imageData.ToArray());
+
             var result = _encoder.EncodeWithRoi(
                 image,
                 roiSet,
                 options.CompressionRate,
                 options.RoiStartLevel,
                 true, // ROI enabled
-                options.AlignRoi);
+                options.AlignRoi
+            );
             if (result.IsFailure)
             {
-                return Result.Failure<EncodedJpeg2000>($"JPEG 2000 encoding with ROI failed: {result.Error}");
+                return Result.Failure<EncodedJpeg2000>(
+                    $"JPEG 2000 encoding with ROI failed: {result.Error}"
+                );
             }
 
             var encodedData = ImmutableArray.Create(result.Value);
@@ -154,14 +179,21 @@ public sealed class Jpeg2000Service : IJpeg2000Service
                 new ImageDimensions(image.Width, image.Height),
                 options.CompressionRate,
                 encodedData.Length,
-                metadata);
+                metadata
+            );
 
-            _logger.LogDebug("JPEG 2000 encoding with ROI completed. Size: {Size} bytes", encodedData.Length);
+            _logger.LogDebug(
+                new EventId(920304, "Jpeg2000Service"),
+                "Jpeg2000Service processing completed."
+            );
             return Result.Success(encoded);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "JPEG 2000 encoding with ROI failed");
+            _logger.LogError(
+                new EventId(920305, "Jpeg2000Service"),
+                "JPEG 2000 encoding with ROI failed"
+            );
             return Result.Failure<EncodedJpeg2000>($"Encoding with ROI failed: {ex.Message}");
         }
     }
@@ -172,20 +204,24 @@ public sealed class Jpeg2000Service : IJpeg2000Service
         int targetSizeBytes,
         Maybe<FacialRoiSet> roiSet,
         TargetSizeOptions options,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default
+    )
     {
         try
         {
-            _logger.LogDebug("Starting JPEG 2000 encoding to target size {TargetSize} bytes", targetSizeBytes);
+            _logger.LogDebug(
+                new EventId(920306, "Jpeg2000Service"),
+                "Jpeg2000Service processing started."
+            );
 
             if (targetSizeBytes <= 0)
             {
                 return Result.Failure<EncodedJpeg2000>("Target size must be greater than zero");
             }
 
-            using var image = Image.Load<Rgba32>(imageData.ToArray());
+            using var image = RgbImage.Load(imageData.ToArray());
             var pixelCount = image.Width * image.Height;
-            
+
             // Start with initial rate estimate
             var currentRate = EstimateInitialRate(targetSizeBytes, pixelCount);
             var bestResult = Maybe<EncodedJpeg2000>.None;
@@ -194,19 +230,28 @@ public sealed class Jpeg2000Service : IJpeg2000Service
             while (attempts < options.MaxAttempts)
             {
                 attempts++;
-                _logger.LogDebug("Attempt {Attempt}: trying rate {Rate} bpp", attempts, currentRate);
+                _logger.LogDebug(
+                    new EventId(920307, "Jpeg2000Service"),
+                    "Jpeg2000Service processing status changed."
+                );
 
                 var encodingOptions = new Jpeg2000Options(
                     currentRate,
                     options.QualityLayers,
                     options.TileSize,
                     options.RoiStartLevel,
-                    options.AlignRoi);
+                    options.AlignRoi
+                );
 
                 Result<EncodedJpeg2000> result;
                 if (roiSet.HasValue)
                 {
-                    result = await EncodeWithRoiAsync(imageData, roiSet.Value, encodingOptions, cancellationToken);
+                    result = await EncodeWithRoiAsync(
+                        imageData,
+                        roiSet.Value,
+                        encodingOptions,
+                        cancellationToken
+                    );
                 }
                 else
                 {
@@ -222,30 +267,41 @@ public sealed class Jpeg2000Service : IJpeg2000Service
                 var sizeDiff = encoded.FileSize - targetSizeBytes;
                 var sizeRatio = (float)encoded.FileSize / targetSizeBytes;
 
-                _logger.LogDebug("Encoded size: {Size} bytes (target: {Target}, diff: {Diff})", 
-                    encoded.FileSize, targetSizeBytes, sizeDiff);
+                _logger.LogDebug(
+                    new EventId(920308, "Jpeg2000Service"),
+                    "Jpeg2000Service processing status changed."
+                );
 
                 // Check if we're within tolerance
                 if (Math.Abs(sizeRatio - 1.0f) <= options.SizeTolerance)
                 {
-                    _logger.LogDebug("Target size achieved within tolerance");
+                    _logger.LogDebug(
+                        new EventId(920309, "Jpeg2000Service"),
+                        "Target size achieved within tolerance"
+                    );
                     return Result.Success(encoded);
                 }
 
                 // Update best result if closer to target
-                if (!bestResult.HasValue || 
-                    Math.Abs(encoded.FileSize - targetSizeBytes) < Math.Abs(bestResult.Value.FileSize - targetSizeBytes))
+                if (
+                    !bestResult.HasValue
+                    || Math.Abs(encoded.FileSize - targetSizeBytes)
+                        < Math.Abs(bestResult.Value.FileSize - targetSizeBytes)
+                )
                 {
                     bestResult = Maybe<EncodedJpeg2000>.From(encoded);
                 }
 
                 // Adjust rate for next attempt
                 currentRate = AdjustCompressionRate(currentRate, sizeRatio, attempts);
-                
+
                 // Check if rate is getting too extreme
                 if (currentRate < 0.1f || currentRate > 10.0f)
                 {
-                    _logger.LogWarning("Compression rate {Rate} is outside reasonable bounds", currentRate);
+                    _logger.LogWarning(
+                        new EventId(920310, "Jpeg2000Service"),
+                        "Jpeg2000Service processing status changed."
+                    );
                     break;
                 }
             }
@@ -253,18 +309,23 @@ public sealed class Jpeg2000Service : IJpeg2000Service
             // Return best result if we have one
             if (bestResult.HasValue)
             {
-                _logger.LogWarning("Could not achieve exact target size after {Attempts} attempts. " +
-                    "Best result: {Size} bytes (target: {Target})", 
-                    attempts, bestResult.Value.FileSize, targetSizeBytes);
+                _logger.LogWarning(
+                    new EventId(920311, "Jpeg2000Service"),
+                    "Jpeg2000Service processing status changed."
+                );
                 return Result.Success(bestResult.Value);
             }
 
             return Result.Failure<EncodedJpeg2000>(
-                $"Failed to achieve target size {targetSizeBytes} bytes after {attempts} attempts");
+                $"Failed to achieve target size {targetSizeBytes} bytes after {attempts} attempts"
+            );
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "JPEG 2000 encoding to target size failed");
+            _logger.LogError(
+                new EventId(920312, "Jpeg2000Service"),
+                "JPEG 2000 encoding to target size failed"
+            );
             return Result.Failure<EncodedJpeg2000>($"Encoding to target size failed: {ex.Message}");
         }
     }
@@ -273,22 +334,27 @@ public sealed class Jpeg2000Service : IJpeg2000Service
     public async Task<Result<CompressionRecommendation>> CalculateOptimalSettingsAsync(
         ImmutableArray<byte> imageData,
         CompressionConstraints constraints,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default
+    )
     {
         try
         {
-            _logger.LogDebug("Calculating optimal JPEG 2000 settings for constraints");
+            _logger.LogDebug(
+                new EventId(920313, "Jpeg2000Service"),
+                "Calculating optimal JPEG 2000 settings for constraints"
+            );
 
-            using var image = Image.Load<Rgba32>(imageData.ToArray());
+            using var image = RgbImage.Load(imageData.ToArray());
             var dimensions = new ImageDimensions(image.Width, image.Height);
             var pixelCount = image.Width * image.Height;
 
             // Calculate recommended settings based on constraints
-            var recommendedRate = constraints.MaxFileSize.HasValue
-                ? EstimateInitialRate(constraints.MaxFileSize.Value, pixelCount)
+            var recommendedRate =
+                constraints.MaxFileSize.HasValue
+                    ? EstimateInitialRate(constraints.MaxFileSize.Value, pixelCount)
                 : constraints.MinQuality.HasValue
                     ? EstimateRateForQuality(constraints.MinQuality.Value)
-                    : 0.7f; // Default
+                : 0.7f; // Default
 
             // Adjust for content complexity if needed
             if (constraints.ConsiderContent)
@@ -309,19 +375,27 @@ public sealed class Jpeg2000Service : IJpeg2000Service
                 constraints.MaxFileSize,
                 EstimateFileSize(pixelCount, recommendedRate),
                 dimensions,
-                ImmutableDictionary<string, object>.Empty
-                    .Add("PixelCount", pixelCount)
-                    .Add("EstimatedQuality", EstimateQualityForRate(recommendedRate)));
+                ImmutableDictionary<string, object>
+                    .Empty.Add("PixelCount", pixelCount)
+                    .Add("EstimatedQuality", EstimateQualityForRate(recommendedRate))
+            );
 
-            _logger.LogDebug("Recommended settings: rate={Rate} bpp, ROI={UseRoi}", 
-                recommendedRate, useRoi);
-            
+            _logger.LogDebug(
+                new EventId(920314, "Jpeg2000Service"),
+                "Jpeg2000Service processing status changed."
+            );
+
             return Result.Success(recommendation);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to calculate optimal settings");
-            return Result.Failure<CompressionRecommendation>($"Settings calculation failed: {ex.Message}");
+            _logger.LogError(
+                new EventId(920315, "Jpeg2000Service"),
+                "Failed to calculate optimal settings"
+            );
+            return Result.Failure<CompressionRecommendation>(
+                $"Settings calculation failed: {ex.Message}"
+            );
         }
     }
 
@@ -342,7 +416,7 @@ public sealed class Jpeg2000Service : IJpeg2000Service
             >= 0.8f => 1.0f,
             >= 0.7f => 0.7f,
             >= 0.6f => 0.5f,
-            _ => 0.3f
+            _ => 0.3f,
         };
     }
 
@@ -355,7 +429,7 @@ public sealed class Jpeg2000Service : IJpeg2000Service
             >= 1.0f => 0.85f,
             >= 0.7f => 0.75f,
             >= 0.5f => 0.65f,
-            _ => 0.5f
+            _ => 0.5f,
         };
     }
 
@@ -371,10 +445,10 @@ public sealed class Jpeg2000Service : IJpeg2000Service
         // Adaptive adjustment based on how far we are from target
         var adjustment = attempt switch
         {
-            1 => 0.5f,  // Large adjustments initially
+            1 => 0.5f, // Large adjustments initially
             2 => 0.3f,
             3 => 0.2f,
-            _ => 0.1f   // Fine adjustments later
+            _ => 0.1f, // Fine adjustments later
         };
 
         if (sizeRatio > 1.0f)
@@ -389,7 +463,7 @@ public sealed class Jpeg2000Service : IJpeg2000Service
         }
     }
 
-    private static async Task<float> EstimateImageComplexityAsync(Image<Rgba32> image)
+    private static async Task<float> EstimateImageComplexityAsync(RgbImage image)
     {
         // Simple complexity estimation based on color variance
         // More sophisticated analysis could be implemented
@@ -404,13 +478,14 @@ public sealed class Jpeg2000Service : IJpeg2000Service
     }
 
     private static ImmutableDictionary<string, object> CreateMetadata(
-        Image<Rgba32> image,
+        RgbImage image,
         int fileSize,
         float compressionRate,
-        bool roiUsed)
+        bool roiUsed
+    )
     {
-        return ImmutableDictionary<string, object>.Empty
-            .Add("Width", image.Width)
+        return ImmutableDictionary<string, object>
+            .Empty.Add("Width", image.Width)
             .Add("Height", image.Height)
             .Add("FileSize", fileSize)
             .Add("CompressionRate", compressionRate)

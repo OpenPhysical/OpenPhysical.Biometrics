@@ -14,18 +14,22 @@ public interface IBiometricFormatRegistry
     /// <typeparam name="TDomainRecord">The domain model type.</typeparam>
     /// <param name="formatHandler">The format handler to register.</param>
     /// <returns>Success or failure with error message.</returns>
-    Result RegisterFormatHandler<TDomainRecord>(IBiometricFormatHandler<TDomainRecord> formatHandler)
+    Result RegisterFormatHandler<TDomainRecord>(
+        IBiometricFormatHandler<TDomainRecord> formatHandler
+    )
         where TDomainRecord : class;
-        
+
     /// <summary>
     /// Registers a modality handler for a specific domain type.
     /// </summary>
     /// <typeparam name="TDomainRecord">The domain model type.</typeparam>
     /// <param name="modalityHandler">The modality handler to register.</param>
     /// <returns>Success or failure with error message.</returns>
-    Result RegisterModalityHandler<TDomainRecord>(IBiometricModalityHandler<TDomainRecord, ExtractedBiometricData> modalityHandler)
+    Result RegisterModalityHandler<TDomainRecord>(
+        IBiometricModalityHandler<TDomainRecord, ExtractedBiometricData> modalityHandler
+    )
         where TDomainRecord : class;
-        
+
     /// <summary>
     /// Gets a format handler for the specified format identifiers.
     /// </summary>
@@ -34,15 +38,17 @@ public interface IBiometricFormatRegistry
     /// <param name="bdbFormatType">The BDB format type.</param>
     /// <returns>The format handler if found, otherwise failure.</returns>
     Maybe<object> GetFormatHandler(byte patronFormat, ushort bdbFormatOwner, ushort bdbFormatType);
-    
+
     /// <summary>
     /// Gets a modality handler for the specified domain type.
     /// </summary>
     /// <typeparam name="TDomainRecord">The domain model type.</typeparam>
     /// <returns>The modality handler if found, otherwise failure.</returns>
-    Maybe<IBiometricModalityHandler<TDomainRecord, ExtractedBiometricData>> GetModalityHandler<TDomainRecord>()
+    Maybe<
+        IBiometricModalityHandler<TDomainRecord, ExtractedBiometricData>
+    > GetModalityHandler<TDomainRecord>()
         where TDomainRecord : class;
-        
+
     /// <summary>
     /// Processes biometric data through the complete pipeline (parse → extract).
     /// </summary>
@@ -55,8 +61,9 @@ public interface IBiometricFormatRegistry
         byte patronFormat,
         ushort bdbFormatOwner,
         ushort bdbFormatType,
-        System.Collections.Immutable.ImmutableArray<byte> data);
-        
+        System.Collections.Immutable.ImmutableArray<byte> data
+    );
+
     /// <summary>
     /// Gets information about all registered format handlers.
     /// </summary>

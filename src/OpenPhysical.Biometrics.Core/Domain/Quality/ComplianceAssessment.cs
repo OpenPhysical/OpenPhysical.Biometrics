@@ -1,17 +1,17 @@
 // MIT License
-// 
+//
 // Copyright (c) 2025 FaceOFFx Contributors
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
 // in the Software without restriction, including without limitation the rights
 // to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 // copies of the Software, and to permit persons to whom the Software is
 // furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all
 // copies or substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 // IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 // FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -37,32 +37,48 @@ public record Standard(string Name, string DisplayName, string Description)
     /// Personal Identity Verification standard
     /// </summary>
     public static readonly Standard Piv = new("PIV", "PIV", "Personal Identity Verification cards");
+
     /// <summary>
     /// Transportation Worker Identification Credential standard
     /// </summary>
-    public static readonly Standard Twic = new("TWIC", "TWIC", "Transportation Worker Identification Credential");
+    public static readonly Standard Twic = new(
+        "TWIC",
+        "TWIC",
+        "Transportation Worker Identification Credential"
+    );
+
     /// <summary>
     /// International Civil Aviation Organization standard
     /// </summary>
-    public static readonly Standard Icao = new("ICAO", "ICAO", "International Civil Aviation Organization passport standards");
+    public static readonly Standard Icao = new(
+        "ICAO",
+        "ICAO",
+        "International Civil Aviation Organization passport standards"
+    );
+
     /// <summary>
     /// Common Access Card standard
     /// </summary>
-    public static readonly Standard Cac = new("CAC", "CAC", "Common Access Card for military personnel");
-    
+    public static readonly Standard Cac = new(
+        "CAC",
+        "CAC",
+        "Common Access Card for military personnel"
+    );
+
     /// <summary>
     /// Get a standard by name (case insensitive)
     /// </summary>
     /// <param name="name">The standard name</param>
     /// <returns>The matching standard or null if not found</returns>
-    public static Standard? FromName(string name) => name.ToUpperInvariant() switch
-    {
-        "PIV" => Piv,
-        "TWIC" => Twic,
-        "ICAO" => Icao,
-        "CAC" => Cac,
-        _ => null
-    };
+    public static Standard? FromName(string name) =>
+        name.ToUpperInvariant() switch
+        {
+            "PIV" => Piv,
+            "TWIC" => Twic,
+            "ICAO" => Icao,
+            "CAC" => Cac,
+            _ => null,
+        };
 }
 
 /// <summary>
@@ -75,18 +91,21 @@ public enum ComparisonType
     /// Value must be greater than the threshold
     /// </summary>
     MustBeGreaterThan,
+
     /// <summary>
     /// Value must be less than the threshold
     /// </summary>
     MustBeLessThan,
+
     /// <summary>
     /// Value must be within a specified range
     /// </summary>
     MustBeInRange,
+
     /// <summary>
     /// Value must equal the threshold exactly
     /// </summary>
-    MustEqual
+    MustEqual,
 }
 
 /// <summary>
@@ -99,14 +118,16 @@ public enum MetricUnit
     /// Value is measured as a percentage (0-100)
     /// </summary>
     Percentage,
+
     /// <summary>
     /// Value is measured in pixels
     /// </summary>
     Pixels,
+
     /// <summary>
     /// Value has no specific unit
     /// </summary>
-    None
+    None,
 }
 
 /// <summary>
@@ -120,7 +141,8 @@ public record RejectionReason(
     Standard Standard,
     ComparisonType Type,
     MetricUnit Unit,
-    string Message)
+    string Message
+)
 {
     /// <summary>
     /// Creates a rejection reason with appropriate formatting based on the metric unit
@@ -138,29 +160,30 @@ public record RejectionReason(
         float required,
         Standard standard,
         ComparisonType type,
-        MetricUnit unit = MetricUnit.Percentage)
+        MetricUnit unit = MetricUnit.Percentage
+    )
     {
         var (actualFormatted, requiredFormatted, unitSuffix) = unit switch
         {
             MetricUnit.Percentage => ($"{actual:F1}%", $"{required:F0}%", "%"),
             MetricUnit.Pixels => ($"{actual:F1}px", $"{required:F0}px", "px"),
             MetricUnit.None => ($"{actual:F1}", $"{required:F1}", ""),
-            _ => ($"{actual:F1}", $"{required:F1}", "")
+            _ => ($"{actual:F1}", $"{required:F1}", ""),
         };
 
         var message = type switch
         {
-            ComparisonType.MustBeGreaterThan => 
+            ComparisonType.MustBeGreaterThan =>
                 $"REJECTED: {actualFormatted} {metric.ToLower()} < {requiredFormatted} {standard.Name} minimum",
-            ComparisonType.MustBeLessThan => 
+            ComparisonType.MustBeLessThan =>
                 $"REJECTED: {actualFormatted} {metric.ToLower()} > {requiredFormatted} {standard.Name} maximum",
-            ComparisonType.MustBeInRange => 
+            ComparisonType.MustBeInRange =>
                 $"REJECTED: {actualFormatted} {metric.ToLower()} outside {standard.Name} range",
-            ComparisonType.MustEqual => 
+            ComparisonType.MustEqual =>
                 $"REJECTED: {metric} {actualFormatted} does not match {standard.Name} requirements",
-            _ => $"REJECTED: {metric} {actualFormatted} violates {standard.Name} requirements"
+            _ => $"REJECTED: {metric} {actualFormatted} violates {standard.Name} requirements",
         };
-        
+
         return new RejectionReason(metric, actual, required, standard, type, unit, message);
     }
 }
@@ -174,7 +197,8 @@ public record SymmetryCompliance(
     float IlluminationAsymmetryPercent,
     float PoseAsymmetryPercent,
     float RequiredThreshold,
-    RejectionReason? Rejection = null);
+    RejectionReason? Rejection = null
+);
 
 /// <summary>
 /// Sharpness compliance assessment with specific pass/fail criteria
@@ -185,7 +209,8 @@ public record SharpnessCompliance(
     float OverallSharpnessPercent,
     float RequiredThreshold,
     IReadOnlyDictionary<string, float> RegionalScores,
-    RejectionReason? Rejection = null);
+    RejectionReason? Rejection = null
+);
 
 /// <summary>
 /// Head size compliance assessment
@@ -196,7 +221,8 @@ public record HeadSizeCompliance(
     float SizePercent,
     float MinPercent,
     float MaxPercent,
-    RejectionReason? Rejection = null);
+    RejectionReason? Rejection = null
+);
 
 /// <summary>
 /// Centering compliance assessment
@@ -206,7 +232,8 @@ public record CenteringCompliance(
     bool Passed,
     float CenteringPercent,
     float RequiredThreshold,
-    RejectionReason? Rejection = null);
+    RejectionReason? Rejection = null
+);
 
 /// <summary>
 /// Inter-pupillary distance compliance assessment
@@ -217,7 +244,8 @@ public record IpdCompliance(
     float DistancePixels,
     float MinPixels,
     float MaxPixels,
-    RejectionReason? Rejection = null);
+    RejectionReason? Rejection = null
+);
 
 /// <summary>
 /// Geometry compliance assessment combining all geometric metrics
@@ -228,7 +256,8 @@ public record GeometryCompliance(
     HeadSizeCompliance HeadSize,
     CenteringCompliance Centering,
     IpdCompliance InterPupillaryDistance,
-    RejectionReason? Rejection = null);
+    RejectionReason? Rejection = null
+);
 
 /// <summary>
 /// Complete compliance assessment with clear pass/fail per metric
@@ -240,20 +269,22 @@ public record ComplianceAssessment(
     GeometryCompliance Geometry,
     Standard AppliedStandard,
     IReadOnlyList<RejectionReason> Rejections,
-    DateTime AssessmentTime = default)
+    DateTime AssessmentTime = default
+)
 {
     /// <summary>
     /// True if all metrics pass compliance requirements
     /// </summary>
     public bool IsCompliant => Symmetry.Passed && Sharpness.Passed && Geometry.Passed;
-    
+
     /// <summary>
     /// Summary of compliance status
     /// </summary>
-    public string Summary => IsCompliant 
-        ? $"✅ COMPLIANT for {AppliedStandard.Name} use"
-        : $"❌ REJECTED for {AppliedStandard.Name} use ({Rejections.Count} violations)";
-        
+    public string Summary =>
+        IsCompliant
+            ? $"✅ COMPLIANT for {AppliedStandard.Name} use"
+            : $"❌ REJECTED for {AppliedStandard.Name} use ({Rejections.Count} violations)";
+
     /// <summary>
     /// Creates assessment with default timestamp
     /// </summary>
@@ -262,10 +293,9 @@ public record ComplianceAssessment(
         SharpnessCompliance sharpness,
         GeometryCompliance geometry,
         Standard appliedStandard,
-        IReadOnlyList<RejectionReason> rejections) 
-        : this(symmetry, sharpness, geometry, appliedStandard, rejections, DateTime.UtcNow)
-    {
-    }
+        IReadOnlyList<RejectionReason> rejections
+    )
+        : this(symmetry, sharpness, geometry, appliedStandard, rejections, DateTime.UtcNow) { }
 }
 
 /// <summary>
@@ -275,7 +305,8 @@ public record ComplianceAssessment(
 public record SymmetryMeasurement(
     float IlluminationAsymmetryPercent,
     float PoseAsymmetryPercent,
-    IReadOnlyList<float> GaborResponses);
+    IReadOnlyList<float> GaborResponses
+);
 
 /// <summary>
 /// Raw sharpness measurement data before compliance evaluation
@@ -284,7 +315,8 @@ public record SymmetryMeasurement(
 public record SharpnessMeasurement(
     float OverallSharpnessPercent,
     float HighFrequencyRatio,
-    IReadOnlyDictionary<string, float> RegionalScores);
+    IReadOnlyDictionary<string, float> RegionalScores
+);
 
 /// <summary>
 /// Raw geometry measurement data before compliance evaluation
@@ -295,4 +327,5 @@ public record GeometryMeasurement(
     float CenteringPercent,
     float IpdPixels,
     int ImageWidth,
-    int ImageHeight);
+    int ImageHeight
+);

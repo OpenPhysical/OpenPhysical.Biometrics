@@ -1,12 +1,12 @@
+using System.Drawing;
 using AwesomeAssertions;
 using CSharpFunctionalExtensions;
+using NSubstitute;
+using NUnit.Framework;
 using OpenPhysical.Biometrics.Core.Abstractions;
 using OpenPhysical.Biometrics.Core.Domain.Detection;
 using OpenPhysical.Biometrics.Core.Domain.Transformations;
-using NSubstitute;
-using NUnit.Framework;
-using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.PixelFormats;
+using OpenPhysical.Biometrics.Imaging;
 
 namespace OpenPhysical.Biometrics.Core.Tests.Domain.Transformations;
 
@@ -17,7 +17,7 @@ namespace OpenPhysical.Biometrics.Core.Tests.Domain.Transformations;
 public class EncodingStrategyTests
 {
     private IJpeg2000Encoder _mockEncoder = null!;
-    private Image<Rgba32> _testImage = null!;
+    private RgbImage _testImage = null!;
     private FacialRoiSet _testRoiSet = null!;
     private ProcessingOptions _testOptions = null!;
 
@@ -26,7 +26,7 @@ public class EncodingStrategyTests
     public void SetUp()
     {
         _mockEncoder = Substitute.For<IJpeg2000Encoder>();
-        _testImage = new Image<Rgba32>(420, 560);
+        _testImage = new RgbImage(420, 560);
         var testRoiRegion = new RoiRegion(
             "Test",
             3,
@@ -76,7 +76,7 @@ public class EncodingStrategyTests
     {
         var testData = new byte[] { 1, 2, 3, 4, 5 };
         _mockEncoder
-            .EncodeWithRoi(Arg.Any<Image<Rgba32>>(), Arg.Any<FacialRoiSet>(), 2.0f, 3, true, false)
+            .EncodeWithRoi(Arg.Any<RgbImage>(), Arg.Any<FacialRoiSet>(), 2.0f, 3, true, false)
             .Returns(Result.Success(testData));
 
         var strategy = new FixedRateStrategy(2.0f);
@@ -98,7 +98,7 @@ public class EncodingStrategyTests
     {
         _mockEncoder
             .EncodeWithRoi(
-                Arg.Any<Image<Rgba32>>(),
+                Arg.Any<RgbImage>(),
                 Arg.Any<FacialRoiSet>(),
                 Arg.Any<float>(),
                 Arg.Any<int>(),
@@ -127,7 +127,7 @@ public class EncodingStrategyTests
         // Return oversized for higher rates and target-sized for 0.68f (from CompressionSteps)
         _mockEncoder
             .EncodeWithRoi(
-                Arg.Any<Image<Rgba32>>(),
+                Arg.Any<RgbImage>(),
                 _testRoiSet,
                 Arg.Is<float>(r => r > 0.68f),
                 3,
@@ -136,7 +136,7 @@ public class EncodingStrategyTests
             )
             .Returns(Result.Success(new byte[25000])); // Too big
         _mockEncoder
-            .EncodeWithRoi(Arg.Any<Image<Rgba32>>(), _testRoiSet, 0.68f, 3, true, false)
+            .EncodeWithRoi(Arg.Any<RgbImage>(), _testRoiSet, 0.68f, 3, true, false)
             .Returns(Result.Success(testData));
 
         var strategy = new TargetSizeStrategy(targetSize);
@@ -160,18 +160,18 @@ public class EncodingStrategyTests
         // Mock multiple encoding attempts with different sizes
         // Using actual rates from CompressionSteps array
         _mockEncoder
-            .EncodeWithRoi(Arg.Any<Image<Rgba32>>(), _testRoiSet, 0.36f, 3, true, false)
+            .EncodeWithRoi(Arg.Any<RgbImage>(), _testRoiSet, 0.36f, 3, true, false)
             .Returns(Result.Success(new byte[12000])); // Too small
         _mockEncoder
-            .EncodeWithRoi(Arg.Any<Image<Rgba32>>(), _testRoiSet, 0.46f, 3, true, false)
+            .EncodeWithRoi(Arg.Any<RgbImage>(), _testRoiSet, 0.46f, 3, true, false)
             .Returns(Result.Success(new byte[14500])); // Best fit under target
         _mockEncoder
-            .EncodeWithRoi(Arg.Any<Image<Rgba32>>(), _testRoiSet, 0.55f, 3, true, false)
+            .EncodeWithRoi(Arg.Any<RgbImage>(), _testRoiSet, 0.55f, 3, true, false)
             .Returns(Result.Success(new byte[17000])); // Too big
         // Mock all other rates to return too big
         _mockEncoder
             .EncodeWithRoi(
-                Arg.Any<Image<Rgba32>>(),
+                Arg.Any<RgbImage>(),
                 _testRoiSet,
                 Arg.Is<float>(r => r > 0.55f),
                 3,
@@ -200,7 +200,7 @@ public class EncodingStrategyTests
         // Mock all attempts to return sizes larger than target
         _mockEncoder
             .EncodeWithRoi(
-                Arg.Any<Image<Rgba32>>(),
+                Arg.Any<RgbImage>(),
                 Arg.Any<FacialRoiSet>(),
                 Arg.Any<float>(),
                 Arg.Any<int>(),
@@ -227,18 +227,18 @@ public class EncodingStrategyTests
         // Mock some encoding failures and one success
         // Using actual rates from CompressionSteps array
         _mockEncoder
-            .EncodeWithRoi(Arg.Any<Image<Rgba32>>(), _testRoiSet, 0.85f, 3, true, false)
+            .EncodeWithRoi(Arg.Any<RgbImage>(), _testRoiSet, 0.85f, 3, true, false)
             .Returns(Result.Failure<byte[]>("First failure"));
         _mockEncoder
-            .EncodeWithRoi(Arg.Any<Image<Rgba32>>(), _testRoiSet, 0.75f, 3, true, false)
+            .EncodeWithRoi(Arg.Any<RgbImage>(), _testRoiSet, 0.75f, 3, true, false)
             .Returns(Result.Failure<byte[]>("Second failure"));
         _mockEncoder
-            .EncodeWithRoi(Arg.Any<Image<Rgba32>>(), _testRoiSet, 0.68f, 3, true, false)
+            .EncodeWithRoi(Arg.Any<RgbImage>(), _testRoiSet, 0.68f, 3, true, false)
             .Returns(Result.Success(new byte[18000])); // Success under target
         // Mock lower rates to return smaller sizes
         _mockEncoder
             .EncodeWithRoi(
-                Arg.Any<Image<Rgba32>>(),
+                Arg.Any<RgbImage>(),
                 _testRoiSet,
                 Arg.Is<float>(r => r < 0.68f),
                 3,
@@ -277,7 +277,7 @@ public class EncodingStrategyTests
         // Mock encoder to always return too-large sizes so we test the steps
         _mockEncoder
             .EncodeWithRoi(
-                Arg.Any<Image<Rgba32>>(),
+                Arg.Any<RgbImage>(),
                 Arg.Any<FacialRoiSet>(),
                 Arg.Any<float>(),
                 Arg.Any<int>(),
@@ -297,7 +297,7 @@ public class EncodingStrategyTests
         {
             _mockEncoder
                 .Received()
-                .EncodeWithRoi(Arg.Any<Image<Rgba32>>(), _testRoiSet, rate, 3, true, false);
+                .EncodeWithRoi(Arg.Any<RgbImage>(), _testRoiSet, rate, 3, true, false);
         }
     }
 }

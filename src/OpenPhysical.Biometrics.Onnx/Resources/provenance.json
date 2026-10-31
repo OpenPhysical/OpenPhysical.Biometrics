@@ -1,0 +1,29 @@
+{
+  "schema_version": 1,
+  "origin_repository": "https://github.com/mistial-dev/FaceOFFx",
+  "files": [
+    {
+      "file": "FaceDetector.onnx",
+      "sha256": "40f825cf7dd0a88b26fb61db9a3aaedc2cad35162091113f4017b3c26a4f792d",
+      "bytes": 109458296,
+      "retained_from_commit": "dac18cdd7bcd906e23f2f0784369888b2a93e373",
+      "published_history_commit": "1eec795e057966a6d82b6d7b816fa66a87e44a9e"
+    },
+    {
+      "file": "landmarks_68_pfld.onnx",
+      "sha256": "7d7bbd5c6a1d9272e58d9773898284a1905d872eba9a662df9b5f20f1ba6f83e",
+      "bytes": 2987921,
+      "retained_from_commit": "dac18cdd7bcd906e23f2f0784369888b2a93e373",
+      "published_history_commit": "1eec795e057966a6d82b6d7b816fa66a87e44a9e"
+    }
+  ],
+  "historical_distribution_notice": {
+    "publisher_repository": "https://github.com/FaceONNX/FaceONNX.Models",
+    "publisher_commit": "df11c0c73f46a9a675a16432374983fc5400d43a",
+    "license_source": "https://raw.githubusercontent.com/FaceONNX/FaceONNX.Models/df11c0c73f46a9a675a16432374983fc5400d43a/LICENSE",
+    "notice_file": "LICENSE-FaceONNX-MIT.txt",
+    "notice_sha256": "be69e125740c395b520b588efcd11b45d4c75b25d401428ab29adc2fa978c0a6",
+    "retrieved_on": "2026-10-31"
+  },
+  "published_history_repository": "https://github.com/OpenPhysical/OpenPhysical.Biometrics"
+}

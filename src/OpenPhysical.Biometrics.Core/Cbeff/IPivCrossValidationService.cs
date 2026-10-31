@@ -1,9 +1,9 @@
 namespace OpenPhysical.Biometrics.Core.Cbeff;
 
+using System.Collections.Immutable;
 using CSharpFunctionalExtensions;
 using OpenPhysical.Biometrics.Core.Certificates;
 using OpenPhysical.Domains.Cbeff;
-using System.Collections.Immutable;
 
 /// <summary>
 /// Service for performing comprehensive PIV CBEFF-CHUID cross-validation.
@@ -21,7 +21,8 @@ public interface IPivCrossValidationService
     Task<Result<PivCrossValidationResult>> ValidateAsync(
         CbeffPayload cbeffPayload,
         Maybe<string> chuidFilePath,
-        ITrustedCertificateStoreExtended trustedStore);
+        ITrustedCertificateStoreExtended trustedStore
+    );
 
     /// <summary>
     /// Attempts to auto-detect CHUID file in the same directory as a CBEFF file.
@@ -50,7 +51,8 @@ public sealed record PivCrossValidationResult(
     CertificateChainValidationResult ChainValidation,
     CrossValidationChecks CrossValidationChecks,
     CertificateValidationStrategy ValidationStrategy,
-    ImmutableArray<string> ValidationErrors);
+    ImmutableArray<string> ValidationErrors
+);
 
 /// <summary>
 /// CHUID-specific validation results.
@@ -63,7 +65,8 @@ public sealed record ChuidValidationResult(
     ChuidStructure ChuidStructure,
     bool SignatureValid,
     Maybe<Org.BouncyCastle.X509.X509Certificate> SignerCertificate,
-    ImmutableArray<string> ValidationErrors);
+    ImmutableArray<string> ValidationErrors
+);
 
 /// <summary>
 /// Cross-validation checks between CBEFF and CHUID.
@@ -76,4 +79,5 @@ public sealed record CrossValidationChecks(
     bool FascNMatches,
     bool SignerIdentityMatches,
     bool CardUuidMatches,
-    bool ValidationTimestampConsistency);
+    bool ValidationTimestampConsistency
+);

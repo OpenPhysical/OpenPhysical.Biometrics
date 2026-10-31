@@ -160,7 +160,8 @@ public sealed class BigEndianBinaryReader : IDisposable
             {
                 var toRead = Math.Min(remaining, buffer.Length);
                 var read = _reader.Read(buffer, 0, toRead);
-                if (read == 0) break;
+                if (read == 0)
+                    break;
                 remaining -= read;
             }
         }

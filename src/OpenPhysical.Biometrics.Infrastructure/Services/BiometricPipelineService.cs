@@ -1,13 +1,13 @@
+using System.Collections.Immutable;
+using CSharpFunctionalExtensions;
 using JetBrains.Annotations;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using OpenPhysical.Biometrics.Core.Abstractions;
 using OpenPhysical.Biometrics.Core.Abstractions.Pipeline;
+using OpenPhysical.Biometrics.Core.Domain.Common;
 using OpenPhysical.Biometrics.Core.Domain.Pipeline;
 using OpenPhysical.Biometrics.Core.Domain.Quality;
-using OpenPhysical.Biometrics.Core.Domain.Common;
-using System.Collections.Immutable;
-using CSharpFunctionalExtensions;
-using Microsoft.Extensions.DependencyInjection;
 using OpenPhysical.Biometrics.Infrastructure.Pipeline;
 using OpenPhysical.Domains.Biometrics;
 using CoreQualityScore = OpenPhysical.Biometrics.Core.Domain.Quality.QualityScore;
@@ -30,7 +30,8 @@ public interface IBiometricPipelineService
         BiometricStandard standard,
         PipelineExecutionPolicy executionPolicy,
         ImmutableDictionary<string, object>? metadata = null,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken = default
+    );
 
     /// <summary>
     /// Executes a custom pipeline with specified steps.
@@ -40,7 +41,8 @@ public interface IBiometricPipelineService
         ImmutableList<IPipelineStep<ProcessedBiometricData, ProcessedBiometricData>> steps,
         PipelineExecutionPolicy executionPolicy,
         ImmutableDictionary<string, object>? metadata = null,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken = default
+    );
 
     /// <summary>
     /// Creates a pipeline builder for fluent pipeline construction.
@@ -50,7 +52,10 @@ public interface IBiometricPipelineService
     /// <summary>
     /// Gets available pipeline steps.
     /// </summary>
-    ImmutableDictionary<string, IPipelineStep<ProcessedBiometricData, ProcessedBiometricData>> GetAvailableSteps();
+    ImmutableDictionary<
+        string,
+        IPipelineStep<ProcessedBiometricData, ProcessedBiometricData>
+    > GetAvailableSteps();
 }
 
 /// <summary>
@@ -61,14 +66,18 @@ public sealed class BiometricPipelineService : IBiometricPipelineService
 {
     private readonly IServiceProvider _serviceProvider;
     private readonly ILogger<BiometricPipelineService> _logger;
-    private readonly ImmutableDictionary<string, IPipelineStep<ProcessedBiometricData, ProcessedBiometricData>> _availableSteps;
+    private readonly ImmutableDictionary<
+        string,
+        IPipelineStep<ProcessedBiometricData, ProcessedBiometricData>
+    > _availableSteps;
 
     /// <summary>
     /// Initializes a new instance of the biometric pipeline service.
     /// </summary>
     public BiometricPipelineService(
         IServiceProvider serviceProvider,
-        ILogger<BiometricPipelineService> logger)
+        ILogger<BiometricPipelineService> logger
+    )
     {
         _serviceProvider = serviceProvider;
         _logger = logger;
@@ -81,12 +90,19 @@ public sealed class BiometricPipelineService : IBiometricPipelineService
         BiometricStandard standard,
         PipelineExecutionPolicy executionPolicy,
         ImmutableDictionary<string, object>? metadata = null,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default
+    )
     {
         _logger.LogInformation("Starting {Standard} pipeline execution", standard);
 
         var steps = GetStandardPipeline(standard);
-        return await ExecuteCustomPipelineAsync(imageData, steps, executionPolicy, metadata, cancellationToken);
+        return await ExecuteCustomPipelineAsync(
+            imageData,
+            steps,
+            executionPolicy,
+            metadata,
+            cancellationToken
+        );
     }
 
     /// <inheritdoc />
@@ -95,30 +111,37 @@ public sealed class BiometricPipelineService : IBiometricPipelineService
         ImmutableList<IPipelineStep<ProcessedBiometricData, ProcessedBiometricData>> steps,
         PipelineExecutionPolicy executionPolicy,
         ImmutableDictionary<string, object>? metadata = null,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default
+    )
     {
         try
         {
-            _logger.LogInformation("Starting custom pipeline execution with {Count} steps", steps.Count);
+            _logger.LogInformation(
+                "Starting custom pipeline execution with {Count} steps",
+                steps.Count
+            );
 
             // Create pipeline context with metadata if provided
-            var context = metadata != null 
-                ? SimplePipelineContext.Create().WithMetadata(metadata) 
-                : SimplePipelineContext.Create();
+            var context =
+                metadata != null
+                    ? SimplePipelineContext.Create().WithMetadata(metadata)
+                    : SimplePipelineContext.Create();
 
             // Initialize biometric data
             var initialData = new BiometricData(
                 imageData,
                 BiometricDataType.FacialImage,
                 PipelineBiometricFormat.Jpeg,
-                ImmutableDictionary<string, object>.Empty);
+                ImmutableDictionary<string, object>.Empty
+            );
 
             var currentData = new ProcessedBiometricData(
                 initialData,
                 QualityMetrics.WithOverallQuality(CoreQualityScore.Create(0).Value),
                 ImmutableList<Core.Domain.Detection.DetectedFace>.Empty,
                 Maybe<Core.Domain.Detection.FaceLandmarks68>.None,
-                ImmutableDictionary<string, object>.Empty);
+                ImmutableDictionary<string, object>.Empty
+            );
 
             // Execute pipeline steps
             var executedSteps = ImmutableList<ExecutedStep>.Empty;
@@ -127,49 +150,62 @@ public sealed class BiometricPipelineService : IBiometricPipelineService
             foreach (var step in steps)
             {
                 _logger.LogDebug("Executing step: {StepId} - {StepName}", step.StepId, step.Name);
-                
+
                 var stepStartTime = DateTime.UtcNow;
-                
+
                 // Check if step can process current data
                 if (!step.CanProcess(currentData))
                 {
-                    _logger.LogWarning("Step {StepId} cannot process current data, skipping", step.StepId);
+                    _logger.LogWarning(
+                        "Step {StepId} cannot process current data, skipping",
+                        step.StepId
+                    );
                     continue;
                 }
 
                 // Execute step
                 var stepResult = await step.ExecuteAsync(currentData, context, cancellationToken);
-                
+
                 if (stepResult.IsFailure)
                 {
-                    _logger.LogError("Step {StepId} failed: {Error}", step.StepId, stepResult.Error);
-                    
+                    _logger.LogError(
+                        new EventId(843103, "BiometricPipelineService"),
+                        "BiometricPipelineService failed."
+                    );
+
                     if (executionPolicy.StopOnFirstError)
                     {
                         return Result.Failure<BiometricPipelineResult>(
-                            $"Pipeline failed at step {step.StepId}: {stepResult.Error}");
+                            $"Pipeline failed at step {step.StepId}: {stepResult.Error}"
+                        );
                     }
 
                     // Record failed step and continue
-                    executedSteps = executedSteps.Add(new ExecutedStep(
-                        step.StepId,
-                        step.Name,
-                        StepStatus.Failed,
-                        DateTime.UtcNow - stepStartTime,
-                        Maybe.From(stepResult.Error)));
+                    executedSteps = executedSteps.Add(
+                        new ExecutedStep(
+                            step.StepId,
+                            step.Name,
+                            StepStatus.Failed,
+                            DateTime.UtcNow - stepStartTime,
+                            Maybe.From(stepResult.Error)
+                        )
+                    );
                     continue;
                 }
 
                 // Update current data
                 currentData = stepResult.Value;
-                
+
                 // Record successful step
-                executedSteps = executedSteps.Add(new ExecutedStep(
-                    step.StepId,
-                    step.Name,
-                    StepStatus.Completed,
-                    DateTime.UtcNow - stepStartTime,
-                    Maybe.None));
+                executedSteps = executedSteps.Add(
+                    new ExecutedStep(
+                        step.StepId,
+                        step.Name,
+                        StepStatus.Completed,
+                        DateTime.UtcNow - stepStartTime,
+                        Maybe.None
+                    )
+                );
 
                 _logger.LogDebug("Step {StepId} completed successfully", step.StepId);
 
@@ -188,7 +224,7 @@ public sealed class BiometricPipelineService : IBiometricPipelineService
             }
 
             var totalDuration = DateTime.UtcNow - startTime;
-            
+
             // Create pipeline result
             var result = new BiometricPipelineResult(
                 context.ExecutionId.ToString(),
@@ -196,11 +232,14 @@ public sealed class BiometricPipelineService : IBiometricPipelineService
                 currentData,
                 executedSteps,
                 totalDuration,
-                context.Metadata);
+                context.Metadata
+            );
 
             _logger.LogInformation(
                 "Pipeline execution completed successfully in {Duration}ms with {StepCount} steps",
-                totalDuration.TotalMilliseconds, executedSteps.Count);
+                totalDuration.TotalMilliseconds,
+                executedSteps.Count
+            );
 
             return Result.Success(result);
         }
@@ -211,8 +250,13 @@ public sealed class BiometricPipelineService : IBiometricPipelineService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Pipeline execution failed with exception");
-            return Result.Failure<BiometricPipelineResult>($"Pipeline execution failed: {ex.Message}");
+            _logger.LogError(
+                new EventId(728308, "BiometricPipelineService"),
+                "BiometricPipelineService failed."
+            );
+            return Result.Failure<BiometricPipelineResult>(
+                $"Pipeline execution failed: {ex.Message}"
+            );
         }
     }
 
@@ -223,54 +267,85 @@ public sealed class BiometricPipelineService : IBiometricPipelineService
     }
 
     /// <inheritdoc />
-    public ImmutableDictionary<string, IPipelineStep<ProcessedBiometricData, ProcessedBiometricData>> GetAvailableSteps()
+    public ImmutableDictionary<
+        string,
+        IPipelineStep<ProcessedBiometricData, ProcessedBiometricData>
+    > GetAvailableSteps()
     {
         return _availableSteps;
     }
 
-    private static ImmutableDictionary<string, IPipelineStep<ProcessedBiometricData, ProcessedBiometricData>> InitializeAvailableSteps(
-        IServiceProvider serviceProvider)
+    private static ImmutableDictionary<
+        string,
+        IPipelineStep<ProcessedBiometricData, ProcessedBiometricData>
+    > InitializeAvailableSteps(IServiceProvider serviceProvider)
     {
-        var builder = ImmutableDictionary.CreateBuilder<string, IPipelineStep<ProcessedBiometricData, ProcessedBiometricData>>();
+        var builder = ImmutableDictionary.CreateBuilder<
+            string,
+            IPipelineStep<ProcessedBiometricData, ProcessedBiometricData>
+        >();
 
         // Get all registered pipeline steps
-        var faceDetectionStep = serviceProvider.GetService<BiometricPipelineSteps.IFaceDetectionStep>();
+        var faceDetectionStep =
+            serviceProvider.GetService<BiometricPipelineSteps.IFaceDetectionStep>();
         if (faceDetectionStep != null)
         {
-            builder.Add(faceDetectionStep.StepId, (IPipelineStep<ProcessedBiometricData, ProcessedBiometricData>)faceDetectionStep);
+            builder.Add(
+                faceDetectionStep.StepId,
+                (IPipelineStep<ProcessedBiometricData, ProcessedBiometricData>)faceDetectionStep
+            );
         }
 
-        var landmarkStep = serviceProvider.GetService<BiometricPipelineSteps.ILandmarkExtractionStep>();
+        var landmarkStep =
+            serviceProvider.GetService<BiometricPipelineSteps.ILandmarkExtractionStep>();
         if (landmarkStep != null)
         {
-            builder.Add(landmarkStep.StepId, (IPipelineStep<ProcessedBiometricData, ProcessedBiometricData>)landmarkStep);
+            builder.Add(
+                landmarkStep.StepId,
+                (IPipelineStep<ProcessedBiometricData, ProcessedBiometricData>)landmarkStep
+            );
         }
 
-        var qualityStep = serviceProvider.GetService<BiometricPipelineSteps.IQualityAssessmentStep>();
+        var qualityStep =
+            serviceProvider.GetService<BiometricPipelineSteps.IQualityAssessmentStep>();
         if (qualityStep != null)
         {
-            builder.Add(qualityStep.StepId, (IPipelineStep<ProcessedBiometricData, ProcessedBiometricData>)qualityStep);
+            builder.Add(
+                qualityStep.StepId,
+                (IPipelineStep<ProcessedBiometricData, ProcessedBiometricData>)qualityStep
+            );
         }
 
-        var transformStep = serviceProvider.GetService<BiometricPipelineSteps.IImageTransformStep>();
+        var transformStep =
+            serviceProvider.GetService<BiometricPipelineSteps.IImageTransformStep>();
         if (transformStep != null)
         {
-            builder.Add(transformStep.StepId, (IPipelineStep<ProcessedBiometricData, ProcessedBiometricData>)transformStep);
+            builder.Add(
+                transformStep.StepId,
+                (IPipelineStep<ProcessedBiometricData, ProcessedBiometricData>)transformStep
+            );
         }
 
-        var encodingStep = serviceProvider.GetService<BiometricPipelineSteps.IJpeg2000EncodingStep>();
+        var encodingStep =
+            serviceProvider.GetService<BiometricPipelineSteps.IJpeg2000EncodingStep>();
         if (encodingStep != null)
         {
-            builder.Add(encodingStep.StepId, (IPipelineStep<ProcessedBiometricData, ProcessedBiometricData>)encodingStep);
+            builder.Add(
+                encodingStep.StepId,
+                (IPipelineStep<ProcessedBiometricData, ProcessedBiometricData>)encodingStep
+            );
         }
 
         return builder.ToImmutable();
     }
 
-    private ImmutableList<IPipelineStep<ProcessedBiometricData, ProcessedBiometricData>> GetStandardPipeline(
-        BiometricStandard standard)
+    private ImmutableList<
+        IPipelineStep<ProcessedBiometricData, ProcessedBiometricData>
+    > GetStandardPipeline(BiometricStandard standard)
     {
-        var builder = ImmutableList.CreateBuilder<IPipelineStep<ProcessedBiometricData, ProcessedBiometricData>>();
+        var builder = ImmutableList.CreateBuilder<
+            IPipelineStep<ProcessedBiometricData, ProcessedBiometricData>
+        >();
 
         switch (standard)
         {
@@ -340,7 +415,8 @@ public interface IPipelineBuilder
     /// </summary>
     IPipelineBuilder AddConditionalStep(
         IPipelineStep<ProcessedBiometricData, ProcessedBiometricData> step,
-        Func<ProcessedBiometricData, bool> condition);
+        Func<ProcessedBiometricData, bool> condition
+    );
 
     /// <summary>
     /// Adds a checkpoint.
@@ -367,7 +443,9 @@ internal sealed class PipelineBuilder : IPipelineBuilder
         _steps = new List<IPipelineStep<ProcessedBiometricData, ProcessedBiometricData>>();
     }
 
-    public IPipelineBuilder AddStep(IPipelineStep<ProcessedBiometricData, ProcessedBiometricData> step)
+    public IPipelineBuilder AddStep(
+        IPipelineStep<ProcessedBiometricData, ProcessedBiometricData> step
+    )
     {
         _steps.Add(step);
         return this;
@@ -377,7 +455,7 @@ internal sealed class PipelineBuilder : IPipelineBuilder
     {
         var pipelineService = _serviceProvider.GetRequiredService<IBiometricPipelineService>();
         var availableSteps = pipelineService?.GetAvailableSteps();
-        
+
         if (availableSteps != null && availableSteps.TryGetValue(stepId, out var step))
         {
             _steps.Add(step);
@@ -386,13 +464,14 @@ internal sealed class PipelineBuilder : IPipelineBuilder
         {
             throw new InvalidOperationException($"Step with ID '{stepId}' not found");
         }
-        
+
         return this;
     }
 
     public IPipelineBuilder AddConditionalStep(
         IPipelineStep<ProcessedBiometricData, ProcessedBiometricData> step,
-        Func<ProcessedBiometricData, bool> condition)
+        Func<ProcessedBiometricData, bool> condition
+    )
     {
         _steps.Add(new ConditionalPipelineStep(step, condition));
         return this;
@@ -413,7 +492,8 @@ internal sealed class PipelineBuilder : IPipelineBuilder
 /// <summary>
 /// Conditional pipeline step wrapper.
 /// </summary>
-internal sealed class ConditionalPipelineStep : IPipelineStep<ProcessedBiometricData, ProcessedBiometricData>
+internal sealed class ConditionalPipelineStep
+    : IPipelineStep<ProcessedBiometricData, ProcessedBiometricData>
 {
     private readonly IPipelineStep<ProcessedBiometricData, ProcessedBiometricData> _innerStep;
     private readonly Func<ProcessedBiometricData, bool> _condition;
@@ -424,7 +504,8 @@ internal sealed class ConditionalPipelineStep : IPipelineStep<ProcessedBiometric
 
     public ConditionalPipelineStep(
         IPipelineStep<ProcessedBiometricData, ProcessedBiometricData> innerStep,
-        Func<ProcessedBiometricData, bool> condition)
+        Func<ProcessedBiometricData, bool> condition
+    )
     {
         _innerStep = innerStep;
         _condition = condition;
@@ -433,7 +514,8 @@ internal sealed class ConditionalPipelineStep : IPipelineStep<ProcessedBiometric
     public Task<Result<ProcessedBiometricData>> ExecuteAsync(
         ProcessedBiometricData input,
         IPipelineContext context,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default
+    )
     {
         if (_condition(input))
         {
@@ -468,50 +550,59 @@ internal sealed class CheckpointStep : IPipelineStep<ProcessedBiometricData, Pro
     public async Task<Result<ProcessedBiometricData>> ExecuteAsync(
         ProcessedBiometricData input,
         IPipelineContext context,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default
+    )
     {
         var decision = await _checkpoint.RequestDecisionAsync(input, context, cancellationToken);
-        
+
         if (decision.IsFailure)
         {
             return Result.Failure<ProcessedBiometricData>(decision.Error);
         }
 
         var result = decision.Value;
-        
+
         // Handle different checkpoint decisions
         switch (result.Decision)
         {
             case CheckpointDecision.Continue:
                 return Result.Success(input);
-                
+
             case CheckpointDecision.ContinueWithModifications:
                 // Apply any modifications from the checkpoint
-                if (result.ModifiedData.HasValue && result.ModifiedData.Value is ProcessedBiometricData modifiedData)
+                if (
+                    result.ModifiedData.HasValue
+                    && result.ModifiedData.Value is ProcessedBiometricData modifiedData
+                )
                 {
                     return Result.Success(modifiedData);
                 }
                 return Result.Success(input);
-                
+
             case CheckpointDecision.Skip:
                 return Result.Success(input);
-                
+
             case CheckpointDecision.Retry:
                 // For now, treat retry as continue - more complex retry logic could be added
                 return Result.Success(input);
-                
+
             case CheckpointDecision.Abort:
-                var reason = result.UserComment.HasValue ? result.UserComment.Value : "User aborted pipeline";
-                return Result.Failure<ProcessedBiometricData>($"Pipeline aborted at checkpoint: {reason}");
-                
+                var reason = result.UserComment.HasValue
+                    ? result.UserComment.Value
+                    : "User aborted pipeline";
+                return Result.Failure<ProcessedBiometricData>(
+                    $"Pipeline aborted at checkpoint: {reason}"
+                );
+
             default:
-                return Result.Failure<ProcessedBiometricData>($"Unknown checkpoint decision: {result.Decision}");
+                return Result.Failure<ProcessedBiometricData>(
+                    $"Unknown checkpoint decision: {result.Decision}"
+                );
         }
     }
 
     public bool CanProcess(ProcessedBiometricData input) => true;
 }
-
 
 /// <summary>
 /// Result of pipeline execution.
@@ -548,21 +639,21 @@ public enum PipelineStatus
     /// Pipeline completed successfully.
     /// </summary>
     Completed,
-    
+
     /// <summary>
     /// Pipeline completed with some failed steps.
     /// </summary>
     PartiallyCompleted,
-    
+
     /// <summary>
     /// Pipeline failed.
     /// </summary>
     Failed,
-    
+
     /// <summary>
     /// Pipeline was cancelled.
     /// </summary>
-    Cancelled
+    Cancelled,
 }
 
 /// <summary>
@@ -575,16 +666,16 @@ public enum StepStatus
     /// Step completed successfully.
     /// </summary>
     Completed,
-    
+
     /// <summary>
     /// Step was skipped.
     /// </summary>
     Skipped,
-    
+
     /// <summary>
     /// Step failed.
     /// </summary>
-    Failed
+    Failed,
 }
 
 /// <summary>
@@ -597,19 +688,19 @@ public enum BiometricStandard
     /// Personal Identity Verification (PIV) standard.
     /// </summary>
     Piv,
-    
+
     /// <summary>
     /// Transportation Worker Identification Credential (TWIC) standard.
     /// </summary>
     Twic,
-    
+
     /// <summary>
     /// International Civil Aviation Organization (ICAO) standard.
     /// </summary>
     Icao,
-    
+
     /// <summary>
     /// Custom standard.
     /// </summary>
-    Custom
+    Custom,
 }

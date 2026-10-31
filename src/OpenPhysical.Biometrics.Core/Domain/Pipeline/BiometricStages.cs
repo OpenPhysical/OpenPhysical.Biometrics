@@ -1,8 +1,8 @@
+using System.Collections.Immutable;
+using JetBrains.Annotations;
 using OpenPhysical.Biometrics.Core.Domain.Common;
 using OpenPhysical.Biometrics.Core.Domain.Detection;
 using OpenPhysical.Biometrics.Core.Domain.Transformations;
-using JetBrains.Annotations;
-using System.Collections.Immutable;
 
 namespace OpenPhysical.Biometrics.Core.Domain.Pipeline;
 
@@ -10,9 +10,7 @@ namespace OpenPhysical.Biometrics.Core.Domain.Pipeline;
 /// Value object representing a raw biometric image with metadata
 /// </summary>
 [PublicAPI]
-public sealed record BiometricImage(
-    ImmutableArray<byte> Data,
-    ImageMetadata Metadata);
+public sealed record BiometricImage(ImmutableArray<byte> Data, ImageMetadata Metadata);
 
 /// <summary>
 /// Value object representing the result of face detection stage
@@ -21,7 +19,8 @@ public sealed record BiometricImage(
 public sealed record DetectionStage(
     DetectedFace Face,
     BiometricImage CroppedRegion,
-    BiometricImage OriginalImage);
+    BiometricImage OriginalImage
+);
 
 /// <summary>
 /// Value object representing the result of landmark alignment stage
@@ -30,7 +29,8 @@ public sealed record DetectionStage(
 public sealed record AlignmentStage(
     FaceLandmarks68 Landmarks,
     TransformMatrix Transform,
-    DetectionStage Detection);
+    DetectionStage Detection
+);
 
 /// <summary>
 /// Value object representing a standards-compliant image
@@ -39,7 +39,8 @@ public sealed record AlignmentStage(
 public sealed record ComplianceStage(
     BiometricImage CompliantImage,
     ComplianceMetadata Metadata,
-    DocumentStandard Standard);
+    DocumentStandard Standard
+);
 
 /// <summary>
 /// Value object representing encoded biometric data
@@ -48,16 +49,14 @@ public sealed record ComplianceStage(
 public sealed record EncodedBiometricData(
     ImmutableArray<byte> Data,
     EncodingMetadata Metadata,
-    DocumentStandard? Standard = null);
+    DocumentStandard? Standard = null
+);
 
 /// <summary>
 /// Metadata about the image
 /// </summary>
 [PublicAPI]
-public sealed record ImageMetadata(
-    ImageDimensions Dimensions,
-    string Format,
-    int ColorDepth);
+public sealed record ImageMetadata(ImageDimensions Dimensions, string Format, int ColorDepth);
 
 /// <summary>
 /// Metadata about compliance with a standard
@@ -66,7 +65,8 @@ public sealed record ImageMetadata(
 public sealed record ComplianceMetadata(
     bool IsCompliant,
     ImmutableList<string> Warnings,
-    ImmutableDictionary<string, object> Properties);
+    ImmutableDictionary<string, object> Properties
+);
 
 /// <summary>
 /// Metadata about encoding
@@ -76,7 +76,8 @@ public sealed record EncodingMetadata(
     string Format,
     int FileSize,
     float CompressionRatio,
-    TimeSpan EncodingTime);
+    TimeSpan EncodingTime
+);
 
 /// <summary>
 /// Represents a transformation matrix for image operations
@@ -87,7 +88,8 @@ public sealed record TransformMatrix(
     float ScaleX,
     float ScaleY,
     float TranslateX,
-    float TranslateY);
+    float TranslateY
+);
 
 /// <summary>
 /// Represents a document standard (PIV, ICAO, etc.)
@@ -96,4 +98,5 @@ public sealed record TransformMatrix(
 public sealed record DocumentStandard(
     string Name,
     string Version,
-    ImageDimensions TargetDimensions);
+    ImageDimensions TargetDimensions
+);

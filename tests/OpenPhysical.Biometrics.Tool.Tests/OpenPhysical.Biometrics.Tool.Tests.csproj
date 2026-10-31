@@ -1,23 +1,23 @@
 <Project Sdk="Microsoft.NET.Sdk">
-  <PropertyGroup>
-    <TargetFramework>net9.0</TargetFramework>
-    <IsPackable>false</IsPackable>
-    <IsTestProject>true</IsTestProject>
-  </PropertyGroup>
-  <ItemGroup>
-    <PackageReference Include="NUnit" Version="4.0.1" />
-    <PackageReference Include="NUnit.Console" Version="3.17.0" />
-    <PackageReference Include="NUnit3TestAdapter" Version="4.5.0" />
-    <PackageReference Update="coverlet.collector" Version="6.0.4">
-      <PrivateAssets>all</PrivateAssets>
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-    </PackageReference>
-    <PackageReference Include="Spectre.Console.Testing" Version="0.50.0" />
-    <PackageReference Include="CSharpFunctionalExtensions.AwesomeAssertions" Version="1.1.0" />
-  </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\..\src\OpenPhysical.Biometrics.Tool\OpenPhysical.Biometrics.Tool.csproj" />
-    <ProjectReference Include="..\..\src\OpenPhysical.Biometrics.Core\OpenPhysical.Biometrics.Core.csproj" />
-    <ProjectReference Include="..\OpenPhysical.Biometrics.Tests.Common\OpenPhysical.Biometrics.Tests.Common.csproj" />
-  </ItemGroup>
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <IsPackable>false</IsPackable>
+        <IsTestProject>true</IsTestProject>
+    </PropertyGroup>
+    <ItemGroup>
+        <PackageReference Include="NUnit" Version="4.0.1" />
+        <PackageReference Include="NUnit.Console" Version="3.17.0" />
+        <PackageReference Include="NUnit3TestAdapter" Version="4.5.0" />
+        <PackageReference Update="coverlet.collector" Version="6.0.4">
+            <PrivateAssets>all</PrivateAssets>
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+        </PackageReference>
+        <PackageReference Include="Spectre.Console.Testing" Version="0.50.0" />
+        <PackageReference Include="CSharpFunctionalExtensions.AwesomeAssertions" Version="1.1.0" />
+    </ItemGroup>
+    <ItemGroup>
+        <ProjectReference Include="..\..\src\OpenPhysical.Biometrics.Tool.Compatibility\OpenPhysical.Biometrics.Tool.Compatibility.csproj" />
+        <ProjectReference Include="..\..\src\OpenPhysical.Biometrics.Core\OpenPhysical.Biometrics.Core.csproj" />
+        <ProjectReference Include="..\OpenPhysical.Biometrics.Tests.Common\OpenPhysical.Biometrics.Tests.Common.csproj" />
+    </ItemGroup>
 </Project>

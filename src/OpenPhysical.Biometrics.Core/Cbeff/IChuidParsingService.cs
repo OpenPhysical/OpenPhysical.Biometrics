@@ -1,8 +1,8 @@
 namespace OpenPhysical.Biometrics.Core.Cbeff;
 
+using System;
 using CSharpFunctionalExtensions;
 using Org.BouncyCastle.X509;
-using System;
 
 /// <summary>
 /// Service for parsing CHUID (Card Holder Unique Identifier) structures.
@@ -39,4 +39,5 @@ public sealed record ChuidStructure(
     Guid? CardUuid,
     DateTime? ExpirationDate,
     byte[]? AsymmetricSignature,
-    byte[]? LrcSignature);
+    byte[]? LrcSignature
+);

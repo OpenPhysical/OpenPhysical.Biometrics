@@ -1,12 +1,12 @@
 namespace OpenPhysical.Biometrics.Core.Cbeff;
 
+using System;
+using System.Threading.Tasks;
 using CSharpFunctionalExtensions;
 using OpenPhysical.Domains.Biometrics;
 using OpenPhysical.Domains.Cbeff;
-using System;
-using System.Threading.Tasks;
-using Org.BouncyCastle.X509;
 using Org.BouncyCastle.Crypto;
+using Org.BouncyCastle.X509;
 
 /// <summary>
 /// Interface for building CBEFF containers from biometric data.
@@ -25,8 +25,9 @@ public interface ICbeffBuilder
         byte[] biometricData,
         BiometricModality modality,
         BiometricFormat format,
-        CbeffMetadata metadata);
-    
+        CbeffMetadata metadata
+    );
+
     /// <summary>
     /// Creates a signed CBEFF container from formatted biometric data.
     /// </summary>
@@ -45,5 +46,6 @@ public interface ICbeffBuilder
         CbeffMetadata metadata,
         X509Certificate signingCertificate,
         AsymmetricKeyParameter privateKey,
-        Maybe<Guid> includeCardUuid = default);
+        Maybe<Guid> includeCardUuid = default
+    );
 }

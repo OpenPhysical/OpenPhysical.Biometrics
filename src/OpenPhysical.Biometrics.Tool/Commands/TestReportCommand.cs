@@ -1,17 +1,17 @@
 // MIT License
-// 
+//
 // Copyright (c) 2025 FaceOFFx Contributors
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
 // in the Software without restriction, including without limitation the rights
 // to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 // copies of the Software, and to permit persons to whom the Software is
 // furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all
 // copies or substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 // IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 // FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -36,7 +36,7 @@ namespace OpenPhysical.Biometrics.Tool.Commands;
 public class TestReportCommand : AsyncCommand<TestReportCommand.Settings>
 {
     private const string DefaultTestDirectory = ".faceoffx-test";
-    
+
     /// <summary>
     /// Settings for the test report command
     /// </summary>
@@ -65,14 +65,14 @@ public class TestReportCommand : AsyncCommand<TestReportCommand.Settings>
         [CommandOption("-o|--output <DIR>")]
         [Description("Output directory for reports")]
         public string OutputDirectory { get; set; } = Path.Combine(DefaultTestDirectory, "reports");
-        
+
         /// <summary>
         /// Gets or sets the directory containing test images
         /// </summary>
         [CommandOption("--images-dir <DIR>")]
         [Description("Directory containing test images")]
         public string? ImagesDirectory { get; set; }
-        
+
         /// <summary>
         /// Gets or sets a value indicating whether to open report in browser after generation
         /// </summary>
@@ -93,7 +93,8 @@ public class TestReportCommand : AsyncCommand<TestReportCommand.Settings>
             var resultsDir = Path.Combine(DefaultTestDirectory, "test-results");
             if (Directory.Exists(resultsDir))
             {
-                inputFile = Directory.GetFiles(resultsDir, "*.json")
+                inputFile = Directory
+                    .GetFiles(resultsDir, "*.json")
                     .OrderByDescending(f => File.GetLastWriteTime(f))
                     .FirstOrDefault();
             }
@@ -101,7 +102,9 @@ public class TestReportCommand : AsyncCommand<TestReportCommand.Settings>
 
         if (string.IsNullOrWhiteSpace(inputFile) || !File.Exists(inputFile))
         {
-            AnsiConsole.MarkupLine("[red]No input file found. Run 'faceoffx test sharpness' first.[/]");
+            AnsiConsole.MarkupLine(
+                "[red]No input file found. Run 'faceoffx test sharpness' first.[/]"
+            );
             return 1;
         }
 
@@ -109,10 +112,10 @@ public class TestReportCommand : AsyncCommand<TestReportCommand.Settings>
 
         // Load results
         var json = await File.ReadAllTextAsync(inputFile);
-        var results = JsonSerializer.Deserialize<List<SharpnessTestResult>>(json, new JsonSerializerOptions
-        {
-            PropertyNamingPolicy = JsonNamingPolicy.CamelCase
-        });
+        var results = JsonSerializer.Deserialize<List<SharpnessTestResult>>(
+            json,
+            new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase }
+        );
 
         if (results == null || !results.Any())
         {
@@ -137,24 +140,33 @@ public class TestReportCommand : AsyncCommand<TestReportCommand.Settings>
 
         if (settings.OpenInBrowser)
         {
-            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
-            {
-                FileName = reportPath,
-                UseShellExecute = true
-            });
+            System.Diagnostics.Process.Start(
+                new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = reportPath,
+                    UseShellExecute = true,
+                }
+            );
         }
 
         return 0;
     }
 
-    private async Task<string> GenerateSharpnessCalibrationReport(List<SharpnessTestResult> results, Settings settings)
+    private async Task<string> GenerateSharpnessCalibrationReport(
+        List<SharpnessTestResult> results,
+        Settings settings
+    )
     {
         Directory.CreateDirectory(settings.OutputDirectory);
-        
-        var reportPath = Path.Combine(settings.OutputDirectory, $"sharpness-calibration-{DateTime.Now:yyyyMMdd-HHmmss}.html");
-        
+
+        var reportPath = Path.Combine(
+            settings.OutputDirectory,
+            $"sharpness-calibration-{DateTime.Now:yyyyMMdd-HHmmss}.html"
+        );
+
         var html = new StringBuilder();
-        html.AppendLine(@"<!DOCTYPE html>
+        html.AppendLine(
+            @"<!DOCTYPE html>
 <html lang=""en"">
 <head>
     <meta charset=""UTF-8"">
@@ -280,91 +292,117 @@ public class TestReportCommand : AsyncCommand<TestReportCommand.Settings>
 <body>
     <div class=""container"">
         <h1>FaceOFFx Sharpness Calibration Report</h1>
-        <p style=""text-align: center; color: #666;"">Generated: " + DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss") + @"</p>");
+        <p style=""text-align: center; color: #666;"">Generated: "
+                + DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss")
+                + @"</p>"
+        );
 
         // Summary statistics
         var totalImages = results.Count;
         var passCount = results.Count(r => r.Pass);
         var threshold = results.FirstOrDefault()?.Threshold ?? 0.7f;
         var baseNames = results.Select(r => r.BaseName).Distinct().Count();
-        
-        html.AppendLine(@"
+
+        html.AppendLine(
+            @"
         <div class=""summary"">
             <div class=""summary-card"">
                 <h3>Total Images</h3>
-                <div class=""value"">" + totalImages + @"</div>
+                <div class=""value"">"
+                + totalImages
+                + @"</div>
             </div>
             <div class=""summary-card"">
                 <h3>Pass Rate</h3>
-                <div class=""value"">" + (100.0 * passCount / totalImages).ToString("F1") + @"%</div>
+                <div class=""value"">"
+                + (100.0 * passCount / totalImages).ToString("F1")
+                + @"%</div>
             </div>
             <div class=""summary-card"">
                 <h3>Threshold</h3>
-                <div class=""value"">" + (threshold * 100).ToString("F0") + @"%</div>
+                <div class=""value"">"
+                + (threshold * 100).ToString("F0")
+                + @"%</div>
             </div>
             <div class=""summary-card"">
                 <h3>Test Subjects</h3>
-                <div class=""value"">" + baseNames + @"</div>
+                <div class=""value"">"
+                + baseNames
+                + @"</div>
             </div>
-        </div>");
+        </div>"
+        );
 
         // Group results by base name
         var groupedResults = results.GroupBy(r => r.BaseName).OrderBy(g => g.Key);
-        
+
         // Charts data
         var chartData = new List<string>();
-        
+
         foreach (var group in groupedResults)
         {
             var personResults = group.OrderBy(r => r.BlurLevel).ToList();
             var baseline = personResults.FirstOrDefault(r => r.BlurLevel == 0);
-            
-            html.AppendLine($@"
+
+            html.AppendLine(
+                $@"
         <div class=""person-section"">
-            <div class=""person-name"">{group.Key}</div>");
-            
+            <div class=""person-name"">{group.Key}</div>"
+            );
+
             if (baseline != null)
             {
-                html.AppendLine($@"
+                html.AppendLine(
+                    $@"
             <div class=""baseline-info"">
                 <strong>Baseline Sharpness:</strong> {baseline.SharpnessScore:P1} 
                 (High Frequency Ratio: {baseline.HighFrequencyRatio:F4})
-            </div>");
+            </div>"
+                );
             }
-            
+
             html.AppendLine(@"<div class=""blur-grid"">");
-            
+
             foreach (var result in personResults)
             {
                 var passClass = result.Pass ? "pass" : "fail";
                 var imagePath = GetRelativeImagePath(result, settings);
-                
-                html.AppendLine($@"
+
+                html.AppendLine(
+                    $@"
                 <div class=""blur-card {passClass}"">
                     {(File.Exists(imagePath) ? $@"<img src=""{imagePath}"" alt=""{result.FileName}"">" : "")}
                     <div class=""blur-level"">Blur {result.BlurLevel:F2}</div>
                     <div class=""score"">{result.SharpnessScore:P1}</div>
                     <div style=""font-size: 12px; color: #666;"">Ratio: {result.HighFrequencyRatio:F4}</div>
-                </div>");
+                </div>"
+                );
             }
-            
+
             html.AppendLine("</div></div>");
-            
+
             // Add to chart data
-            var dataPoints = string.Join(", ", personResults.Select(r => 
-                $"{{x: {r.BlurLevel:F2}, y: {(r.SharpnessScore * 100):F1}}}"));
-            
-            chartData.Add($@"{{
+            var dataPoints = string.Join(
+                ", ",
+                personResults.Select(r =>
+                    $"{{x: {r.BlurLevel:F2}, y: {(r.SharpnessScore * 100):F1}}}"
+                )
+            );
+
+            chartData.Add(
+                $@"{{
                 label: '{group.Key}',
                 data: [{dataPoints}],
                 borderColor: '{GetColorForIndex(chartData.Count)}',
                 backgroundColor: '{GetColorForIndex(chartData.Count)}33',
                 tension: 0.1
-            }}");
+            }}"
+            );
         }
 
         // Add chart
-        html.AppendLine(@"
+        html.AppendLine(
+            @"
         <h2>Blur Progression Comparison</h2>
         <div class=""chart-container"">
             <canvas id=""progressionChart""></canvas>
@@ -382,18 +420,20 @@ public class TestReportCommand : AsyncCommand<TestReportCommand.Settings>
                     <th>Delta from Baseline</th>
                 </tr>
             </thead>
-            <tbody>");
+            <tbody>"
+        );
 
         foreach (var group in groupedResults)
         {
             var baseline = group.FirstOrDefault(r => r.BlurLevel == 0)?.SharpnessScore ?? 0;
-            
+
             foreach (var result in group.OrderBy(r => r.BlurLevel))
             {
                 var delta = baseline > 0 ? (result.SharpnessScore - baseline) : 0;
                 var deltaStr = delta < 0 ? $"{delta:P1}" : "";
-                
-                html.AppendLine($@"
+
+                html.AppendLine(
+                    $@"
                 <tr>
                     <td>{result.FileName}</td>
                     <td>{result.BlurLevel:F2}</td>
@@ -401,11 +441,13 @@ public class TestReportCommand : AsyncCommand<TestReportCommand.Settings>
                     <td>{result.HighFrequencyRatio:F4}</td>
                     <td>{(result.Pass ? "✅ Pass" : "❌ Fail")}</td>
                     <td>{deltaStr}</td>
-                </tr>");
+                </tr>"
+                );
             }
         }
 
-        html.AppendLine(@"
+        html.AppendLine(
+            @"
             </tbody>
         </table>
     </div>
@@ -415,7 +457,9 @@ public class TestReportCommand : AsyncCommand<TestReportCommand.Settings>
         new Chart(ctx, {
             type: 'line',
             data: {
-                datasets: [" + string.Join(",\n", chartData) + @"]
+                datasets: ["
+                + string.Join(",\n", chartData)
+                + @"]
             },
             options: {
                 responsive: true,
@@ -462,7 +506,8 @@ public class TestReportCommand : AsyncCommand<TestReportCommand.Settings>
         });
     </script>
 </body>
-</html>");
+</html>"
+        );
 
         await File.WriteAllTextAsync(reportPath, html.ToString());
         return reportPath;
@@ -471,15 +516,16 @@ public class TestReportCommand : AsyncCommand<TestReportCommand.Settings>
     private string GetRelativeImagePath(SharpnessTestResult result, Settings settings)
     {
         // Try to find the image file
-        var imagesDir = settings.ImagesDirectory ?? Path.Combine(DefaultTestDirectory, "blur-progressions");
+        var imagesDir =
+            settings.ImagesDirectory ?? Path.Combine(DefaultTestDirectory, "blur-progressions");
         var imagePath = Path.Combine(imagesDir, result.FileName);
-        
+
         if (File.Exists(imagePath))
         {
             // Return relative path from report directory
             return Path.GetRelativePath(settings.OutputDirectory, imagePath);
         }
-        
+
         return "";
     }
 
@@ -488,13 +534,13 @@ public class TestReportCommand : AsyncCommand<TestReportCommand.Settings>
         var colors = new[]
         {
             "rgb(75, 192, 192)",
-            "rgb(54, 162, 235)", 
+            "rgb(54, 162, 235)",
             "rgb(255, 99, 132)",
             "rgb(255, 159, 64)",
             "rgb(153, 102, 255)",
-            "rgb(255, 205, 86)"
+            "rgb(255, 205, 86)",
         };
-        
+
         return colors[index % colors.Length];
     }
 }

@@ -1,14 +1,13 @@
+using System.Drawing;
 using System.Text.Json;
-using OpenPhysical.Biometrics.Tool.Commands;
-using OpenPhysical.Biometrics.Tests.Common;
 using AwesomeAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NUnit.Framework;
-using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.PixelFormats;
-using SixLabors.ImageSharp.Processing;
-using SixLabors.ImageSharp.Formats.Jpeg;
+using OpenPhysical.Biometrics.Imaging;
+using OpenPhysical.Biometrics.Tests.Common;
+using OpenPhysical.Biometrics.Tool.Commands;
+using OpenPhysical.Biometrics.Tool.Drawing;
 using Spectre.Console;
 using Spectre.Console.Cli;
 using Spectre.Console.Cli.Extensions.DependencyInjection;
@@ -25,7 +24,7 @@ public class ProcessCommandQualityTests : IntegrationTestBase
     private string _testImagePath = null!;
     private string _lowQualityTestImagePath = null!;
     private string _outputPath = null!;
-    
+
     /// <summary>
     /// One-time setup for the test fixture
     /// </summary>
@@ -33,12 +32,15 @@ public class ProcessCommandQualityTests : IntegrationTestBase
     public override void OneTimeSetUp()
     {
         base.OneTimeSetUp();
-        
+
         // Find the solution root directory (same pattern as ProcessCommandTests)
         var currentDir = TestContext.CurrentContext.TestDirectory;
         var searchDir = new DirectoryInfo(currentDir);
 
-        while (searchDir != null && !File.Exists(Path.Combine(searchDir.FullName, "OpenPhysical.Biometrics.sln")))
+        while (
+            searchDir != null
+            && !File.Exists(Path.Combine(searchDir.FullName, "OpenPhysical.Biometrics.sln"))
+        )
         {
             searchDir = searchDir.Parent;
         }
@@ -55,26 +57,28 @@ public class ProcessCommandQualityTests : IntegrationTestBase
             "sample_images",
             "generic_guy.png"
         );
-        
+
         // Use JPEG version for low-quality tests
         _lowQualityTestImagePath = Path.Combine(
             searchDir.FullName,
             "tests",
-            "sample_images", 
+            "sample_images",
             "generic_guy.jpg"
         );
-        
+
         if (!File.Exists(_testImagePath))
         {
             throw new FileNotFoundException($"Test image not found: {_testImagePath}");
         }
-        
+
         if (!File.Exists(_lowQualityTestImagePath))
         {
-            throw new FileNotFoundException($"Low quality test image not found: {_lowQualityTestImagePath}");
+            throw new FileNotFoundException(
+                $"Low quality test image not found: {_lowQualityTestImagePath}"
+            );
         }
     }
-    
+
     /// <summary>
     /// Setup before each test
     /// </summary>
@@ -84,7 +88,7 @@ public class ProcessCommandQualityTests : IntegrationTestBase
         base.SetUp();
         _outputPath = Path.Combine(TempDirectory, $"test-output-{Guid.NewGuid()}.jp2");
     }
-    
+
     /// <summary>
     /// Verifies that ProcessCommand enforces minimum quality threshold when quality gate is specified
     /// </summary>
@@ -93,20 +97,21 @@ public class ProcessCommandQualityTests : IntegrationTestBase
     {
         // Arrange
         var (app, console) = CreateApplication();
-        
+
         // Act
         var result = await app.RunAsync(
-            new[] { "process", _testImagePath, "--output", _outputPath, "--quality-gate", "0.5" });
-        
+            new[] { "process", _testImagePath, "--output", _outputPath, "--quality-gate", "0.5" }
+        );
+
         // Assert
         // Quality gate of 0.5 should pass for our test image (which has score ~55.9%)
         result.Should().Be(0);
         File.Exists(_outputPath).Should().BeTrue();
-        
+
         var output = console.Output;
         output.Should().Contain("Quality assessment passed");
     }
-    
+
     /// <summary>
     /// Verifies that ProcessCommand rejects images that don't meet high quality thresholds
     /// </summary>
@@ -115,21 +120,30 @@ public class ProcessCommandQualityTests : IntegrationTestBase
     {
         // Arrange
         var (app, console) = CreateApplication();
-        
+
         // Act - Use the JPEG version which is naturally lower quality than PNG
         var result = await app.RunAsync(
-            new[] { "process", _lowQualityTestImagePath, "--output", _outputPath, "--quality-gate", "0.95" });
-        
+            new[]
+            {
+                "process",
+                _lowQualityTestImagePath,
+                "--output",
+                _outputPath,
+                "--quality-gate",
+                "0.95",
+            }
+        );
+
         // Assert
         // With 0.95 threshold, low quality image should be rejected
         var output = console.Output;
         if (result != 0)
         {
-            output.Should().Contain("below quality threshold");
+            output.Should().Contain("below minimum threshold");
             File.Exists(_outputPath).Should().BeFalse();
         }
     }
-    
+
     /// <summary>
     /// Verifies that ProcessCommand generates a quality report JSON file when requested
     /// </summary>
@@ -139,30 +153,35 @@ public class ProcessCommandQualityTests : IntegrationTestBase
         // Arrange
         var (app, console) = CreateApplication();
         var qualityReportPath = Path.ChangeExtension(_outputPath, ".quality.json");
-        
+
         // Act
         var result = await app.RunAsync(
-            new[] { 
-                "process", _testImagePath, 
-                "--output", _outputPath, 
-                "--quality-gate", "0.5",
-                "--quality-report"
-            });
-        
+            new[]
+            {
+                "process",
+                _testImagePath,
+                "--output",
+                _outputPath,
+                "--quality-gate",
+                "0.5",
+                "--quality-report",
+            }
+        );
+
         // Assert
         result.Should().Be(0);
         File.Exists(_outputPath).Should().BeTrue();
         File.Exists(qualityReportPath).Should().BeTrue();
-        
+
         // Verify report content
         var reportContent = await File.ReadAllTextAsync(qualityReportPath);
         var reportJson = JsonDocument.Parse(reportContent);
-        
+
         reportJson.RootElement.GetProperty("IsCompliant").Should().NotBeNull();
         reportJson.RootElement.GetProperty("OverallScore").GetDouble().Should().BeInRange(0, 1);
         reportJson.RootElement.GetProperty("Scores").Should().NotBeNull();
     }
-    
+
     /// <summary>
     /// Verifies that ProcessCommand shows detailed quality information in verbose mode
     /// </summary>
@@ -171,26 +190,31 @@ public class ProcessCommandQualityTests : IntegrationTestBase
     {
         // Arrange
         var (app, console) = CreateApplication();
-        
+
         // Act
         var result = await app.RunAsync(
-            new[] { 
-                "process", _testImagePath, 
-                "--output", _outputPath, 
-                "--quality-gate", "0.5",
-                "--verbose"
-            });
-        
+            new[]
+            {
+                "process",
+                _testImagePath,
+                "--output",
+                _outputPath,
+                "--quality-gate",
+                "0.5",
+                "--verbose",
+            }
+        );
+
         // Assert
         result.Should().Be(0);
         var output = console.Output;
-        
+
         // Verbose mode should show quality details
         output.Should().Contain("Quality assessment");
         output.Should().Contain("Overall score:");
         output.Should().ContainAny("Symmetry:", "Sharpness:", "Geometry:");
     }
-    
+
     /// <summary>
     /// Verifies that ProcessCommand applies a higher quality threshold (0.85) in strict mode
     /// </summary>
@@ -199,22 +223,29 @@ public class ProcessCommandQualityTests : IntegrationTestBase
     {
         // Arrange
         var (app, console) = CreateApplication();
-        
+
         // Act
         var result = await app.RunAsync(
-            new[] { 
-                "process", _testImagePath, 
-                "--output", _outputPath, 
-                "--quality-gate", "0.7",
-                "--strict"
-            });
-        
+            new[]
+            {
+                "process",
+                _testImagePath,
+                "--output",
+                _outputPath,
+                "--quality-gate",
+                "0.7",
+                "--strict",
+            }
+        );
+
         // Assert - strict mode actually requires 0.85 minimum, our test image should fail
         var output = console.Output;
         result.Should().Be(1); // Should fail with strict quality requirements
-        output.Should().ContainAny("below quality threshold", "does not meet compliance requirements");
+        output
+            .Should()
+            .ContainAny("below minimum threshold", "does not meet compliance requirements");
     }
-    
+
     /// <summary>
     /// Verifies that ProcessCommand applies standard-specific quality criteria for PIV, TWIC, ICAO, and CAC
     /// </summary>
@@ -223,22 +254,31 @@ public class ProcessCommandQualityTests : IntegrationTestBase
     {
         // Arrange & Act & Assert
         var standards = new[] { "piv", "twic", "icao", "cac" };
-        
+
         foreach (var standard in standards)
         {
             var (app, console) = CreateApplication();
-            var outputFile = Path.Combine(Path.GetTempPath(), $"test-{standard}-{Guid.NewGuid()}.jp2");
-            
+            var outputFile = Path.Combine(
+                Path.GetTempPath(),
+                $"test-{standard}-{Guid.NewGuid()}.jp2"
+            );
+
             try
             {
                 var result = await app.RunAsync(
-                    new[] { 
-                        "process", _testImagePath, 
-                        "--output", outputFile, 
-                        "--quality-gate", "0.5",
-                        "--quality-standard", standard
-                    });
-                
+                    new[]
+                    {
+                        "process",
+                        _testImagePath,
+                        "--output",
+                        outputFile,
+                        "--quality-gate",
+                        "0.5",
+                        "--quality-standard",
+                        standard,
+                    }
+                );
+
                 // Should process with standard-specific quality criteria
                 result.Should().Be(0);
                 File.Exists(outputFile).Should().BeTrue();
@@ -250,7 +290,7 @@ public class ProcessCommandQualityTests : IntegrationTestBase
             }
         }
     }
-    
+
     /// <summary>
     /// Verifies that ProcessCommand performs quality assessment even in no-resize mode
     /// </summary>
@@ -259,25 +299,35 @@ public class ProcessCommandQualityTests : IntegrationTestBase
     {
         // Arrange
         var (app, console) = CreateApplication();
-        
+
         // Act
         var result = await app.RunAsync(
-            new[] { 
-                "process", _testImagePath, 
-                "--output", _outputPath, 
-                "--quality-gate", "0.5",
-                "--no-resize"
-            });
-        
+            new[]
+            {
+                "process",
+                _testImagePath,
+                "--output",
+                _outputPath,
+                "--quality-gate",
+                "0.5",
+                "--no-resize",
+            }
+        );
+
         // Assert
         result.Should().Be(0);
         File.Exists(_outputPath).Should().BeTrue();
-        
+
         var output = console.Output;
         output.Should().Contain("Quality assessment");
-        output.Should().Contain("No face detection - full image processing");
+        using var original = RgbImage.Load(_testImagePath);
+        using var encoded = CoreJ2K.J2kImage.DecodeToImage<SkiaSharp.SKBitmap>(
+            File.ReadAllBytes(_outputPath)
+        );
+        encoded.Width.Should().Be(original.Width);
+        encoded.Height.Should().Be(original.Height);
     }
-    
+
     /// <summary>
     /// Verifies that ProcessCommand shows an error for invalid quality gate values (outside 0.0-1.0 range)
     /// </summary>
@@ -286,22 +336,27 @@ public class ProcessCommandQualityTests : IntegrationTestBase
     {
         // Arrange
         var (app, console) = CreateApplication();
-        
+
         // Act
         var result = await app.RunAsync(
-            new[] { 
-                "process", _testImagePath, 
-                "--output", _outputPath, 
-                "--quality-gate", "1.5" // Invalid - must be 0-1
-            });
-        
+            new[]
+            {
+                "process",
+                _testImagePath,
+                "--output",
+                _outputPath,
+                "--quality-gate",
+                "1.5", // Invalid - must be 0-1
+            }
+        );
+
         // Assert
         result.Should().Be(1);
         var output = console.Output;
-        output.Should().Contain("Error");
+        output.Should().Contain("Invalid quality gate value");
         output.Should().Contain("quality");
     }
-    
+
     /// <summary>
     /// Verifies that ProcessCommand generates quality report JSON when both quality gate and report are requested
     /// </summary>
@@ -311,28 +366,33 @@ public class ProcessCommandQualityTests : IntegrationTestBase
         // Arrange
         var (app, console) = CreateApplication();
         var qualityReportPath = Path.ChangeExtension(_outputPath, ".quality.json");
-        
+
         // Act
         var result = await app.RunAsync(
-            new[] { 
-                "process", _testImagePath, 
-                "--output", _outputPath, 
-                "--quality-gate", "0.5",
-                "--quality-report"
-            });
-        
+            new[]
+            {
+                "process",
+                _testImagePath,
+                "--output",
+                _outputPath,
+                "--quality-gate",
+                "0.5",
+                "--quality-report",
+            }
+        );
+
         // Assert
         result.Should().Be(0);
         File.Exists(qualityReportPath).Should().BeTrue();
-        
+
         var jsonContent = await File.ReadAllTextAsync(qualityReportPath);
         var json = JsonDocument.Parse(jsonContent);
-        
+
         // Quality report should include compliance and scores
         json.RootElement.GetProperty("IsCompliant").Should().NotBeNull();
         json.RootElement.GetProperty("OverallScore").Should().NotBeNull();
     }
-    
+
     /// <summary>
     /// Creates a test CommandApp instance with proper dependency injection setup
     /// </summary>
@@ -342,21 +402,21 @@ public class ProcessCommandQualityTests : IntegrationTestBase
         var services = new ServiceCollection();
         services.AddBiometricsTool();
         services.AddLogging(builder => builder.AddSimpleConsole());
-        
+
         var registrar = new DependencyInjectionRegistrar(services);
         var console = new TestConsole();
-        
+
         // Configure console output properly
         AnsiConsole.Console = console;
-        
+
         var app = new CommandApp(registrar);
-        
+
         app.Configure(config =>
         {
+            config.ConfigureConsole(console);
             config.AddCommand<ProcessCommand>("process");
         });
-        
+
         return (app, console);
     }
-    
 }

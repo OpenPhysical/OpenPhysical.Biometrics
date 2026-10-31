@@ -1,13 +1,14 @@
 namespace OpenPhysical.Biometrics.Core.Cbeff.Formats;
 
-using CSharpFunctionalExtensions;
 using System.Collections.Immutable;
+using CSharpFunctionalExtensions;
 
 /// <summary>
 /// Abstract base class for biometric format handlers providing common functionality.
 /// </summary>
 /// <typeparam name="TDomainRecord">The domain record type this handler processes.</typeparam>
-public abstract class BiometricFormatHandlerBase<TDomainRecord> : IBiometricFormatHandler<TDomainRecord>
+public abstract class BiometricFormatHandlerBase<TDomainRecord>
+    : IBiometricFormatHandler<TDomainRecord>
     where TDomainRecord : class
 {
     /// <inheritdoc />
@@ -31,9 +32,7 @@ public abstract class BiometricFormatHandlerBase<TDomainRecord> : IBiometricForm
     /// <inheritdoc />
     public virtual Result ValidateBiometricData(ImmutableArray<byte> data)
     {
-        return ParseBiometricData(data)
-            .Map(_ => Result.Success())
-            .Bind(result => result);
+        return ParseBiometricData(data).Map(_ => Result.Success()).Bind(result => result);
     }
 
     /// <summary>
@@ -43,11 +42,17 @@ public abstract class BiometricFormatHandlerBase<TDomainRecord> : IBiometricForm
     /// <param name="minimumLength">The minimum required length.</param>
     /// <param name="formatName">The format name for error messages.</param>
     /// <returns>Success if data is long enough, failure otherwise.</returns>
-    protected static Result ValidateDataLength(ImmutableArray<byte> data, int minimumLength, string formatName)
+    protected static Result ValidateDataLength(
+        ImmutableArray<byte> data,
+        int minimumLength,
+        string formatName
+    )
     {
         if (data.Length < minimumLength)
         {
-            return Result.Failure($"{formatName} data must be at least {minimumLength} bytes (got {data.Length})");
+            return Result.Failure(
+                $"{formatName} data must be at least {minimumLength} bytes (got {data.Length})"
+            );
         }
         return Result.Success();
     }
@@ -63,7 +68,9 @@ public abstract class BiometricFormatHandlerBase<TDomainRecord> : IBiometricForm
     {
         if (actual != expected)
         {
-            return Result.Failure($"Invalid {fieldName}: expected 0x{expected:X8}, got 0x{actual:X8}");
+            return Result.Failure(
+                $"Invalid {fieldName}: expected 0x{expected:X8}, got 0x{actual:X8}"
+            );
         }
         return Result.Success();
     }
@@ -79,7 +86,9 @@ public abstract class BiometricFormatHandlerBase<TDomainRecord> : IBiometricForm
     {
         if (actual != expected)
         {
-            return Result.Failure($"Invalid {fieldName}: expected 0x{expected:X4}, got 0x{actual:X4}");
+            return Result.Failure(
+                $"Invalid {fieldName}: expected 0x{expected:X4}, got 0x{actual:X4}"
+            );
         }
         return Result.Success();
     }
@@ -95,7 +104,9 @@ public abstract class BiometricFormatHandlerBase<TDomainRecord> : IBiometricForm
     {
         if (actual != expected)
         {
-            return Result.Failure($"Invalid {fieldName}: expected 0x{expected:X2}, got 0x{actual:X2}");
+            return Result.Failure(
+                $"Invalid {fieldName}: expected 0x{expected:X2}, got 0x{actual:X2}"
+            );
         }
         return Result.Success();
     }
@@ -107,12 +118,18 @@ public abstract class BiometricFormatHandlerBase<TDomainRecord> : IBiometricForm
     /// <param name="supportedVersions">The list of supported versions.</param>
     /// <param name="formatName">The format name for error messages.</param>
     /// <returns>Success if version is supported, failure otherwise.</returns>
-    protected static Result ValidateVersion(byte version, IReadOnlyCollection<byte> supportedVersions, string formatName)
+    protected static Result ValidateVersion(
+        byte version,
+        IReadOnlyCollection<byte> supportedVersions,
+        string formatName
+    )
     {
         if (!supportedVersions.Contains(version))
         {
             var supportedList = string.Join(", ", supportedVersions.Select(v => $"0x{v:X2}"));
-            return Result.Failure($"Unsupported {formatName} version: 0x{version:X2} (supported: {supportedList})");
+            return Result.Failure(
+                $"Unsupported {formatName} version: 0x{version:X2} (supported: {supportedList})"
+            );
         }
         return Result.Success();
     }
@@ -126,13 +143,21 @@ public abstract class BiometricFormatHandlerBase<TDomainRecord> : IBiometricForm
     /// <param name="expectedValue">The expected value for each byte.</param>
     /// <param name="fieldName">The field name for error messages.</param>
     /// <returns>Success if all bytes match expected value, failure otherwise.</returns>
-    protected static Result ValidateReservedBytes(ImmutableArray<byte> data, int offset, int length, byte expectedValue, string fieldName)
+    protected static Result ValidateReservedBytes(
+        ImmutableArray<byte> data,
+        int offset,
+        int length,
+        byte expectedValue,
+        string fieldName
+    )
     {
         for (var i = 0; i < length; i++)
         {
             if (data[offset + i] != expectedValue)
             {
-                return Result.Failure($"Invalid {fieldName} at offset {offset + i}: expected 0x{expectedValue:X2}, got 0x{data[offset + i]:X2}");
+                return Result.Failure(
+                    $"Invalid {fieldName} at offset {offset + i}: expected 0x{expectedValue:X2}, got 0x{data[offset + i]:X2}"
+                );
             }
         }
         return Result.Success();

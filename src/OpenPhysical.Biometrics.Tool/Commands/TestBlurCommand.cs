@@ -1,17 +1,17 @@
 // MIT License
-// 
+//
 // Copyright (c) 2025 FaceOFFx Contributors
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
 // in the Software without restriction, including without limitation the rights
 // to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 // copies of the Software, and to permit persons to whom the Software is
 // furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all
 // copies or substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 // IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 // FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -22,10 +22,10 @@
 
 using System.ComponentModel;
 using System.Diagnostics.CodeAnalysis;
+using System.Drawing;
 using OpenPhysical.Biometrics.Core.Domain.Quality.Assessors;
-using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.PixelFormats;
-using SixLabors.ImageSharp.Processing;
+using OpenPhysical.Biometrics.Imaging;
+using OpenPhysical.Biometrics.Tool.Drawing;
 using Spectre.Console;
 using Spectre.Console.Cli;
 
@@ -39,7 +39,7 @@ public class TestBlurCommand : AsyncCommand<TestBlurCommand.Settings>
 {
     private const string DefaultTestDirectory = ".faceoffx-test";
     private const string BlurProgressionsSubdir = "blur-progressions";
-    
+
     /// <summary>
     /// Settings for the test blur command
     /// </summary>
@@ -66,7 +66,8 @@ public class TestBlurCommand : AsyncCommand<TestBlurCommand.Settings>
         /// </summary>
         [CommandOption("-o|--output <DIR>")]
         [Description("Output directory for blur progressions")]
-        public string OutputDirectory { get; set; } = Path.Combine(DefaultTestDirectory, BlurProgressionsSubdir);
+        public string OutputDirectory { get; set; } =
+            Path.Combine(DefaultTestDirectory, BlurProgressionsSubdir);
 
         /// <summary>
         /// Gets or sets the JPEG quality (1-100)
@@ -75,7 +76,7 @@ public class TestBlurCommand : AsyncCommand<TestBlurCommand.Settings>
         [Description("JPEG quality (1-100)")]
         [DefaultValue(95)]
         public int JpegQuality { get; set; } = 95;
-        
+
         /// <summary>
         /// Gets or sets a value indicating whether to measure and display baseline sharpness of source images
         /// </summary>
@@ -95,7 +96,8 @@ public class TestBlurCommand : AsyncCommand<TestBlurCommand.Settings>
                 return new[] { 0f, 0.3f, 0.5f, 0.6f, 0.63f, 0.65f, 0.67f, 0.7f, 0.8f, 1.0f };
             }
 
-            return BlurLevels.Split(',')
+            return BlurLevels
+                .Split(',')
                 .Select(s => float.Parse(s.Trim()))
                 .OrderBy(f => f)
                 .ToArray();
@@ -109,15 +111,17 @@ public class TestBlurCommand : AsyncCommand<TestBlurCommand.Settings>
         var sourceFiles = FindSourceImages(settings.Source);
         if (!sourceFiles.Any())
         {
-            AnsiConsole.MarkupLine("[red]No source images found matching pattern:[/] " + settings.Source);
+            AnsiConsole.MarkupLine(
+                "[red]No source images found matching pattern:[/] " + settings.Source
+            );
             return 1;
         }
 
         AnsiConsole.MarkupLine($"[green]Found {sourceFiles.Count} source images[/]");
-        
+
         // Ensure output directory exists
         Directory.CreateDirectory(settings.OutputDirectory);
-        
+
         var blurLevels = settings.GetBlurLevels();
         AnsiConsole.MarkupLine($"[blue]Blur levels:[/] {string.Join(", ", blurLevels)}");
 
@@ -127,20 +131,22 @@ public class TestBlurCommand : AsyncCommand<TestBlurCommand.Settings>
             await ProcessImageAsync(sourceFile, blurLevels, settings);
         }
 
-        AnsiConsole.MarkupLine($"\n[green]✓ Blur progressions generated in:[/] {settings.OutputDirectory}");
+        AnsiConsole.MarkupLine(
+            $"\n[green]✓ Blur progressions generated in:[/] {settings.OutputDirectory}"
+        );
         return 0;
     }
 
     private static List<string> FindSourceImages(string pattern)
     {
         var files = new List<string>();
-        
+
         // Handle wildcards
         if (pattern.Contains('*') || pattern.Contains('?'))
         {
             var directory = Path.GetDirectoryName(pattern) ?? ".";
             var searchPattern = Path.GetFileName(pattern);
-            
+
             if (Directory.Exists(directory))
             {
                 files.AddRange(Directory.GetFiles(directory, searchPattern));
@@ -164,11 +170,11 @@ public class TestBlurCommand : AsyncCommand<TestBlurCommand.Settings>
     private async Task ProcessImageAsync(string sourceFile, float[] blurLevels, Settings settings)
     {
         var baseName = Path.GetFileNameWithoutExtension(sourceFile);
-        
+
         AnsiConsole.MarkupLine($"\n[yellow]Processing:[/] {baseName}");
 
-        using var sourceImage = await Image.LoadAsync<Rgba32>(sourceFile);
-        
+        using var sourceImage = await RgbImage.LoadAsync(sourceFile);
+
         // Measure baseline sharpness if requested
         if (settings.MeasureBaseline)
         {
@@ -177,7 +183,9 @@ public class TestBlurCommand : AsyncCommand<TestBlurCommand.Settings>
             {
                 var score = baselineResult.Value.Overall.Value;
                 var ratio = baselineResult.Value.HighFrequencyRatio;
-                AnsiConsole.MarkupLine($"  [blue]Baseline sharpness:[/] {score:P1} (ratio: {ratio:F4})");
+                AnsiConsole.MarkupLine(
+                    $"  [blue]Baseline sharpness:[/] {score:P1} (ratio: {ratio:F4})"
+                );
             }
         }
 
@@ -185,39 +193,39 @@ public class TestBlurCommand : AsyncCommand<TestBlurCommand.Settings>
         table.AddColumn("Blur Level");
         table.AddColumn("Output File");
         table.AddColumn("Sharpness Score");
-        
+
         foreach (var blurLevel in blurLevels)
         {
-            var outputFile = Path.Combine(settings.OutputDirectory, $"{baseName}_blur_{blurLevel:F2}.jpg");
-            
+            var outputFile = Path.Combine(
+                settings.OutputDirectory,
+                $"{baseName}_blur_{blurLevel:F2}.jpg"
+            );
+
             using var processedImage = sourceImage.Clone();
-            
+
             // Apply blur if level > 0
             if (blurLevel > 0)
             {
                 var radius = blurLevel * 2; // Convert sigma to radius
                 processedImage.Mutate(x => x.GaussianBlur(radius));
             }
-            
+
             // Save the image
-            await processedImage.SaveAsJpegAsync(outputFile, new SixLabors.ImageSharp.Formats.Jpeg.JpegEncoder
-            {
-                Quality = settings.JpegQuality
-            });
-            
+            await processedImage.SaveAsJpegAsync(outputFile, settings.JpegQuality);
+
             // Measure sharpness
             var result = SharpnessAssessor.Assess(processedImage);
             var sharpnessScore = result.IsSuccess ? $"{result.Value.Overall.Value:P1}" : "Error";
-            
+
             table.AddRow(
                 $"{blurLevel:F2}",
                 Path.GetFileName(outputFile),
-                result.IsSuccess && result.Value.Overall.Value < 0.7f 
-                    ? $"[red]{sharpnessScore}[/]" 
+                result.IsSuccess && result.Value.Overall.Value < 0.7f
+                    ? $"[red]{sharpnessScore}[/]"
                     : $"[green]{sharpnessScore}[/]"
             );
         }
-        
+
         AnsiConsole.Write(table);
     }
 }

@@ -1,17 +1,17 @@
 // MIT License
-// 
+//
 // Copyright (c) 2025 FaceOFFx Contributors
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
 // in the Software without restriction, including without limitation the rights
 // to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 // copies of the Software, and to permit persons to whom the Software is
 // furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all
 // copies or substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 // IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 // FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -34,7 +34,7 @@ namespace OpenPhysical.Biometrics.Tool.Commands;
 public class TestCleanCommand : Command<TestCleanCommand.Settings>
 {
     private const string DefaultTestDirectory = ".faceoffx-test";
-    
+
     /// <summary>
     /// Settings for the test clean command
     /// </summary>
@@ -73,7 +73,7 @@ public class TestCleanCommand : Command<TestCleanCommand.Settings>
         [Description("Clean generated reports")]
         [DefaultValue(false)]
         public bool Reports { get; set; }
-        
+
         /// <summary>
         /// Gets or sets a value indicating whether to force deletion without confirmation
         /// </summary>
@@ -183,7 +183,7 @@ public class TestCleanCommand : Command<TestCleanCommand.Settings>
             var dir = new DirectoryInfo(path);
             var files = dir.GetFiles("*", SearchOption.AllDirectories);
             var totalSize = files.Sum(f => f.Length);
-            
+
             return $"{files.Length} files, {FormatBytes(totalSize)}";
         }
         catch
@@ -197,7 +197,7 @@ public class TestCleanCommand : Command<TestCleanCommand.Settings>
         string[] sizes = { "B", "KB", "MB", "GB" };
         int order = 0;
         double size = bytes;
-        
+
         while (size >= 1024 && order < sizes.Length - 1)
         {
             order++;

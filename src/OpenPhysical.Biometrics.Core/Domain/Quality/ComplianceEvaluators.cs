@@ -1,17 +1,17 @@
 // MIT License
-// 
+//
 // Copyright (c) 2025 FaceOFFx Contributors
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
 // in the Software without restriction, including without limitation the rights
 // to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 // copies of the Software, and to permit persons to whom the Software is
 // furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all
 // copies or substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 // IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 // FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -38,14 +38,16 @@ public static class ComplianceEvaluators
     /// </summary>
     public static SymmetryCompliance EvaluateSymmetryCompliance(
         SymmetryMeasurement measurement,
-        ComplianceRules rules)
+        ComplianceRules rules
+    )
     {
         var standard = rules.ToStandard();
         // Lower asymmetry percentages are BETTER (more symmetric)
         // So we need asymmetry to be BELOW the maximum allowed threshold
-        var illuminationPassed = measurement.IlluminationAsymmetryPercent <= rules.MinSymmetryPercent;
+        var illuminationPassed =
+            measurement.IlluminationAsymmetryPercent <= rules.MinSymmetryPercent;
         var posePassed = measurement.PoseAsymmetryPercent <= rules.MinSymmetryPercent;
-        
+
         RejectionReason? rejection = null;
         if (!illuminationPassed)
         {
@@ -69,7 +71,7 @@ public static class ComplianceEvaluators
                 MetricUnit.Percentage
             );
         }
-        
+
         return new SymmetryCompliance(
             Passed: illuminationPassed && posePassed,
             IlluminationAsymmetryPercent: measurement.IlluminationAsymmetryPercent,
@@ -84,11 +86,12 @@ public static class ComplianceEvaluators
     /// </summary>
     public static SharpnessCompliance EvaluateSharpnessCompliance(
         SharpnessMeasurement measurement,
-        ComplianceRules rules)
+        ComplianceRules rules
+    )
     {
         var standard = rules.ToStandard();
         var passed = measurement.OverallSharpnessPercent >= rules.MinSharpnessPercent;
-        
+
         RejectionReason? rejection = null;
         if (!passed)
         {
@@ -101,7 +104,7 @@ public static class ComplianceEvaluators
                 MetricUnit.Percentage
             );
         }
-        
+
         return new SharpnessCompliance(
             Passed: passed,
             OverallSharpnessPercent: measurement.OverallSharpnessPercent,
@@ -116,11 +119,14 @@ public static class ComplianceEvaluators
     /// </summary>
     public static HeadSizeCompliance EvaluateHeadSizeCompliance(
         float headSizePercent,
-        ComplianceRules rules)
+        ComplianceRules rules
+    )
     {
         var standard = rules.ToStandard();
-        var passed = headSizePercent >= rules.MinHeadSizePercent && headSizePercent <= rules.MaxHeadSizePercent;
-        
+        var passed =
+            headSizePercent >= rules.MinHeadSizePercent
+            && headSizePercent <= rules.MaxHeadSizePercent;
+
         RejectionReason? rejection = null;
         if (headSizePercent < rules.MinHeadSizePercent)
         {
@@ -144,7 +150,7 @@ public static class ComplianceEvaluators
                 MetricUnit.Percentage
             );
         }
-        
+
         return new HeadSizeCompliance(
             Passed: passed,
             SizePercent: headSizePercent,
@@ -159,12 +165,13 @@ public static class ComplianceEvaluators
     /// </summary>
     public static CenteringCompliance EvaluateCenteringCompliance(
         float centeringPercent,
-        ComplianceRules rules)
+        ComplianceRules rules
+    )
     {
         var standard = rules.ToStandard();
         const float requiredThreshold = 80f; // 80% centering required
         var passed = centeringPercent >= requiredThreshold;
-        
+
         RejectionReason? rejection = null;
         if (!passed)
         {
@@ -177,7 +184,7 @@ public static class ComplianceEvaluators
                 MetricUnit.Percentage
             );
         }
-        
+
         return new CenteringCompliance(
             Passed: passed,
             CenteringPercent: centeringPercent,
@@ -189,13 +196,11 @@ public static class ComplianceEvaluators
     /// <summary>
     /// Evaluates IPD compliance against standard rules
     /// </summary>
-    public static IpdCompliance EvaluateIpdCompliance(
-        float ipdPixels,
-        ComplianceRules rules)
+    public static IpdCompliance EvaluateIpdCompliance(float ipdPixels, ComplianceRules rules)
     {
         var standard = rules.ToStandard();
         var passed = ipdPixels >= rules.MinIpdPixels && ipdPixels <= rules.MaxIpdPixels;
-        
+
         RejectionReason? rejection = null;
         if (ipdPixels < rules.MinIpdPixels)
         {
@@ -219,7 +224,7 @@ public static class ComplianceEvaluators
                 MetricUnit.Pixels
             );
         }
-        
+
         return new IpdCompliance(
             Passed: passed,
             DistancePixels: ipdPixels,
@@ -234,17 +239,22 @@ public static class ComplianceEvaluators
     /// </summary>
     public static GeometryCompliance EvaluateGeometryCompliance(
         GeometryMeasurement measurement,
-        ComplianceRules rules)
+        ComplianceRules rules
+    )
     {
         var headSizeCompliance = EvaluateHeadSizeCompliance(measurement.HeadSizePercent, rules);
         var centeringCompliance = EvaluateCenteringCompliance(measurement.CenteringPercent, rules);
         var ipdCompliance = EvaluateIpdCompliance(measurement.IpdPixels, rules);
-        
-        var allPassed = headSizeCompliance.Passed && centeringCompliance.Passed && ipdCompliance.Passed;
-        
+
+        var allPassed =
+            headSizeCompliance.Passed && centeringCompliance.Passed && ipdCompliance.Passed;
+
         // Use the first rejection found as the primary geometry rejection
-        var rejection = headSizeCompliance.Rejection ?? centeringCompliance.Rejection ?? ipdCompliance.Rejection;
-        
+        var rejection =
+            headSizeCompliance.Rejection
+            ?? centeringCompliance.Rejection
+            ?? ipdCompliance.Rejection;
+
         return new GeometryCompliance(
             Passed: allPassed,
             HeadSize: headSizeCompliance,
@@ -261,18 +271,22 @@ public static class ComplianceEvaluators
         SymmetryMeasurement symmetryMeasurement,
         SharpnessMeasurement sharpnessMeasurement,
         GeometryMeasurement geometryMeasurement,
-        ComplianceRules rules)
+        ComplianceRules rules
+    )
     {
         var symmetryCompliance = EvaluateSymmetryCompliance(symmetryMeasurement, rules);
         var sharpnessCompliance = EvaluateSharpnessCompliance(sharpnessMeasurement, rules);
         var geometryCompliance = EvaluateGeometryCompliance(geometryMeasurement, rules);
-        
+
         // Collect all rejections
         var rejections = new List<RejectionReason>();
-        if (symmetryCompliance.Rejection != null) rejections.Add(symmetryCompliance.Rejection);
-        if (sharpnessCompliance.Rejection != null) rejections.Add(sharpnessCompliance.Rejection);
-        if (geometryCompliance.Rejection != null) rejections.Add(geometryCompliance.Rejection);
-        
+        if (symmetryCompliance.Rejection != null)
+            rejections.Add(symmetryCompliance.Rejection);
+        if (sharpnessCompliance.Rejection != null)
+            rejections.Add(sharpnessCompliance.Rejection);
+        if (geometryCompliance.Rejection != null)
+            rejections.Add(geometryCompliance.Rejection);
+
         return new ComplianceAssessment(
             symmetryCompliance,
             sharpnessCompliance,

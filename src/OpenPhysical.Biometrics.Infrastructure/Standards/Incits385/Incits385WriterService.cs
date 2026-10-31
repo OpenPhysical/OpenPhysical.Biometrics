@@ -1,122 +1,75 @@
 namespace OpenPhysical.Biometrics.Infrastructure.Standards.Incits385;
 
+using System.Collections.Immutable;
 using CSharpFunctionalExtensions;
 using OpenPhysical.Biometrics.Core.Standards.Incits385;
+using OpenPhysical.Biometrics.Formats.Faces;
 using OpenPhysical.Domains.Biometrics;
-using System;
-using System.Collections.Immutable;
-using System.IO;
-using System.Text;
 
-/// <summary>
-/// Service for writing INCITS 385 facial image records.
-/// </summary>
+/// <summary>Adapts the historical facial writer contract to the canonical INCITS 385 codec.</summary>
 public sealed class Incits385WriterService : IIncits385Writer
 {
-    private const string FormatIdentifier = "FAC\0";
-    private const string VersionNumber = "010\0";
-    private const byte FacialImageType = 0x01; // Full frontal
-    private const byte SourceType = 0x02; // Static photograph - digital camera
-    
-    /// <summary>
-    /// Creates an INCITS 385 facial image record from image data and metadata.
-    /// </summary>
+    /// <summary>Encodes the supplied compressed sRGB image and facial metadata in a canonical record.</summary>
+    /// <param name="imageData">Original compressed JPEG or JPEG 2000 image bytes.</param>
+    /// <param name="format">The compressed image format.</param>
+    /// <param name="dimensions">Original image dimensions in pixels.</param>
+    /// <param name="metadata">Facial attributes, feature points, and quality.</param>
+    /// <returns>The encoded record, or a compatibility validation failure.</returns>
     public Result<byte[]> CreateFacialRecord(
         byte[] imageData,
         ImageFormat format,
         ImageDimensions dimensions,
-        Incits385Metadata metadata)
+        Incits385Metadata metadata
+    )
     {
-        if (imageData == null || imageData.Length == 0)
-            return Result.Failure<byte[]>("Image data cannot be null or empty");
-            
-        if (dimensions.Width == 0 || dimensions.Height == 0)
-            return Result.Failure<byte[]>("Invalid image dimensions");
-            
+        if (imageData is null || imageData.Length == 0)
+            return Result.Failure<byte[]>("Image data cannot be null or empty.");
+        if (dimensions is null || metadata is null)
+            return Result.Failure<byte[]>("Image dimensions and metadata are required.");
+        if (!Enum.IsDefined(format))
+            return Result.Failure<byte[]>("Select a supported facial image format.");
         try
         {
-            using var stream = new MemoryStream();
-            using var writer = new BinaryWriter(stream, Encoding.UTF8, leaveOpen: true);
-            
-            // Calculate sizes
-            var featurePointCount = metadata.FeaturePoints.HasValue 
-                ? metadata.FeaturePoints.Value.Length 
-                : 0;
-            var featurePointsSize = featurePointCount * 8; // Each point is 8 bytes
-            
-            var faceImageBlockLength = 20 + featurePointsSize + 12 + imageData.Length;
-            var recordLength = 14 + faceImageBlockLength;
-            
-            // Write Facial Record Header (14 bytes)
-            writer.Write(Encoding.ASCII.GetBytes(FormatIdentifier)); // 4 bytes
-            writer.Write(Encoding.ASCII.GetBytes(VersionNumber));    // 4 bytes
-            writer.Write(ToBigEndian((uint)recordLength));          // 4 bytes
-            writer.Write(ToBigEndian((ushort)1));                   // 2 bytes - number of facial records
-            
-            // Write Facial Information (20 bytes)
-            writer.Write(ToBigEndian((uint)faceImageBlockLength));  // 4 bytes
-            writer.Write(ToBigEndian((ushort)featurePointCount));   // 2 bytes
-            writer.Write((byte)metadata.Gender);                     // 1 byte
-            writer.Write((byte)metadata.EyeColor);                   // 1 byte
-            writer.Write((byte)metadata.HairColor);                  // 1 byte
-            writer.Write(new byte[3]);                               // 3 bytes - feature mask (24 bits)
-            writer.Write(ToBigEndian((ushort)0x0001));              // 2 bytes - expression (neutral)
-            writer.Write(new byte[3]);                               // 3 bytes - pose angle
-            writer.Write(new byte[3]);                               // 3 bytes - pose angle uncertainty
-            
-            // Write Feature Points (if any)
-            if (metadata.FeaturePoints.HasValue)
-            {
-                foreach (var point in metadata.FeaturePoints.Value)
-                {
-                    writer.Write(point.FeatureType);                 // 1 byte
-                    writer.Write(new byte[3]);                       // 3 bytes - padding
-                    writer.Write(ToBigEndian(point.HorizontalPosition)); // 2 bytes
-                    writer.Write(ToBigEndian(point.VerticalPosition));   // 2 bytes
-                }
-            }
-            
-            // Write Image Information (12 bytes)
-            writer.Write(FacialImageType);                           // 1 byte
-            writer.Write((byte)format);                              // 1 byte - image data type
-            writer.Write(ToBigEndian((ushort)dimensions.Width));     // 2 bytes
-            writer.Write(ToBigEndian((ushort)dimensions.Height));    // 2 bytes
-            writer.Write((byte)GetColorSpace(format));               // 1 byte
-            writer.Write(SourceType);                                // 1 byte
-            writer.Write(ToBigEndian((ushort)0));                   // 2 bytes - device type
-            writer.Write(metadata.Quality);                          // 1 byte
-            writer.Write((byte)0);                                   // 1 byte - padding
-            
-            // Write Image Data
-            writer.Write(imageData);
-            
-            return Result.Success(stream.ToArray());
+            var points = metadata.FeaturePoints.HasValue
+                ? metadata
+                    .FeaturePoints.Value.Select(point => new FaceFeaturePoint(
+                        point.FeatureType,
+                        point.Reserved,
+                        point.HorizontalPosition,
+                        point.VerticalPosition
+                    ))
+                    .ToImmutableArray()
+                : ImmutableArray<FaceFeaturePoint>.Empty;
+            // The canonical writer owns lengths and big-endian fields. sRGB is
+            // preserved for both compressed image formats, including JPEG 2000.
+            var image = new FaceImage(
+                new FaceInformation(
+                    (byte)metadata.Gender,
+                    (byte)metadata.EyeColor,
+                    (byte)metadata.HairColor,
+                    0,
+                    1,
+                    0,
+                    0
+                ),
+                points,
+                new FaceImageInformation(
+                    1,
+                    (byte)format,
+                    checked((ushort)dimensions.Width),
+                    checked((ushort)dimensions.Height),
+                    1,
+                    2,
+                    0,
+                    metadata.Quality
+                ),
+                ImmutableArray.Create(imageData)
+            );
+            return Result.Success(Incits385Codec.Write(new FaceRecord([image])));
         }
-        catch (Exception ex)
+        catch (Exception error) when (error is ArgumentException or OverflowException)
         {
-            return Result.Failure<byte[]>($"Error creating INCITS 385 record: {ex.Message}");
+            return Result.Failure<byte[]>("The facial record metadata could not be encoded.");
         }
-    }
-    
-    private static byte GetColorSpace(ImageFormat format)
-    {
-        // PIV requires grayscale for JPEG 2000
-        return format == ImageFormat.Jpeg2000 ? (byte)0x03 : (byte)0x01; // Grayscale : RGB
-    }
-    
-    private static byte[] ToBigEndian(ushort value)
-    {
-        return new[] { (byte)(value >> 8), (byte)value };
-    }
-    
-    private static byte[] ToBigEndian(uint value)
-    {
-        return new[]
-        {
-            (byte)(value >> 24),
-            (byte)(value >> 16),
-            (byte)(value >> 8),
-            (byte)value
-        };
     }
 }

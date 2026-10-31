@@ -1,0 +1,72 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+        <IsPackable>false</IsPackable>
+        <AssemblyName>OpenPhysical.Biometrics.Tool.Compatibility</AssemblyName>
+        <RootNamespace>OpenPhysical.Biometrics.Tool</RootNamespace>
+    </PropertyGroup>
+    <ItemGroup>
+        <Compile
+            Include="../OpenPhysical.Biometrics.Tool/**/*.cs"
+            Exclude="../OpenPhysical.Biometrics.Tool/Program.cs;../OpenPhysical.Biometrics.Tool/Commands/FingerprintConversionCommand.cs;../OpenPhysical.Biometrics.Tool/obj/**/*.cs;../OpenPhysical.Biometrics.Tool/bin/**/*.cs"
+        />
+    </ItemGroup>
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <TargetFramework>net10.0</TargetFramework>
+        <AssemblyName>biotool</AssemblyName>
+        <!-- Only enable PublishSingleFile when actually publishing -->
+        <PublishSingleFile Condition="'$(RuntimeIdentifier)' != ''">true</PublishSingleFile>
+        <SelfContained>false</SelfContained>
+        <!-- .NET Tool Configuration -->
+        <PackAsTool>true</PackAsTool>
+        <ToolCommandName>biotool</ToolCommandName>
+        <PackageOutputPath>./nupkg</PackageOutputPath>
+        <!-- NuGet Package Metadata -->
+        <PackageId>OpenPhysical.Biometrics.Tool.Compatibility</PackageId>
+        <Authors>OpenPhysical Contributors</Authors>
+        <Company>OpenPhysical</Company>
+        <Product>OpenPhysical Biometrics Tool</Product>
+        <Description>Multi-modal biometric processing CLI tool for .NET. Handles facial, fingerprint, and other biometric data with standards compliance including PIV/FIPS 201-3.</Description>
+        <PackageLicenseExpression>GPL-2.0-or-later</PackageLicenseExpression>
+        <PackageProjectUrl>https://github.com/OpenPhysical/OpenPhysical.Biometrics</PackageProjectUrl>
+        <RepositoryUrl>https://github.com/OpenPhysical/OpenPhysical.Biometrics</RepositoryUrl>
+        <RepositoryType>git</RepositoryType>
+        <PackageTags>piv;facial-recognition;face-detection;biometrics;jpeg2000;fips201;id-card;cli;dotnet-tool</PackageTags>
+        <PackageReadmeFile>README.md</PackageReadmeFile>
+        <PackageIcon>icon.png</PackageIcon>
+        <Copyright>Copyright © 2025 OpenPhysical Contributors</Copyright>
+        <!-- Include models and dependencies in the tool package -->
+        <IncludeContentInPack>true</IncludeContentInPack>
+        <IncludeBuildOutput>true</IncludeBuildOutput>
+        <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
+    </PropertyGroup>
+    <ItemGroup>
+        <ProjectReference Include="..\OpenPhysical.Biometrics.Core\OpenPhysical.Biometrics.Core.csproj" />
+        <ProjectReference Include="..\OpenPhysical.Biometrics.Infrastructure\OpenPhysical.Biometrics.Infrastructure.csproj" />
+        <ProjectReference Include="..\OpenPhysical.Biometrics.Onnx\OpenPhysical.Biometrics.Onnx.csproj" />
+    </ItemGroup>
+    <ItemGroup>
+        <PackageReference Include="JetBrains.Annotations" Version="2025.2.0" />
+    </ItemGroup>
+    <ItemGroup>
+        <PackageReference Include="Spectre.Console" Version="0.50.0" />
+        <PackageReference Include="Spectre.Console.Cli" Version="0.50.0" />
+        <PackageReference
+            Include="Spectre.Console.Cli.Extensions.DependencyInjection"
+            Version="0.10.1-preview.0.1"
+        />
+        <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.0" />
+        <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="10.0.0" />
+        <PackageReference
+            Include="Microsoft.Extensions.Configuration.EnvironmentVariables"
+            Version="10.0.0"
+        />
+    </ItemGroup>
+    <ItemGroup>
+        <ProjectReference Include="../OpenPhysical.Biometrics.Piv/OpenPhysical.Biometrics.Piv.csproj" />
+    </ItemGroup>
+    <ItemGroup>
+        <EmbeddedResource Include="../OpenPhysical.Biometrics.Tool/Compatibility/Certificates/Resources/*.crt" />
+    </ItemGroup>
+</Project>

@@ -1,659 +1,186 @@
-# FaceOFFx API Documentation
+# .NET API guide
 
-FaceOFFx is a specialized facial processing library for .NET that transforms facial images to comply with PIV (Personal Identity Verification) and TWIC (Transportation Worker Identification Credential) standards. This documentation covers the complete public API surface with extensive examples and use cases.
+OpenPhysical.Biometrics prepares and interprets the biometric records used by PIV
+credentials. A typical issuance workflow captures a fingerprint or portrait,
+prepares its interchange record, checks the PIV profile, and asks the application's
+signature service to authenticate the completed CBEFF object. A reader parses the
+stored object, authenticates it, and compares a fresh capture with the selected
+reference finger.
 
-## Table of Contents
+All current packages target .NET 10. Public XML documentation describes ownership,
+units, expected outcomes, and validation at each entry point.
 
-- [Quick Start](#quick-start)
-- [Installation](#installation)
-- [API Architecture](#api-architecture)
-- [FacialImageEncoder API (Recommended)](#facialimageencoder-api-recommended)
-- [PivProcessor API (Advanced)](#pivprocessor-api-advanced)
-- [Configuration Options](#configuration-options)
-- [Data Models & Results](#data-models--results)
-- [Examples by Use Case](#examples-by-use-case)
-- [Advanced Topics](#advanced-topics)
-- [Error Handling](#error-handling)
+## Choose the capabilities your application uses
 
-## Quick Start
+`OpenPhysical.Biometrics` brings together canonical formats, PIV workflows, and
+fingerprint processing. `.Formats` supplies immutable INCITS 378 fingerprint,
+INCITS 385 facial, and CBEFF records. `.Piv` supplies profile validation,
+inspection, and signature handoffs. `.Facial` prepares captured sRGB pixels as a
+JPEG 2000 facial record. `.Imaging` supplies an owned `RgbImage` buffer for image
+loading, transforms, and encoding.
 
-The simplest way to process a facial image using standard .NET exception handling:
+The `.Facial.Infrastructure`, `.Facial.Core`, `.Facial.Models`, and
+`.Facial.Compatibility` packages retain the existing facial detection,
+landmark, and quality-assessment pipeline. They share `RgbImage` and the Skia
+backend. See [migration notes](MIGRATING-TO-3.md) for the package and contract map.
 
-```csharp
-using FaceOFFx.Infrastructure.Services;
+## Extract and compare fingerprints
 
-// Load image bytes from file
-byte[] imageData = await File.ReadAllBytesAsync("photo.jpg");
-
-try
-{
-    // Process to PIV-compatible JPEG 2000 format (22KB target)
-    var result = await FacialImageEncoder.ProcessAsync(imageData);
-
-    Console.WriteLine($"Processing successful!");
-    Console.WriteLine($"Output size: {result.Metadata.FileSize:N0} bytes");
-    Console.WriteLine($"Face confidence: {result.Metadata.FaceConfidence:P1}");
-    Console.WriteLine($"Rotation applied: {result.Metadata.RotationApplied:F1}°");
-
-    // Save the processed image
-    await File.WriteAllBytesAsync("output.jp2", result.ImageData);
-}
-catch (InvalidOperationException ex)
-{
-    Console.WriteLine($"Processing failed: {ex.Message}");
-}
-```
-
-## Installation
-
-Install the FaceOFFx NuGet package:
-
-```bash
-dotnet add package FaceOFFx
-```
-
-Or via Package Manager:
-
-```powershell
-Install-Package FaceOFFx
-```
-
-The library requires .NET 8.0 or later and includes all necessary ONNX models via Git LFS.
-
-## API Architecture
-
-FaceOFFx provides two distinct API levels designed for different user needs:
-
-### 1. FacialImageEncoder (Public API - Recommended)
-
-- **Uses standard .NET exception handling** - no functional programming knowledge required
-- **Returns concrete results** - `ProcessingResultDto` with all metadata
-- **Automatic service management** - no manual disposal or setup needed  
-- **Simple error handling** - standard try/catch blocks
-- **Target audience**: Regular .NET developers, production applications
-
-### 2. PivProcessor (Advanced API)
-
-- **Uses functional error handling** - requires CSharpFunctionalExtensions knowledge
-- **Returns `Result<T>` types** - functional programming patterns
-- **Manual service management** - you control service lifecycle
-- **Detailed control** - full access to transformation pipeline
-- **Target audience**: Advanced developers, custom integrations, functional programming enthusiasts
-
-## FacialImageEncoder API (Recommended)
-
-The `FacialImageEncoder` is the primary public API that uses standard .NET conventions.
-
-### Basic Processing
+Supply the original one-byte grayscale samples, dimensions, and explicit
+resolution. `FingerprintImage` owns its samples, and extraction produces an
+immutable template that can be reused across comparisons.
 
 ```csharp
-using FaceOFFx.Infrastructure.Services;
-using FaceOFFx.Core.Domain.Transformations;
+using System.Collections.Immutable;
+using OpenPhysical.Biometrics.Fingerprints;
+using OpenPhysical.Biometrics.NBIS;
 
-// Process with default PIV settings (22KB target)
-var result = await FacialImageEncoder.ProcessAsync(imageData);
+var engine = new NbisFingerprintEngine();
+var referenceImage = new FingerprintImage(referencePixels, width, height, 500);
+var probeImage = new FingerprintImage(probePixels, width, height, 500);
+var reference = engine.Extract(referenceImage);
+var probe = engine.Extract(probeImage);
+var rawScore = engine.Match(probe, reference);
+
+// Record the application's policy identifier with its decision.
+var policy = new FingerprintMatchingPolicy(policyIdentifier, minimumScore);
+var decision = policy.Evaluate(rawScore);
+
+// Materialize extraction once when the same captures support several comparisons.
+var templates = capturedImages.Select(engine.Extract).ToImmutableArray();
+var decisions = templates.Select(template =>
+    policy.Evaluate(engine.Match(template, reference))).ToImmutableArray();
 ```
 
-### Processing with Custom Options
+NBIS supports image/image, image/template, template/image, and template/template
+comparisons. Its raw Bozorth3 score feeds the application's matching policy.
+The native engine serializes its operations across instances.
 
-The library uses immutable C# records for configuration. Use the `with` syntax to modify options:
+## Select a reference from a card record
+
+Parse the raw INCITS 378 record after the caller unwraps the card data object.
+Select the finger and view explicitly when creating an NBIS matching template.
 
 ```csharp
-// Start with a preset and customize
-var customOptions = ProcessingOptions.PivBalanced with
-{
-    MinFaceConfidence = 0.9f,      // Require 90% confidence
-    MaxRotationDegrees = 5.0f,     // Limit rotation to ±5°
-    RequireSingleFace = false,     // Allow multiple faces (use best)
-    MaxRetries = 3,                // More bitrate attempts for size targeting
-    PreserveMetadata = true,       // Keep EXIF data
-    RoiStartLevel = 2              // Different ROI smoothness
-};
+using OpenPhysical.Biometrics.Formats.Fingerprints;
 
-var result = await FacialImageEncoder.ProcessAsync(imageData, customOptions);
+var parsed = Incits378Codec.Parse(rawFingerprintRecord);
+if (!parsed.IsSuccess)
+    throw new FormatException(string.Join("; ", parsed.Diagnostics.Select(
+        diagnostic => $"{diagnostic.Code} at byte {diagnostic.Offset}")));
+
+var reference = parsed.Value!.ToMatchingTemplate(
+    FingerPosition.RightIndex,
+    viewNumber: 0);
+var rawScore = engine.Match(probeImage, reference);
+var decision = policy.Evaluate(rawScore);
 ```
 
-### Preset-based Processing
+Canonical minutiae use top-left pixel coordinates, two-degree angle units, and
+pixels-per-centimetre resolution. `ToMatchingTemplate` applies the NBIS coordinate
+and direction conventions. [Fingerprint workflows](FINGERPRINT-WORKFLOWS.md) show
+quality assessment, candidate ranking, primary/secondary enrollment, and
+unavailable fingers.
+
+## Inspect and validate records
+
+A parse result contains the immutable value, typed diagnostics, and fields with
+byte offsets and lengths. `BiometricInspector` adds a common presentation model
+and PIV profile findings for raw FMR, FAC, or CBEFF data.
 
 ```csharp
-// TWIC card processing (14KB maximum)
-var twicResult = await FacialImageEncoder.ProcessForTwicAsync(imageData);
+using OpenPhysical.Biometrics.Piv;
 
-// Standard PIV processing (22KB target)  
-var pivResult = await FacialImageEncoder.ProcessForPivAsync(imageData);
-
-// Custom target size
-var customSizeResult = await FacialImageEncoder.ProcessToSizeAsync(imageData, 25000);
-
-// Fixed compression rate
-var rateResult = await FacialImageEncoder.ProcessWithRateAsync(imageData, 1.5f);
+var report = BiometricInspector.Inspect(rawObject, evaluationTime);
+foreach (var finding in report.Structure.Diagnostics)
+    PresentStructureFinding(finding.Code, finding.Offset, finding.Length);
+foreach (var finding in report.ProfileDiagnostics)
+    PresentProfileFinding(finding.Code, finding.Field);
 ```
 
-### Error Handling with FacialImageEncoder
+Pass the evaluation instant explicitly for validity checks. Applications can opt
+into field contents with `InspectionOptions(IncludeSensitiveValues: true)` for an
+authorized inspection view. Keep image samples, minutiae, identities, and matching
+scores in the protected workflow result; operational logs carry status and event
+identifiers.
 
-Standard .NET exception handling - no functional programming required:
+## Prepare a captured portrait
 
-```csharp
-try
-{
-    var result = await FacialImageEncoder.ProcessAsync(imageData);
-    
-    // Success - use the result
-    Console.WriteLine($"Success: {result.Metadata.FileSize} bytes");
-    await File.WriteAllBytesAsync("output.jp2", result.ImageData);
-}
-catch (ArgumentNullException ex)
-{
-    Console.WriteLine($"Invalid input: {ex.Message}");
-}
-catch (ArgumentException ex)
-{
-    Console.WriteLine($"Invalid image or options: {ex.Message}");
-}
-catch (InvalidOperationException ex)
-{
-    Console.WriteLine($"Processing failed: {ex.Message}");
-}
-catch (TimeoutException ex)
-{
-    Console.WriteLine($"Processing timeout: {ex.Message}");
-}
-```
-
-### Try Pattern (Alternative Error Handling)
-
-If you prefer not to use exceptions:
+`FacialRecordPreparer` accepts tightly packed sRGB samples and acquisition facts
+from the camera and attended capture workflow. It preserves the supplied geometry
+and returns a typed preparation outcome and canonical facial record.
 
 ```csharp
-var (success, result, errorMessage) = await FacialImageEncoder.TryProcessAsync(imageData);
+using OpenPhysical.Biometrics.Facial;
+using OpenPhysical.Biometrics.Formats.Faces;
 
-if (success)
+var preparer = new FacialRecordPreparer(logger);
+var prepared = preparer.Prepare(
+    capturedSrgbPixels,
+    capturedWidth,
+    capturedHeight,
+    acquisitionMetadata);
+
+if (prepared.Status == FacialPreparationStatus.Prepared)
 {
-    Console.WriteLine($"Success: {result!.Metadata.FileSize} bytes");
-    await File.WriteAllBytesAsync("output.jp2", result.ImageData);
+    var facialRecordBytes = Incits385Codec.Write(prepared.Record!);
+    ContinueIssuance(facialRecordBytes, prepared.Acquisition);
 }
 else
 {
-    Console.WriteLine($"Failed: {errorMessage}");
+    PresentCaptureOutcome(prepared.Status, prepared.ProfileDiagnostics);
 }
 ```
 
-## PivProcessor API (Advanced)
+Acquisition metadata records source, device, time, quality, and confirmation of the
+frontal subject and optical capture requirements. The shared PIV profile checks
+encoded facial metadata, including width greater than 420 pixels. The optional
+facial pipeline adds detection, landmarks, alignment, and
+[quality assessments](quality-assessment.md).
 
-The `PivProcessor` provides functional error handling and full control over the processing pipeline. **Requires knowledge of CSharpFunctionalExtensions.**
+## Connect the application's signature services
 
-### Manual Service Management
-
-```csharp
-using FaceOFFx.Core.Domain.Transformations;
-using FaceOFFx.Infrastructure.Services;
-using FaceOFFx.Core.Abstractions;
-using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.PixelFormats;
-using CSharpFunctionalExtensions;
-using Microsoft.Extensions.Logging;
-
-// Initialize services manually
-var logger = LoggerFactory.Create(builder => builder.AddConsole()).CreateLogger("FaceOFFx");
-var faceDetector = new RetinaFaceDetector(logger);
-var landmarkExtractor = new OnnxLandmarkExtractor(logger);
-var jpeg2000Encoder = new Jpeg2000EncoderService(logger);
-
-// Load image
-using var sourceImage = await Image.LoadAsync<Rgba32>("input.jpg");
-
-// Process with functional error handling
-var result = await PivProcessor.ProcessAsync(
-    sourceImage,
-    faceDetector,
-    landmarkExtractor,
-    jpeg2000Encoder,
-    ProcessingOptions.PivHigh,
-    enableRoi: true,
-    roiAlign: false,
-    logger);
-
-// Functional error handling
-if (result.IsSuccess)
-{
-    var pivResult = result.Value;
-    
-    // Access detailed transformation data
-    Console.WriteLine($"PIV compliant: {pivResult.IsPivCompliant}");
-    Console.WriteLine($"Applied rotation: {pivResult.AppliedTransform.RotationDegrees}°");
-    Console.WriteLine($"Crop region: {pivResult.AppliedTransform.CropRegion}");
-    
-    // Save result
-    await File.WriteAllBytesAsync("output.jp2", pivResult.ImageData);
-}
-else
-{
-    Console.WriteLine($"Processing failed: {result.Error}");
-}
-
-// Clean up services
-faceDetector.Dispose();
-landmarkExtractor.Dispose();
-```
-
-### Simple File Conversion (PivProcessor)
+The issuer supplies `IBiometricSignatureProvider` and
+`IBiometricSignatureVerifier`, along with the expected `BiometricIdentity` and a
+prepared `CbeffRecord`.
 
 ```csharp
-// Convert JPEG to PIV-compliant JP2 in one call
-var result = await PivProcessor.ConvertJpegToPivJp2Async(
-    "input.jpg",
-    "output.jp2", 
-    faceDetector,
-    landmarkExtractor,
-    jpeg2000Encoder);
+using OpenPhysical.Biometrics.Formats.Cbeff;
 
-if (result.IsSuccess)
+var issued = await BiometricSignatureWorkflow.SignAsync(
+    preparedRecord, expectedIdentity, signer, verifier, cancellationToken);
+if (issued.Record is { } completed)
 {
-    Console.WriteLine("Conversion successful!");
-}
-else
-{
-    Console.WriteLine($"Conversion failed: {result.Error}");
+    ApplyIssuancePolicy(issued.Verification!);
+    var cardObjectBytes = CbeffCodec.Write(completed);
+    ContinueCardTransaction(cardObjectBytes);
 }
 ```
 
-## Configuration Options
+`VerifyAsync` accepts the parsed original record, expected card identity, and the
+application verifier. Its result retains signature, trust, revocation, and
+identity-binding findings. [Signature integration](SIGNATURE-INTEGRATION.md)
+describes the exact signed bytes, CMS attributes, and issuer policy handoff.
 
-Both APIs use the same `ProcessingOptions` record for configuration.
+## Register processing and use owned images
 
-### Built-in Presets
+Register `services.AddFingerprintProcessing()` and
+`services.AddFacialRecordPreparation()` for the modern processing capabilities.
+Enrollment also receives the application's selected `IFingerprintQualityProvider`.
+Logging uses `Microsoft.Extensions.Logging` throughout.
 
-```csharp
-// Government card presets
-ProcessingOptions.TwicMax       // 14KB - TWIC card maximum
-ProcessingOptions.PivMin        // 12KB - PIV minimum space  
-ProcessingOptions.PivBalanced   // 22KB - Standard PIV (recommended)
-ProcessingOptions.PivHigh       // 30KB - Enhanced PIV quality
-ProcessingOptions.PivVeryHigh   // 50KB - Premium quality
-
-// Special purpose presets
-ProcessingOptions.Archival      // ~82KB - Long-term preservation
-ProcessingOptions.Minimal       // ~15KB - Smallest file size
-ProcessingOptions.Fast          // Same as PivBalanced but fail-fast
-```
-
-#### Preset Comparison
-
-| Preset      | Target Size | Actual Size | Compression Rate | Use Case                      |
-|-------------|-------------|-------------|------------------|-------------------------------|
-| TwicMax     | 14KB        | ~12KB       | Variable         | TWIC card compatibility       |
-| PivMin      | 12KB        | ~11.8KB     | 0.36 bpp         | PIV minimum space             |
-| PivBalanced | 22KB        | ~20.6KB     | 0.68 bpp         | **Default** - Optimal balance |
-| PivHigh     | 30KB        | ~29.4KB     | 0.96 bpp         | Enhanced quality              |
-| PivVeryHigh | 50KB        | ~49.7KB     | 1.70 bpp         | Premium quality               |
-| Archival    | -           | ~82KB       | 4.00 bpp         | Long-term preservation        |
-| Minimal     | -           | ~14.7KB     | 0.48 bpp         | Smallest possible             |
-| Fast        | 22KB        | ~20.6KB     | 0.68 bpp         | Quick processing              |
-
-### Custom Configuration
-
-ProcessingOptions is an immutable record. Use the `with` syntax to create variations:
+For image transformations, dispose the owned buffer when its workflow finishes.
+`Clone` creates independent storage; `CopyRgbBytes` supplies standard .NET byte
+samples to another component.
 
 ```csharp
-// Start with a preset and modify specific properties
-var highSecurityOptions = ProcessingOptions.Archival with
-{
-    MinFaceConfidence = 0.95f,        // Very high confidence required
-    RequireSingleFace = true,         // Must be exactly one face
-    MaxRotationDegrees = 5.0f,        // Limit rotation for consistency
-    MaxRetries = 1,                   // Fail fast for security
-    ProcessingTimeout = TimeSpan.FromSeconds(15)
-};
+using OpenPhysical.Biometrics.Imaging;
 
-// Create completely custom options
-var customOptions = new ProcessingOptions
-{
-    Strategy = EncodingStrategy.TargetSize(18000),  // 18KB target
-    MinFaceConfidence = 0.85f,
-    RequireSingleFace = false,
-    MaxRetries = 3,
-    ProcessingTimeout = TimeSpan.FromSeconds(45),
-    RoiStartLevel = 3,                // Smoothest quality transitions
-    EnableRoi = true,                 // Enable ROI encoding
-    AlignRoi = false,                 // Smooth transitions 
-    PreserveMetadata = false,         // Strip EXIF for privacy
-    MaxRotationDegrees = 10.0f
-};
+using var original = RgbImage.Load("capture.jpg");
+using var preview = original.Clone(image => image.Resize(240, 320, fillCrop: true));
+var previewRgb = preview.CopyRgbBytes();
 ```
 
-### Encoding Strategies
-
-#### Target Size Strategy
-
-```csharp
-// Target specific file size (library tries multiple compression rates)
-var targetSizeOptions = ProcessingOptions.PivBalanced with
-{
-    Strategy = EncodingStrategy.TargetSize(22000)  // Target 22KB
-};
-```
-
-#### Fixed Rate Strategy
-
-```csharp
-// Use fixed compression rate (predictable behavior)
-var fixedRateOptions = ProcessingOptions.PivBalanced with
-{
-    Strategy = EncodingStrategy.FixedRate(1.2f)    // 1.2 bits per pixel
-};
-```
-
-## Data Models & Results
-
-### ProcessingResultDto (FacialImageEncoder)
-
-The non-functional result type returned by `FacialImageEncoder`:
-
-```csharp
-public sealed record ProcessingResultDto(byte[] ImageData, ProcessingMetadataDto Metadata);
-
-public sealed record ProcessingMetadataDto(
-    ImageDimensions OutputDimensions,    // Always 420x560 for PIV
-    float RotationApplied,               // Degrees of rotation correction
-    float FaceConfidence,                // Detection confidence (0.0-1.0)
-    int FileSize,                        // Final compressed size in bytes
-    TimeSpan ProcessingTime              // Total processing duration
-)
-{
-    public float CompressionRate { get; init; }           // Actual compression rate used
-    public int? TargetSize { get; init; }                 // Target size if using TargetSizeStrategy
-    public IReadOnlyList<string> Warnings { get; init; }  // Processing warnings
-    public IReadOnlyDictionary<string, object> AdditionalData { get; init; }
-}
-```
-
-#### Usage Example
-
-```csharp
-var result = await FacialImageEncoder.ProcessAsync(imageData);
-
-var metadata = result.Metadata;
-Console.WriteLine($"Output dimensions: {metadata.OutputDimensions.Width}x{metadata.OutputDimensions.Height}");
-Console.WriteLine($"File size: {metadata.FileSize:N0} bytes");
-Console.WriteLine($"Face confidence: {metadata.FaceConfidence:P1}");
-Console.WriteLine($"Rotation applied: {metadata.RotationApplied:F1}°");
-Console.WriteLine($"Compression rate: {metadata.CompressionRate:F2} bpp");
-Console.WriteLine($"Processing time: {metadata.ProcessingTime.TotalMilliseconds:F0}ms");
-
-if (metadata.TargetSize.HasValue)
-{
-    Console.WriteLine($"Target size: {metadata.TargetSize.Value:N0} bytes");
-}
-
-if (metadata.Warnings.Any())
-{
-    Console.WriteLine($"Warnings: {string.Join(", ", metadata.Warnings)}");
-}
-```
-
-## Examples by Use Case
-
-### Government ID Card Processing
-
-#### Standard PIV Processing
-
-```csharp
-// Standard government PIV cards with custom quality
-byte[] photoData = await File.ReadAllBytesAsync("employee_photo.jpg");
-
-var options = ProcessingOptions.PivHigh with
-{
-    MinFaceConfidence = 0.95f,  // High confidence for compliance
-    PreserveMetadata = false   // Strip metadata for privacy
-};
-
-try
-{
-    var result = await FacialImageEncoder.ProcessAsync(photoData, options);
-
-    Console.WriteLine($"PIV processing complete:");
-    Console.WriteLine($"  File size: {result.Metadata.FileSize:N0} bytes");
-    Console.WriteLine($"  Face confidence: {result.Metadata.FaceConfidence:P1}");
-    Console.WriteLine($"  Processing time: {result.Metadata.ProcessingTime.TotalMilliseconds:F0}ms");
-
-    await File.WriteAllBytesAsync("piv_photo.jp2", result.ImageData);
-}
-catch (InvalidOperationException ex)
-{
-    Console.WriteLine($"PIV processing failed: {ex.Message}");
-}
-```
-
-#### TWIC Card Processing
-
-```csharp
-// TWIC cards have strict 14KB size limits
-try
-{
-    var twicResult = await FacialImageEncoder.ProcessForTwicAsync(photoData);
-    
-    if (twicResult.Metadata.FileSize <= 14000)
-    {
-        await File.WriteAllBytesAsync("twic_photo.jp2", twicResult.ImageData);
-        Console.WriteLine("TWIC processing successful - size compliant");
-    }
-    else
-    {
-        // Won't happen due to TWIC targeting limits
-        Console.WriteLine($"Warning: File size {twicResult.Metadata.FileSize} may exceed TWIC limits");
-    }
-}
-catch (InvalidOperationException ex)
-{
-    Console.WriteLine($"TWIC processing failed: {ex.Message}");
-}
-```
-
-### Batch Processing
-
-```csharp
-public async Task ProcessPhotosBatchAsync(string inputDirectory, string outputDirectory)
-{
-    var imageFiles = Directory.GetFiles(inputDirectory, "*.jpg");
-    var results = new List<(string File, bool Success, int Size, string Error)>();
-    
-    // Use Fast preset for quick batch processing
-    var batchOptions = ProcessingOptions.Fast with
-    {
-        ProcessingTimeout = TimeSpan.FromSeconds(10),  // Quick timeout
-        MaxRetries = 1                                 // Minimal retries
-    };
-    
-    foreach (var imageFile in imageFiles)
-    {
-        try
-        {
-            var imageData = await File.ReadAllBytesAsync(imageFile);
-            var result = await FacialImageEncoder.ProcessAsync(imageData, batchOptions);
-            
-            var outputFile = Path.Combine(outputDirectory, 
-                Path.GetFileNameWithoutExtension(imageFile) + ".jp2");
-            await File.WriteAllBytesAsync(outputFile, result.ImageData);
-            
-            results.Add((imageFile, true, result.Metadata.FileSize, ""));
-            Console.WriteLine($"✓ {Path.GetFileName(imageFile)} -> {result.Metadata.FileSize:N0} bytes");
-        }
-        catch (Exception ex)
-        {
-            results.Add((imageFile, false, 0, ex.Message));
-            Console.WriteLine($"✗ {Path.GetFileName(imageFile)}: {ex.Message}");
-        }
-    }
-    
-    // Summary
-    var successful = results.Count(r => r.Success);
-    var avgSize = results.Where(r => r.Success).Average(r => r.Size);
-    
-    Console.WriteLine($"\nBatch processing complete:");
-    Console.WriteLine($"  Processed: {successful}/{results.Count} files");
-    Console.WriteLine($"  Average size: {avgSize:N0} bytes");
-    Console.WriteLine($"  Failed files: {results.Count(r => !r.Success)}");
-}
-```
-
-### Quality Comparison
-
-```csharp
-public async Task CompareQualityPresetsAsync(byte[] imageData)
-{
-    var presets = new[]
-    {
-        ("Minimal", ProcessingOptions.Minimal),
-        ("PIV Min", ProcessingOptions.PivMin),
-        ("PIV Balanced", ProcessingOptions.PivBalanced),
-        ("PIV High", ProcessingOptions.PivHigh),
-        ("PIV Very High", ProcessingOptions.PivVeryHigh),
-        ("Archival", ProcessingOptions.Archival)
-    };
-    
-    Console.WriteLine("Quality Preset Comparison:");
-    Console.WriteLine("".PadRight(70, '-'));
-    Console.WriteLine($"{"Preset",-15} | {"Size",8} | {"Rate",6} | {"Time",6} | {"Confidence",10}");
-    Console.WriteLine("".PadRight(70, '-'));
-    
-    foreach (var (name, preset) in presets)
-    {
-        try
-        {
-            var result = await FacialImageEncoder.ProcessAsync(imageData, preset);
-            var meta = result.Metadata;
-            
-            Console.WriteLine($"{name,-15} | " +
-                            $"{meta.FileSize,6:N0}B | " +
-                            $"{meta.CompressionRate,4:F2}bp | " +
-                            $"{meta.ProcessingTime.TotalMilliseconds,5:F0}ms | " +
-                            $"{meta.FaceConfidence,9:P1}");
-            
-            // Save for visual comparison
-            await File.WriteAllBytesAsync($"comparison_{name.ToLower().Replace(" ", "_")}.jp2", 
-                result.ImageData);
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"{name,-15} | FAILED: {ex.Message}");
-        }
-    }
-}
-```
-
-## Advanced Topics
-
-### JPEG 2000 ROI Encoding
-
-FaceOFFx uses advanced Region of Interest (ROI) encoding to optimize quality distribution:
-
-```csharp
-// ROI levels control quality transition smoothness
-var roiOptions = ProcessingOptions.PivBalanced with
-{
-    RoiStartLevel = 0,    // Aggressive ROI priority - sharp quality differences
-    EnableRoi = true,     // Enable ROI encoding
-    AlignRoi = false      // Smooth transitions (recommended)
-};
-
-// Disable ROI for uniform quality throughout the image
-var uniformOptions = ProcessingOptions.PivBalanced with
-{
-    EnableRoi = false     // Uniform quality across entire image
-};
-```
-
-**ROI Start Levels:**
-
-- **Level 0**: Aggressive ROI priority - maximum facial quality, sharp transitions
-- **Level 1**: Balanced quality distribution
-- **Level 2**: Conservative ROI priority
-- **Level 3**: Smoothest quality transitions (default, recommended)
-
-### Performance Optimization
-
-```csharp
-// For high-throughput scenarios, optimize processing options
-var performanceOptions = ProcessingOptions.Fast with
-{
-    MaxRetries = 0,                                // Single bitrate attempt for speed
-    ProcessingTimeout = TimeSpan.FromSeconds(5),   // Quick timeout
-    Strategy = EncodingStrategy.FixedRate(0.6f)    // Fixed rate avoids size targeting overhead
-};
-```
-
-## Error Handling
-
-### Standard .NET Exception Handling
-
-```csharp
-public async Task<ProcessingResultDto?> ProcessWithFullErrorHandlingAsync(byte[] imageData)
-{
-    try
-    {
-        var result = await FacialImageEncoder.ProcessAsync(imageData, ProcessingOptions.PivBalanced);
-        return result;
-    }
-    catch (ArgumentNullException)
-    {
-        Console.WriteLine("Error: Image data is null");
-        return null;
-    }
-    catch (ArgumentException ex)
-    {
-        Console.WriteLine($"Error: Invalid image data or options - {ex.Message}");
-        return null;
-    }
-    catch (InvalidOperationException ex) when (ex.Message.Contains("No faces detected"))
-    {
-        Console.WriteLine("Error: No faces found in image");
-        
-        // Retry with lower confidence
-        try
-        {
-            var retryOptions = ProcessingOptions.PivBalanced with { MinFaceConfidence = 0.6f };
-            return await FacialImageEncoder.ProcessAsync(imageData, retryOptions);
-        }
-        catch
-        {
-            Console.WriteLine("Retry with lower confidence also failed");
-            return null;
-        }
-    }
-    catch (InvalidOperationException ex) when (ex.Message.Contains("Multiple faces detected"))
-    {
-        Console.WriteLine("Error: Multiple faces detected, trying to use best face");
-        
-        // Allow multiple faces
-        try
-        {
-            var multiOptions = ProcessingOptions.PivBalanced with { RequireSingleFace = false };
-            return await FacialImageEncoder.ProcessAsync(imageData, multiOptions);
-        }
-        catch
-        {
-            Console.WriteLine("Multi-face processing also failed");
-            return null;
-        }
-    }
-    catch (TimeoutException ex)
-    {
-        Console.WriteLine($"Error: Processing timeout - {ex.Message}");
-        return null;
-    }
-    catch (InvalidOperationException ex)
-    {
-        Console.WriteLine($"Error: Processing failed - {ex.Message}");
-        return null;
-    }
-    catch (Exception ex)
-    {
-        Console.WriteLine($"Unexpected error: {ex.Message}");
-        return null;
-    }
-}
-```
-
----
-
-This completes the comprehensive API documentation for FaceOFFx. The library provides two distinct pathways: a simple exception-based API (`FacialImageEncoder`) for most developers, and a functional API (`PivProcessor`) for advanced scenarios requiring detailed error handling and full control over the processing pipeline.
+The [runnable examples](../examples/README.md) connect these steps using attributed
+fingerprint fixtures, reusable templates, caller-supplied signature hooks, and
+explicit application decisions.

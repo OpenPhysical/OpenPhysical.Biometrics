@@ -7,10 +7,10 @@ using NUnit.Framework;
 using OpenPhysical.Biometrics.Infrastructure.Certificates;
 
 [TestFixture]
-public class TrustedCertificateProviderTests
+internal class TrustedCertificateProviderTests
 {
-    private TrustedCertificateProvider _provider;
-    private ILogger<TrustedCertificateProvider> _logger;
+    private TrustedCertificateProvider _provider = null!;
+    private ILogger<TrustedCertificateProvider> _logger = null!;
 
     [SetUp]
     public void SetUp()
@@ -21,7 +21,7 @@ public class TrustedCertificateProviderTests
     }
 
     [Test]
-    public void GetDefaultCertificates_ShouldLoadAllSevenCertificates()
+    public void GetDefaultCertificates_ShouldLoadAllEmbeddedCertificates()
     {
         // Act
         var result = _provider.GetDefaultCertificates();
@@ -29,17 +29,19 @@ public class TrustedCertificateProviderTests
         // Assert
         result.IsSuccess.Should().BeTrue();
         var certificates = result.Value.EnumerateMatches(null).ToList();
-        
-        certificates.Should().HaveCount(7, "because there are 7 embedded certificate resources");
-        
+
+        certificates
+            .Should()
+            .HaveCount(13, "all thirteen committed certificate resources must load");
+
         // Verify we have the expected certificates
         var subjects = certificates.Select(c => c.SubjectDN.ToString()).ToList();
-        
+
         // Test certificates (3)
         subjects.Should().Contain(s => s.Contains("ICAM Test Card Root CA"));
         subjects.Should().Contain(s => s.Contains("ICAM Test Card Signing CA"));
         subjects.Should().Contain(s => s.Contains("ICAM Test Card PIV Content Signer"));
-        
+
         // PIV certificates (4)
         subjects.Should().Contain(s => s.Contains("ICAM PIV Content Signer"));
     }
@@ -49,7 +51,7 @@ public class TrustedCertificateProviderTests
     {
         // This test verifies that if any certificate fails to load, the entire operation fails
         // (as per the implementation which returns failure if any certificate can't be loaded)
-        
+
         // Act
         var result = _provider.GetDefaultCertificates();
 
@@ -66,11 +68,14 @@ public class TrustedCertificateProviderTests
         // Assert
         result.IsSuccess.Should().BeTrue();
         var certificates = result.Value.EnumerateMatches(null).ToList();
-        
+
         certificates.Should().HaveCountGreaterThan(0);
-        certificates.Should().OnlyContain(cert => 
-            cert.SubjectDN.ToString().Contains("Root CA") || 
-            cert.IssuerDN.ToString().Contains("Root CA"));
+        certificates
+            .Should()
+            .OnlyContain(cert =>
+                cert.SubjectDN.ToString().Contains("Root CA")
+                || cert.IssuerDN.ToString().Contains("Root CA")
+            );
     }
 
     [Test]

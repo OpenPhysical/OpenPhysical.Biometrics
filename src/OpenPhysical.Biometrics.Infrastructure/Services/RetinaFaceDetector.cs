@@ -1,8 +1,7 @@
-using OpenPhysical.Biometrics.Onnx;
+using System.Drawing;
 using JetBrains.Annotations;
-using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.PixelFormats;
-using SixLabors.ImageSharp.Processing;
+using OpenPhysical.Biometrics.Imaging;
+using OpenPhysical.Biometrics.Onnx;
 
 namespace OpenPhysical.Biometrics.Infrastructure.Services;
 
@@ -51,9 +50,12 @@ public sealed class RetinaFaceDetector : IFaceDetector, IDisposable
             var modelBytes = ModelRegistry.GetModel(ModelRegistry.FaceDetector);
             _session = new InferenceSession(modelBytes, sessionOptions);
         }
-        catch (Exception ex)
+        catch (Exception)
         {
-            _logger.LogError(ex, "Failed to initialize RetinaFace detector");
+            _logger.LogError(
+                new EventId(484400, "RetinaFaceDetector"),
+                "Failed to initialize RetinaFace detector"
+            );
             throw;
         }
     }
@@ -72,14 +74,13 @@ public sealed class RetinaFaceDetector : IFaceDetector, IDisposable
     /// The model processes images at 640x640 resolution.
     /// </remarks>
     public async Task<Result<IReadOnlyList<DetectedFace>>> DetectFacesAsync(
-        Image<Rgba32> image,
+        RgbImage image,
         CancellationToken cancellationToken = default
     )
     {
         _logger.LogDebug(
-            "DetectFacesAsync started with image size: {Width}x{Height}",
-            image.Width,
-            image.Height
+            new EventId(484401, "RetinaFaceDetector"),
+            "RetinaFaceDetector processing started."
         );
 
         // Prepare input tensor and get scale factors
@@ -103,17 +104,23 @@ public sealed class RetinaFaceDetector : IFaceDetector, IDisposable
             // Process outputs
             var detections = ProcessOutput(results, image.Width, image.Height, scaleX, scaleY);
 
-            _logger.LogDebug("Detected {Count} faces", detections.Count);
+            _logger.LogDebug(
+                new EventId(484402, "RetinaFaceDetector"),
+                "RetinaFaceDetector processing completed."
+            );
             _logger.LogInformation(
-                "DetectFacesAsync completed successfully with {Count} faces detected",
-                detections.Count
+                new EventId(484403, "RetinaFaceDetector"),
+                "RetinaFaceDetector processing completed."
             );
 
             return Result.Success<IReadOnlyList<DetectedFace>>(detections);
         }
         catch (OperationCanceledException)
         {
-            _logger.LogDebug("Face detection was cancelled");
+            _logger.LogDebug(
+                new EventId(484404, "RetinaFaceDetector"),
+                "Face detection was cancelled"
+            );
             return Result.Failure<IReadOnlyList<DetectedFace>>("Face detection was cancelled");
         }
     }
@@ -124,10 +131,10 @@ public sealed class RetinaFaceDetector : IFaceDetector, IDisposable
     /// <param name="image">The input image from which the tensor will be prepared.</param>
     /// <returns>The input tensor and scale factors for coordinate conversion.</returns>
     private (DenseTensor<float> tensor, float scaleX, float scaleY) PrepareInputTensor(
-        Image<Rgba32> image
+        RgbImage image
     )
     {
-        // Work directly with ImageSharp Image
+        // Work directly with owned RGB image
         using var img = image.Clone();
 
         // Calculate scale to fit in 640x640 while preserving aspect ratio
@@ -142,7 +149,7 @@ public sealed class RetinaFaceDetector : IFaceDetector, IDisposable
         using var resizedImage = img.Clone(x => x.Resize(newWidth, newHeight));
 
         // Create 640x640 image with mean color background
-        using var paddedImage = new Image<Rgba32>(ModelInputSize, ModelInputSize);
+        using var paddedImage = new RgbImage(ModelInputSize, ModelInputSize);
 
         // Calculate padding
         var padX = (ModelInputSize - newWidth) / 2;
@@ -196,8 +203,8 @@ public sealed class RetinaFaceDetector : IFaceDetector, IDisposable
         if (outputs.Count < 2)
         {
             _logger.LogWarning(
-                "Unexpected number of outputs from RetinaFace model: {Count}",
-                outputs.Count
+                new EventId(484405, "RetinaFaceDetector"),
+                "RetinaFaceDetector processing status changed."
             );
             return detections;
         }
@@ -216,6 +223,7 @@ public sealed class RetinaFaceDetector : IFaceDetector, IDisposable
         if (bboxOutput == null || confOutput == null)
         {
             _logger.LogWarning(
+                new EventId(484406, "RetinaFaceDetector"),
                 "Could not find required outputs (bbox and confidence) from RetinaFace model"
             );
             return detections;
@@ -223,7 +231,10 @@ public sealed class RetinaFaceDetector : IFaceDetector, IDisposable
 
         // Get dimensions
         var numDetections = confOutput.Dimensions[1];
-        _logger.LogDebug("RetinaFace outputs - Num detections: {NumDetections}", numDetections);
+        _logger.LogDebug(
+            new EventId(484407, "RetinaFaceDetector"),
+            "RetinaFaceDetector processing status changed."
+        );
 
         // Generate prior boxes (anchors)
         var priors = GeneratePriorBoxes(ModelInputSize, ModelInputSize);
@@ -231,9 +242,8 @@ public sealed class RetinaFaceDetector : IFaceDetector, IDisposable
         if (priors.Count != numDetections)
         {
             _logger.LogWarning(
-                "Prior box count {PriorCount} doesn't match detection count {DetCount}",
-                priors.Count,
-                numDetections
+                new EventId(484408, "RetinaFaceDetector"),
+                "RetinaFaceDetector processing status changed."
             );
             return detections;
         }
@@ -583,25 +593,37 @@ public sealed class RetinaFaceDetector : IFaceDetector, IDisposable
     {
         if (_disposed)
         {
-            _logger.LogDebug("Dispose called but already disposed");
+            _logger.LogDebug(
+                new EventId(484409, "RetinaFaceDetector"),
+                "Dispose called but already disposed"
+            );
             return;
         }
 
         try
         {
-            _logger.LogDebug("Disposing RetinaFace detector");
+            _logger.LogDebug(
+                new EventId(484410, "RetinaFaceDetector"),
+                "Disposing RetinaFace detector"
+            );
             _session?.Dispose();
-            _logger.LogDebug("InferenceSession disposed successfully");
+            _logger.LogDebug(
+                new EventId(484411, "RetinaFaceDetector"),
+                "InferenceSession disposed successfully"
+            );
         }
-        catch (Exception ex)
+        catch (Exception)
         {
-            _logger.LogError(ex, "Error during disposal");
+            _logger.LogError(new EventId(484412, "RetinaFaceDetector"), "Error during disposal");
         }
         finally
         {
             _disposed = true;
             GC.SuppressFinalize(this);
-            _logger.LogInformation("RetinaFace detector disposed");
+            _logger.LogInformation(
+                new EventId(484413, "RetinaFaceDetector"),
+                "RetinaFace detector disposed"
+            );
         }
     }
 }

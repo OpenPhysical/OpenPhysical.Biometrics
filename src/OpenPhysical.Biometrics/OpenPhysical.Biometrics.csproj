@@ -1,78 +1,17 @@
 <Project Sdk="Microsoft.NET.Sdk">
-  <PropertyGroup>
-    <TargetFramework>net9.0</TargetFramework>
-    <PackageId>OpenPhysical.Biometrics</PackageId>
-    <IsPackable>true</IsPackable>
-    <IncludeBuildOutput>true</IncludeBuildOutput>
-    <SuppressDependenciesWhenPacking>true</SuppressDependenciesWhenPacking>
-    <Description>Multi-modal biometric processing library for .NET with standards compliance including PIV/FIPS 201-3, CBEFF, and JPEG 2000 ROI encoding</Description>
-    <Version>2.1.0</Version>
-    <Authors>OpenPhysical Contributors</Authors>
-    <Company>OpenPhysical</Company>
-    <Product>OpenPhysical Biometrics</Product>
-    <Copyright>Copyright © 2025 OpenPhysical Contributors</Copyright>
-    <PackageLicenseExpression>MIT</PackageLicenseExpression>
-    <PackageProjectUrl>https://github.com/openphysical/biometrics</PackageProjectUrl>
-    <RepositoryUrl>https://github.com/openphysical/biometrics</RepositoryUrl>
-    <RepositoryType>git</RepositoryType>
-    <PackageTags>face-recognition;face-detection;facial-landmarks;piv;jpeg2000;fips201;onnx;machine-learning;computer-vision</PackageTags>
-    <PackageIcon>icon.png</PackageIcon>
-    <PackageReadmeFile>README.md</PackageReadmeFile>
-    <GenerateDocumentationFile>false</GenerateDocumentationFile>
-  </PropertyGroup>
-  <!-- Reference all projects that should be included in the package -->
-  <ItemGroup>
-    <ProjectReference Include="..\OpenPhysical.Biometrics.Core\OpenPhysical.Biometrics.Core.csproj" PrivateAssets="all" />
-    <ProjectReference
-      Include="..\OpenPhysical.Biometrics.Infrastructure\OpenPhysical.Biometrics.Infrastructure.csproj"
-      PrivateAssets="all"
-    />
-    <ProjectReference Include="..\OpenPhysical.Biometrics.Onnx\OpenPhysical.Biometrics.Onnx.csproj" PrivateAssets="all" />
-  </ItemGroup>
-  <!-- Include all assemblies from referenced projects -->
-  <PropertyGroup>
-    <TargetsForTfmSpecificBuildOutput>$(TargetsForTfmSpecificBuildOutput);CopyProjectReferencesToPackage</TargetsForTfmSpecificBuildOutput>
-  </PropertyGroup>
-  <Target
-    Name="CopyProjectReferencesToPackage"
-    DependsOnTargets="BuildOnlySettings;ResolveReferences"
-  >
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <PackageId>OpenPhysical.Biometrics</PackageId>
+        <IsPackable>true</IsPackable>
+        <Description>Biometric records, structured inspection, PIV preparation, and fingerprint processing for .NET.</Description>
+        <PackageReadmeFile>README.md</PackageReadmeFile>
+        <PackageLicenseExpression>GPL-2.0-or-later</PackageLicenseExpression>
+        <GenerateDocumentationFile>true</GenerateDocumentationFile>
+        <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    </PropertyGroup>
     <ItemGroup>
-      <!-- Include all DLLs from project references -->
-      <BuildOutputInPackage
-        Include="@(ReferenceCopyLocalPaths-&gt;'%(FullPath)')"
-        Condition="'%(ReferenceCopyLocalPaths.ReferenceSourceTarget)' == 'ProjectReference' and '%(Extension)' == '.dll'"
-      />
-      <!-- Include XML documentation files -->
-      <BuildOutputInPackage
-        Include="@(ReferenceCopyLocalPaths-&gt;'%(FullPath)')"
-        Condition="'%(ReferenceCopyLocalPaths.ReferenceSourceTarget)' == 'ProjectReference' and '%(Extension)' == '.xml'"
-      />
+        <ProjectReference Include="../OpenPhysical.Biometrics.Formats/OpenPhysical.Biometrics.Formats.csproj" />
+        <ProjectReference Include="../OpenPhysical.Biometrics.Piv/OpenPhysical.Biometrics.Piv.csproj" />
+        <ProjectReference Include="../OpenPhysical.Biometrics.Fingerprints/OpenPhysical.Biometrics.Fingerprints.csproj" />
     </ItemGroup>
-  </Target>
-  <!-- Include ONNX models as content files -->
-  <ItemGroup>
-    <Content
-      Include="..\OpenPhysical.Biometrics.Onnx\Resources\*.onnx"
-      Pack="true"
-      PackagePath="contentFiles\any\any\Resources\"
-      CopyToOutputDirectory="PreserveNewest"
-      BuildAction="Content"
-    />
-  </ItemGroup>
-  <!-- Include icon and readme -->
-  <ItemGroup>
-    <None
-      Include="..\..\icon.png"
-      Pack="true"
-      PackagePath=""
-      Condition="Exists('..\..\icon.png')"
-    />
-    <None
-      Include="..\..\README.md"
-      Pack="true"
-      PackagePath=""
-      Condition="Exists('..\..\README.md')"
-    />
-  </ItemGroup>
 </Project>

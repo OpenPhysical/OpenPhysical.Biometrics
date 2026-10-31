@@ -1,12 +1,13 @@
 using System.ComponentModel;
+using System.Drawing;
 using System.Text.Json;
 using OpenPhysical.Biometrics.Core.Domain.Quality;
+using OpenPhysical.Biometrics.Imaging;
 using OpenPhysical.Biometrics.Infrastructure.Extensions;
+using OpenPhysical.Biometrics.Tool.Drawing;
 using OpenPhysical.Biometrics.Tool.Services;
 using Spectre.Console;
 using Spectre.Console.Cli;
-using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.PixelFormats;
 
 namespace OpenPhysical.Biometrics.Tool.Commands;
 
@@ -83,72 +84,94 @@ public class QualityCommand : AsyncCommand<QualityCommand.Settings>
             return 1;
         }
 
+        if (!float.IsFinite(settings.Threshold) || settings.Threshold is < 0 or > 1)
+        {
+            AnsiConsole.MarkupLine(
+                "[red]Error: Quality threshold must be between zero and one.[/]"
+            );
+            return 1;
+        }
+
         // Create quality assessment options
         var options = settings.Strict
             ? QualityAssessmentOptions.Strict
             : QualityAssessmentOptions.ForStandard(settings.Standard) with
             {
                 MinQualityThreshold = settings.Threshold,
-                EnforceCompliance = false
+                EnforceCompliance = false,
             };
 
-        // Load and assess image
-        await AnsiConsole.Status()
+        async Task<int> AssessAndRenderAsync()
+        {
+            try
+            {
+                var imageData = await File.ReadAllBytesAsync(settings.InputPath);
+                var result = await imageData.AssessQualityAsync(options);
+                if (result.IsFailure)
+                {
+                    AnsiConsole.MarkupLine(
+                        $"[red]Quality assessment failed:[/] {Markup.Escape(result.Error)}"
+                    );
+                    return 1;
+                }
+                var assessment = result.Value;
+                switch (settings.OutputFormat.ToLowerInvariant())
+                {
+                    case "json":
+                        await OutputJson(assessment, settings.OutputPath);
+                        break;
+                    case "detailed":
+                        OutputDetailed(assessment);
+                        break;
+                    default:
+                        OutputText(assessment);
+                        break;
+                }
+                if (settings.Visual)
+                    await GenerateVisualOverlay(settings.InputPath, assessment);
+                return 0;
+            }
+            catch (Exception error)
+                when (error
+                        is IOException
+                            or UnauthorizedAccessException
+                            or ArgumentException
+                            or NotSupportedException
+                )
+            {
+                AnsiConsole.MarkupLine("[red]Error: Quality assessment could not complete.[/]");
+                return 1;
+            }
+        }
+
+        // A JSON consumer reads one complete document. Keep progress rendering
+        // on the interactive text path so it cannot prefix the JSON payload.
+        if (settings.OutputFormat.Equals("json", StringComparison.OrdinalIgnoreCase))
+            return await AssessAndRenderAsync();
+        var exitCode = 1;
+        await AnsiConsole
+            .Status()
             .Spinner(Spinner.Known.Star)
             .SpinnerStyle(Style.Parse("green"))
-            .StartAsync($"Assessing quality of {Path.GetFileName(settings.InputPath)}...", async ctx =>
-            {
-                try
+            .StartAsync(
+                "Assessing facial image quality...",
+                async _ =>
                 {
-                    var imageData = await File.ReadAllBytesAsync(settings.InputPath);
-                    var result = await imageData.AssessQualityAsync(options);
-
-                    if (result.IsFailure)
-                    {
-                        AnsiConsole.MarkupLine($"[red]Quality assessment failed: {result.Error}[/]");
-                        return;
-                    }
-
-                    var assessment = result.Value;
-
-                    // Output results based on format
-                    switch (settings.OutputFormat.ToLower())
-                    {
-                        case "json":
-                            await OutputJson(assessment, settings.OutputPath);
-                            break;
-                        case "detailed":
-                            OutputDetailed(assessment);
-                            break;
-                        default:
-                            OutputText(assessment);
-                            break;
-                    }
-
-                    // Generate visual overlay if requested
-                    if (settings.Visual)
-                    {
-                        await GenerateVisualOverlay(settings.InputPath, assessment);
-                    }
+                    exitCode = await AssessAndRenderAsync();
                 }
-                catch (Exception ex)
-                {
-                    AnsiConsole.MarkupLine($"[red]Error: {ex.Message}[/]");
-                }
-            });
-
-        return 0;
+            );
+        return exitCode;
     }
 
     private static void OutputText(Iso19794Assessment assessment)
     {
         AnsiConsole.WriteLine();
-        
+
         // Overall result
         var status = assessment.IsCompliant ? "[green]COMPLIANT[/]" : "[red]NON-COMPLIANT[/]";
         AnsiConsole.MarkupLine($"Status: {status}");
         AnsiConsole.MarkupLine($"Overall Quality: [yellow]{assessment.Overall}[/]");
-        
+
         // Component scores
         var table = new Table()
             .Border(TableBorder.Rounded)
@@ -159,42 +182,50 @@ public class QualityCommand : AsyncCommand<QualityCommand.Settings>
         table.AddRow(
             "Symmetry",
             assessment.Symmetry.Overall.ToString(),
-            GetStatusEmoji(assessment.Symmetry.Overall.Value));
-        
+            GetStatusEmoji(assessment.Symmetry.Overall.Value)
+        );
+
         table.AddRow(
             "├─ Illumination",
             assessment.Symmetry.Illumination.ToString(),
-            GetStatusEmoji(assessment.Symmetry.Illumination.Value));
-        
+            GetStatusEmoji(assessment.Symmetry.Illumination.Value)
+        );
+
         table.AddRow(
             "└─ Pose",
             assessment.Symmetry.Pose.ToString(),
-            GetStatusEmoji(assessment.Symmetry.Pose.Value));
-        
+            GetStatusEmoji(assessment.Symmetry.Pose.Value)
+        );
+
         table.AddRow(
             "Sharpness",
             assessment.Sharpness.Overall.ToString(),
-            GetStatusEmoji(assessment.Sharpness.Overall.Value));
-        
+            GetStatusEmoji(assessment.Sharpness.Overall.Value)
+        );
+
         table.AddRow(
             "Geometry",
             assessment.Geometry.Overall.ToString(),
-            GetStatusEmoji(assessment.Geometry.Overall.Value));
-        
+            GetStatusEmoji(assessment.Geometry.Overall.Value)
+        );
+
         table.AddRow(
             "├─ Head Size",
             assessment.Geometry.HeadSize.ToString(),
-            GetStatusEmoji(assessment.Geometry.HeadSize.Value));
-        
+            GetStatusEmoji(assessment.Geometry.HeadSize.Value)
+        );
+
         table.AddRow(
             "├─ Centering",
             assessment.Geometry.Centering.ToString(),
-            GetStatusEmoji(assessment.Geometry.Centering.Value));
-        
+            GetStatusEmoji(assessment.Geometry.Centering.Value)
+        );
+
         table.AddRow(
             "└─ IPD",
             assessment.Geometry.InterPupillaryDistance.ToString(),
-            GetStatusEmoji(assessment.Geometry.InterPupillaryDistance.Value));
+            GetStatusEmoji(assessment.Geometry.InterPupillaryDistance.Value)
+        );
 
         AnsiConsole.Write(table);
 
@@ -203,17 +234,19 @@ public class QualityCommand : AsyncCommand<QualityCommand.Settings>
         {
             AnsiConsole.WriteLine();
             AnsiConsole.MarkupLine("[yellow]Violations:[/]");
-            
+
             foreach (var violation in assessment.Violations.OrderByDescending(v => v.Severity))
             {
                 var severityColor = violation.Severity switch
                 {
                     ViolationSeverity.Critical => "red",
                     ViolationSeverity.Moderate => "yellow",
-                    _ => "gray"
+                    _ => "gray",
                 };
-                
-                AnsiConsole.MarkupLine($"  [{severityColor}]• {violation.Category}: {violation.Description}[/]");
+
+                AnsiConsole.MarkupLine(
+                    $"  [{severityColor}]• {violation.Category}: {violation.Description}[/]"
+                );
             }
         }
     }
@@ -221,10 +254,10 @@ public class QualityCommand : AsyncCommand<QualityCommand.Settings>
     private static void OutputDetailed(Iso19794Assessment assessment)
     {
         OutputText(assessment); // Start with basic output
-        
+
         AnsiConsole.WriteLine();
         AnsiConsole.Write(new Rule("[blue]Detailed Analysis[/]"));
-        
+
         // Sharpness regional scores
         if (assessment.Sharpness.RegionalScores.Any())
         {
@@ -234,59 +267,69 @@ public class QualityCommand : AsyncCommand<QualityCommand.Settings>
                 AnsiConsole.MarkupLine($"  {region}: {score:F3} {GetStatusEmoji(score)}");
             }
         }
-        
+
         // Image dimensions
         AnsiConsole.WriteLine();
         AnsiConsole.MarkupLine("[green]Image Dimensions:[/]");
-        AnsiConsole.MarkupLine($"  Actual: {assessment.Geometry.ActualDimensions.Width}×{assessment.Geometry.ActualDimensions.Height}");
-        AnsiConsole.MarkupLine($"  Expected: {assessment.Geometry.ExpectedDimensions.Width}×{assessment.Geometry.ExpectedDimensions.Height}");
-        
+        AnsiConsole.MarkupLine(
+            $"  Actual: {assessment.Geometry.ActualDimensions.Width}×{assessment.Geometry.ActualDimensions.Height}"
+        );
+        AnsiConsole.MarkupLine(
+            $"  Expected: {assessment.Geometry.ExpectedDimensions.Width}×{assessment.Geometry.ExpectedDimensions.Height}"
+        );
+
         // Processing time
         AnsiConsole.WriteLine();
-        AnsiConsole.MarkupLine($"[gray]Assessment completed at: {assessment.AssessmentTime:yyyy-MM-dd HH:mm:ss} UTC[/]");
+        AnsiConsole.MarkupLine(
+            $"[gray]Assessment completed at: {assessment.AssessmentTime:yyyy-MM-dd HH:mm:ss} UTC[/]"
+        );
     }
 
     private static async Task OutputJson(Iso19794Assessment assessment, string? outputPath)
     {
-        var json = JsonSerializer.Serialize(new
-        {
-            assessment.IsCompliant,
-            OverallScore = assessment.Overall.Value,
-            assessment.Summary,
-            Scores = new
+        var json = JsonSerializer.Serialize(
+            new
             {
-                Symmetry = new
+                assessment.IsCompliant,
+                OverallScore = assessment.Overall.Value,
+                assessment.Summary,
+                Scores = new
                 {
-                    Overall = assessment.Symmetry.Overall.Value,
-                    Illumination = assessment.Symmetry.Illumination.Value,
-                    Pose = assessment.Symmetry.Pose.Value
+                    Symmetry = new
+                    {
+                        Overall = assessment.Symmetry.Overall.Value,
+                        Illumination = assessment.Symmetry.Illumination.Value,
+                        Pose = assessment.Symmetry.Pose.Value,
+                    },
+                    Sharpness = new
+                    {
+                        Overall = assessment.Sharpness.Overall.Value,
+                        HighFrequencyRatio = assessment.Sharpness.HighFrequencyRatio,
+                        Regional = assessment.Sharpness.RegionalScores,
+                    },
+                    Geometry = new
+                    {
+                        Overall = assessment.Geometry.Overall.Value,
+                        HeadSize = assessment.Geometry.HeadSize.Value,
+                        Centering = assessment.Geometry.Centering.Value,
+                        InterPupillaryDistance = assessment.Geometry.InterPupillaryDistance.Value,
+                    },
                 },
-                Sharpness = new
+                Violations = assessment.Violations.Select(v => new
                 {
-                    Overall = assessment.Sharpness.Overall.Value,
-                    HighFrequencyRatio = assessment.Sharpness.HighFrequencyRatio,
-                    Regional = assessment.Sharpness.RegionalScores
-                },
-                Geometry = new
-                {
-                    Overall = assessment.Geometry.Overall.Value,
-                    HeadSize = assessment.Geometry.HeadSize.Value,
-                    Centering = assessment.Geometry.Centering.Value,
-                    InterPupillaryDistance = assessment.Geometry.InterPupillaryDistance.Value
-                }
+                    v.Category,
+                    v.Description,
+                    Severity = v.Severity.ToString(),
+                }),
+                assessment.AssessmentTime,
             },
-            Violations = assessment.Violations.Select(v => new
-            {
-                v.Category,
-                v.Description,
-                Severity = v.Severity.ToString()
-            }),
-            assessment.AssessmentTime
-        }, new JsonSerializerOptions { WriteIndented = true });
+            new JsonSerializerOptions { WriteIndented = true }
+        );
 
         if (string.IsNullOrEmpty(outputPath))
         {
-            AnsiConsole.WriteLine(json);
+            // Write the document directly, preserving strings across console widths.
+            AnsiConsole.Console.Profile.Out.Writer.WriteLine(json);
         }
         else
         {
@@ -295,31 +338,34 @@ public class QualityCommand : AsyncCommand<QualityCommand.Settings>
         }
     }
 
-    private static string GetStatusEmoji(float score) => score switch
-    {
-        >= 0.8f => "✅",
-        >= 0.6f => "⚠️",
-        _ => "❌"
-    };
+    private static string GetStatusEmoji(float score) =>
+        score switch
+        {
+            >= 0.8f => "✅",
+            >= 0.6f => "⚠️",
+            _ => "❌",
+        };
 
     private static async Task GenerateVisualOverlay(string inputPath, Iso19794Assessment assessment)
     {
         var outputPath = Path.Combine(
             Path.GetDirectoryName(inputPath) ?? ".",
-            Path.GetFileNameWithoutExtension(inputPath) + "_quality.png");
-        
+            Path.GetFileNameWithoutExtension(inputPath) + "_quality.png"
+        );
+
         try
         {
             // Load the original image
-            using var image = await Image.LoadAsync<Rgba32>(inputPath);
-            
+            using var image = await RgbImage.LoadAsync(inputPath);
+
             // Create quality overlay
             var overlayResult = QualityVisualizationService.CreateQualityOverlay(
-                image, 
+                image,
                 assessment,
                 showScores: true,
-                showViolations: true);
-            
+                showViolations: true
+            );
+
             if (overlayResult.IsSuccess)
             {
                 // Save the annotated image
@@ -328,7 +374,9 @@ public class QualityCommand : AsyncCommand<QualityCommand.Settings>
             }
             else
             {
-                AnsiConsole.MarkupLine($"[red]Failed to create visual overlay: {overlayResult.Error}[/]");
+                AnsiConsole.MarkupLine(
+                    $"[red]Failed to create visual overlay: {overlayResult.Error}[/]"
+                );
             }
         }
         catch (Exception ex)

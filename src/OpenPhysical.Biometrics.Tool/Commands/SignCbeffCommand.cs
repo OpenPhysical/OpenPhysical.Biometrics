@@ -2,18 +2,18 @@ namespace OpenPhysical.Biometrics.Tool.Commands;
 
 using System.ComponentModel;
 using System.Diagnostics.CodeAnalysis;
+using System.Text;
+using CSharpFunctionalExtensions;
 using Microsoft.Extensions.DependencyInjection;
 using OpenPhysical.Biometrics.Core.Cbeff;
 using OpenPhysical.Biometrics.Core.Certificates;
 using OpenPhysical.Biometrics.Infrastructure.Cbeff;
 using OpenPhysical.Domains.Cbeff;
+using Org.BouncyCastle.Crypto;
+using Org.BouncyCastle.Pkcs;
+using Org.BouncyCastle.X509;
 using Spectre.Console;
 using Spectre.Console.Cli;
-using System.Text;
-using Org.BouncyCastle.X509;
-using Org.BouncyCastle.Pkcs;
-using Org.BouncyCastle.Crypto;
-using CSharpFunctionalExtensions;
 
 /// <summary>
 /// Command to sign CBEFF files with digital signatures for PIV compliance.
@@ -29,10 +29,11 @@ public sealed class SignCbeffCommand : AsyncCommand<SignCbeffCommand.Settings>
     /// Initializes a new instance of the <see cref="SignCbeffCommand"/> class.
     /// </summary>
     public SignCbeffCommand(
-        IServiceProvider serviceProvider, 
+        IServiceProvider serviceProvider,
         ICbeffSerializerExtended serializer,
         ICbeffSigner signer,
-        IAnsiConsole console)
+        IAnsiConsole console
+    )
     {
         _serviceProvider = serviceProvider;
         _serializer = serializer;
@@ -132,15 +133,24 @@ public sealed class SignCbeffCommand : AsyncCommand<SignCbeffCommand.Settings>
             {
                 if (!Guid.TryParse(settings.CardUuid, out var uuid))
                 {
-                    _console.MarkupLine($"[red]Error: Invalid card UUID format: {settings.CardUuid}[/]");
+                    _console.MarkupLine(
+                        $"[red]Error: Invalid card UUID format: {settings.CardUuid}[/]"
+                    );
                     return 1;
                 }
                 cardUuid = uuid;
             }
 
-            // Sign the CBEFF payload  
-            var maybeCardUuid = cardUuid.HasValue ? Maybe<Guid>.From(cardUuid.Value) : Maybe<Guid>.None;
-            var signResult = await _signer.SignAsync(cbeffResult.Value, certificate, privateKey, maybeCardUuid);
+            // Sign the CBEFF payload
+            var maybeCardUuid = cardUuid.HasValue
+                ? Maybe<Guid>.From(cardUuid.Value)
+                : Maybe<Guid>.None;
+            var signResult = await _signer.SignAsync(
+                cbeffResult.Value,
+                certificate,
+                privateKey,
+                maybeCardUuid
+            );
             if (signResult.IsFailure)
             {
                 _console.MarkupLine($"[red]Error signing CBEFF: {signResult.Error}[/]");
@@ -149,7 +159,7 @@ public sealed class SignCbeffCommand : AsyncCommand<SignCbeffCommand.Settings>
 
             // Determine output path
             var outputPath = settings.OutputPath ?? $"{settings.InputPath}.signed";
-            
+
             // Check if output file exists
             if (File.Exists(outputPath) && !settings.Force)
             {
@@ -235,19 +245,22 @@ public sealed class SignCbeffCommand : AsyncCommand<SignCbeffCommand.Settings>
     /// <summary>
     /// Loads the signing certificate and private key.
     /// </summary>
-    private Result<(Org.BouncyCastle.X509.X509Certificate certificate, AsymmetricKeyParameter privateKey)> LoadSigningCertificate(Settings settings)
+    private Result<(
+        Org.BouncyCastle.X509.X509Certificate certificate,
+        AsymmetricKeyParameter privateKey
+    )> LoadSigningCertificate(Settings settings)
     {
         try
         {
             // Read the certificate file
             var certData = File.ReadAllBytes(settings.CertificatePath!);
-            
+
             // Parse as PKCS#12
             var pkcs12 = new Pkcs12StoreBuilder().Build();
-            
+
             // Use password if provided, otherwise empty string
             var password = settings.Password?.ToCharArray() ?? Array.Empty<char>();
-            
+
             using var stream = new MemoryStream(certData);
             pkcs12.Load(stream, password);
 
@@ -271,19 +284,27 @@ public sealed class SignCbeffCommand : AsyncCommand<SignCbeffCommand.Settings>
 
             if (certificate == null)
             {
-                return Result.Failure<(Org.BouncyCastle.X509.X509Certificate, AsymmetricKeyParameter)>("No certificate found in PKCS#12 file");
+                return Result.Failure<(
+                    Org.BouncyCastle.X509.X509Certificate,
+                    AsymmetricKeyParameter
+                )>("No certificate found in PKCS#12 file");
             }
 
             if (privateKey == null)
             {
-                return Result.Failure<(Org.BouncyCastle.X509.X509Certificate, AsymmetricKeyParameter)>("No private key found in PKCS#12 file");
+                return Result.Failure<(
+                    Org.BouncyCastle.X509.X509Certificate,
+                    AsymmetricKeyParameter
+                )>("No private key found in PKCS#12 file");
             }
 
             return Result.Success((certificate, privateKey));
         }
         catch (Exception ex)
         {
-            return Result.Failure<(Org.BouncyCastle.X509.X509Certificate, AsymmetricKeyParameter)>($"Failed to load certificate: {ex.Message}");
+            return Result.Failure<(Org.BouncyCastle.X509.X509Certificate, AsymmetricKeyParameter)>(
+                $"Failed to load certificate: {ex.Message}"
+            );
         }
     }
 
@@ -296,8 +317,10 @@ public sealed class SignCbeffCommand : AsyncCommand<SignCbeffCommand.Settings>
         {
             var serializedResult = _serializer.Serialize(signedPayload);
             if (serializedResult.IsFailure)
-                return Result.Failure($"Failed to serialize signed CBEFF: {serializedResult.Error}");
-                
+                return Result.Failure(
+                    $"Failed to serialize signed CBEFF: {serializedResult.Error}"
+                );
+
             await File.WriteAllBytesAsync(outputPath, serializedResult.Value.ToArray());
             return Result.Success();
         }
@@ -310,16 +333,23 @@ public sealed class SignCbeffCommand : AsyncCommand<SignCbeffCommand.Settings>
     /// <summary>
     /// Displays signing details in verbose mode.
     /// </summary>
-    private void DisplaySigningDetails(Org.BouncyCastle.X509.X509Certificate certificate, Guid? cardUuid)
+    private void DisplaySigningDetails(
+        Org.BouncyCastle.X509.X509Certificate certificate,
+        Guid? cardUuid
+    )
     {
         _console.WriteLine();
         _console.MarkupLine("[bold]Signing Details:[/]");
         _console.MarkupLine($"Certificate Subject: {certificate.SubjectDN}");
         _console.MarkupLine($"Certificate Issuer: {certificate.IssuerDN}");
         _console.MarkupLine($"Certificate Serial: {certificate.SerialNumber}");
-        _console.MarkupLine($"Certificate Valid From: {certificate.NotBefore:yyyy-MM-dd HH:mm:ss} UTC");
-        _console.MarkupLine($"Certificate Valid To: {certificate.NotAfter:yyyy-MM-dd HH:mm:ss} UTC");
-        
+        _console.MarkupLine(
+            $"Certificate Valid From: {certificate.NotBefore:yyyy-MM-dd HH:mm:ss} UTC"
+        );
+        _console.MarkupLine(
+            $"Certificate Valid To: {certificate.NotAfter:yyyy-MM-dd HH:mm:ss} UTC"
+        );
+
         if (cardUuid.HasValue)
         {
             _console.MarkupLine($"Card UUID: {cardUuid.Value}");

@@ -1,172 +1,95 @@
-# FaceOFFx v2.1 Quality Validation Summary
+# Validation record
 
-## Overview
+This consolidation targets .NET 10 and version 3.0.0-beta.1. Local validation
+uses macOS ARM64. The runtime workflow repeats the package and managed checks on
+Windows x64, Linux x64/ARM64, and macOS x64/ARM64.
 
-This document summarizes the comprehensive quality validation improvements implemented in FaceOFFx v2.1, providing human-in-the-loop validation capabilities for the ISO/IEC 19794-5 quality assessment system.
+## Managed contracts and workflows
 
-## Completed Features
+The modern solution passes **114 NUnit tests**:
 
-### 1. Visual Quality Overlay System ✅
+- Formats: 24: malformed/truncated records, length and extension framing, timestamp
+  encoding, owned data, and canonical binary round trips.
+- Fingerprints: 43: explicit finger/view selection, units, origin/angle/type/quality
+  conversions, enrollment states, deterministic selection, immutable inputs, and
+  image/template comparison workflows.
+- PIV: 27: profile checks, safe inspection, exact signed bytes, bounded signature
+  sizing, caller verification, identity binding, provider failures, and cancellation.
+- Facial: 4: real JPEG 2000 preparation, geometry, ownership, and record round trips.
+- Imaging: 16: owned buffers, transformations, image formats, and TIFF alpha semantics.
 
-**Implementation**: `QualityVisualizationService`
+The compatibility solution passes **622 tests**: Core 283, Infrastructure 274,
+and CLI 65. It retains the facial pipeline while adapting format operations to the
+canonical codecs. Focused privacy tests first reproduce exception-object and
+service-diagnostic leakage into ILogger, then verify status-only logging.
 
-The `--visual` flag on the quality command now generates overlay images showing:
-- **Quality Score Panel**: Real-time scores with color-coded bars
-- **Violation Indicators**: Visual highlighting of quality issues
-  - Sharpness: Edge blur indicators
-  - Illumination: Gradient overlays
-  - Geometry: Center crosshair and expected regions
-  - Pose: Rotation arc indicators
-- **Compliance Badge**: Green checkmark or red X
+The suites execute serially. Modern and compatibility solutions have separate
+responsibilities, and the shared test-helper project is a helper assembly.
 
-**Usage**:
-```bash
-faceoffx quality -i photo.jpg --visual
+## Reference fingerprints and application policy
+
+The NBIS repository owns 20 attributed NIST SD04 images, their pixel/hash manifest,
+independent NIST extraction results, and all 400 ordered score baselines. Its
+native µnit suite covers 20 self-comparisons, 20 ordered paired impressions, and
+360 ordered comparisons between different fingers. Plain, ASan, and UBSan checks
+exercise those bindings and native failure paths.
+
+Main uses that same fixture collection and loader. The named
+`sd04-assortment-regression-v1` test policy accepts the selected paired control
+and rejects two selected different-finger comparisons across all four
+image/template combinations and a canonical selected-reference workflow. Boundary
+tests verify the policy's inclusive threshold. Applications supply their own
+versioned policy.
+
+NFIQ's independent repository owns the original release/SD04 quality vectors,
+algorithm/model provenance, native reference comparisons, sanitizer checks, and
+managed quality-contract tests.
+
+## Signature and card integration
+
+OpenPhysical.Net passes 26 focused biometric integration tests covering canonical
+adapters and real CMS signing, signature attributes, identity binding, trust,
+and revocation outcomes. An additional emulator integration passes real detached
+CMS signing → SCP03 card-object write → byte-identical readback → canonical
+parse/profile checks → external signature and identity verification.
+
+The emulator test uses an explicit fixture signer-trust policy. Trust and
+revocation behavior have their own integration cases.
+
+## Packages and developer gates
+
+All 11 packages pass content and clean-consumer validation. Checks cover notices,
+model hashes, fixture/private-key exclusion, dependency separation, native
+fingerprint operations, facial JPEG 2000 preparation, optional ONNX inference,
+and installed CLI inspection/conversion. CLI rejection cases cover malformed
+records and preservation of an existing output file.
+
+Release CLI packing requires all five NBIS/NFIQ1 native runtimes. Local package
+checks use `AllowPartialBiometricRuntimes=true` explicitly for the current host.
+Algorithm repository pipelines produce and consume their complete runtime
+packages on each supported platform.
+
+CSharpier checks 375 files. Eight positive/negative documentation probes verify
+that documented APIs compile and that missing summaries/parameters/returns,
+broken references, diagnostic suppression, downgraded warnings, and disabled
+analyzers fail the build. Public XML documentation and warnings-as-errors remain
+normal build gates.
+
+## Reproduce
+
+Build pinned algorithm dependencies first, then run the checks serially:
+
+```sh
+python scripts/build-development-dependencies.py
+dotnet tool restore
+dotnet csharpier check .
+python scripts/verify-models.py
+python scripts/verify-documentation-gate.py
+dotnet test OpenPhysical.Biometrics.sln -c Release -m:1 --collect:"XPlat Code Coverage" --results-directory artifacts/test-results/modern
+dotnet test OpenPhysical.Biometrics.Compatibility.sln -c Release -m:1 --collect:"XPlat Code Coverage" --results-directory artifacts/test-results/compatibility
+python scripts/test-package.py
+dotnet run --project examples/OpenPhysical.Biometrics.Examples -c Release -- --sd04 ../OpenPhysical.Biometrics.NBIS/tests/fixtures/sd04
 ```
 
-### 2. Test Image Infrastructure ✅
-
-**Scripts Created**:
-- `setup-test-images.sh`: Main setup script with options for:
-  - Synthetic face downloads (Generated.photos, This Person Does Not Exist)
-  - Open Images V7 dataset integration
-  - User-provided images
-  - Geometric test patterns
-- `apply-quality-variations.sh`: Creates test variations including:
-  - Blur levels (slight, moderate, severe)
-  - Rotation angles (5°, 10°, 15°, 20°)
-  - Size and position variations
-  - Illumination and contrast changes
-
-### 3. Batch Quality Assessment ✅
-
-**Script**: `batch-quality-test.sh`
-
-Features:
-- Processes entire directories of images
-- Generates multiple output formats:
-  - CSV with all quality scores
-  - HTML report with interactive tables
-  - Individual JSON results
-  - Visual overlay images
-- Summary statistics and compliance rates
-
-**Usage**:
-```bash
-./scripts/batch-quality-test.sh ./test-images ./test-results
-```
-
-### 4. Human Review Dashboard ✅
-
-**Script**: `quality-review-dashboard.sh`
-
-Interactive features:
-- **Individual Review Mode**: Side-by-side image comparison
-- **Batch Review Mode**: Quick keyboard shortcuts (a=agree, d=disagree)
-- **Review Tracking**: JSON-based storage with timestamps
-- **Statistics View**: Agreement rates and reviewer performance
-- **Report Export**: Markdown reports with detailed reviews
-
-**Usage**:
-```bash
-./scripts/quality-review-dashboard.sh
-```
-
-### 5. Interactive CLI Mode ✅
-
-**Command**: `faceoffx interactive`
-
-Provides guided workflows for:
-- Single image processing with step-by-step options
-- Quality assessment with visual feedback
-- Batch processing with progress tracking
-- Settings configuration
-
-### 6. Comprehensive Documentation ✅
-
-**Documents Created**:
-- `QUALITY_VALIDATION_PLAN.md`: Complete validation strategy
-- `CHANGELOG.md`: Updated with all v2.1 features
-- `VALIDATION_SUMMARY.md`: This summary document
-
-## Quality Improvements
-
-### Code Quality Enhancements
-- Fixed all DRY violations in assessors
-- Extracted magic numbers to named constants
-- Improved error messages for user clarity
-- Added comprehensive edge case handling
-- Standardized MathF usage for consistency
-
-### Test Coverage
-- Created 31 new unit tests for quality components
-- Achieved 78-100% coverage for assessors
-- Added integration tests for full pipeline
-- Validated edge cases (NaN, Infinity, null inputs)
-
-## Validation Workflow
-
-### Recommended Process
-
-1. **Setup Test Images**
-   ```bash
-   ./scripts/setup-test-images.sh
-   cd test-images/quality-validation
-   python download_synthetic_faces.py
-   ```
-
-2. **Apply Variations**
-   ```bash
-   ./apply-quality-variations.sh synthetic_faces variations
-   ```
-
-3. **Run Batch Assessment**
-   ```bash
-   ./scripts/batch-quality-test.sh variations ../test-results
-   ```
-
-4. **Review Results**
-   ```bash
-   ./scripts/quality-review-dashboard.sh
-   # Or open HTML report directly
-   open test-results/quality_report.html
-   ```
-
-5. **Export Reports**
-   - Use dashboard to export review reports
-   - Analyze CSV for trends
-   - Share HTML reports with stakeholders
-
-## Key Benefits
-
-1. **Transparency**: Visual overlays make quality issues immediately apparent
-2. **Efficiency**: Batch processing handles large datasets automatically
-3. **Accuracy**: Human review catches edge cases and validates assessments
-4. **Traceability**: All reviews are tracked with timestamps and reviewer info
-5. **Flexibility**: Multiple validation approaches for different use cases
-
-## Performance Metrics
-
-- Visual overlay generation: ~50-100ms per image
-- Batch processing: ~10-20 images per second
-- HTML report generation: <1 second for 100 images
-- Memory usage: <50MB per concurrent assessment
-
-## Future Enhancements
-
-While not implemented in v2.1, potential improvements include:
-- Machine learning feedback loop from human reviews
-- Automated threshold adjustment based on validation data
-- Integration with cloud storage for distributed review
-- Real-time collaborative review features
-- Advanced analytics dashboard
-
-## Conclusion
-
-The FaceOFFx v2.1 validation system provides a complete solution for ensuring quality assessment accuracy through:
-- Automated testing with comprehensive coverage
-- Visual feedback for immediate understanding
-- Human-in-the-loop validation for edge cases
-- Detailed tracking and reporting capabilities
-
-This combination ensures that the ISO/IEC 19794-5 quality assessments are both accurate and trustworthy for production use.
+CI retains managed coverage, packages, and per-runtime results. Native coverage
+and complete algorithm-package consumption remain with their owning repositories.

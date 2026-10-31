@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <IsPackable>true</IsPackable>
+        <Description>PIV biometric record profiles and caller-supplied signature integration.</Description>
+        <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+        <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    </PropertyGroup>
+    <ItemGroup>
+        <ProjectReference Include="../OpenPhysical.Biometrics.Formats/OpenPhysical.Biometrics.Formats.csproj" />
+    </ItemGroup>
+</Project>

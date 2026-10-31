@@ -1,17 +1,17 @@
 // MIT License
-// 
+//
 // Copyright (c) 2025 FaceOFFx Contributors
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
 // in the Software without restriction, including without limitation the rights
 // to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 // copies of the Software, and to permit persons to whom the Software is
 // furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all
 // copies or substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 // IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 // FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -21,8 +21,8 @@
 // SOFTWARE.
 
 using System.Collections.Immutable;
-using OpenPhysical.Biometrics.Core.Domain.Common;
 using JetBrains.Annotations;
+using OpenPhysical.Biometrics.Core.Domain.Common;
 
 namespace OpenPhysical.Biometrics.Core.Domain.Quality.Sharpness;
 
@@ -34,18 +34,19 @@ public record EdgePixel(
     Point2D Location,
     float Magnitude,
     float Orientation,
-    EdgeType Type = EdgeType.Weak)
+    EdgeType Type = EdgeType.Weak
+)
 {
     /// <summary>
     /// X coordinate of the edge pixel
     /// </summary>
     public int X => (int)Location.X;
-    
+
     /// <summary>
     /// Y coordinate of the edge pixel
     /// </summary>
     public int Y => (int)Location.Y;
-    
+
     /// <summary>
     /// Indicates if this is a strong edge
     /// </summary>
@@ -62,32 +63,29 @@ public enum EdgeType
     /// Edge with gradient magnitude below high threshold but above low threshold
     /// </summary>
     Weak,
-    
+
     /// <summary>
     /// Edge with gradient magnitude above high threshold
     /// </summary>
-    Strong
+    Strong,
 }
 
 /// <summary>
 /// Gradient information for a pixel
 /// </summary>
 [PublicAPI]
-public record GradientPixel(
-    Point2D Location,
-    float GradientX,
-    float GradientY)
+public record GradientPixel(Point2D Location, float GradientX, float GradientY)
 {
     /// <summary>
     /// Gradient magnitude (strength)
     /// </summary>
     public float Magnitude => MathF.Sqrt(GradientX * GradientX + GradientY * GradientY);
-    
+
     /// <summary>
     /// Gradient orientation in radians (-π to π)
     /// </summary>
     public float Orientation => MathF.Atan2(GradientY, GradientX);
-    
+
     /// <summary>
     /// Gradient orientation in degrees (0 to 360)
     /// </summary>
@@ -108,19 +106,18 @@ public record GradientPixel(
 public record GradientMap(
     ImmutableArray<ImmutableArray<GradientPixel>> Gradients,
     int Width,
-    int Height)
+    int Height
+)
 {
     /// <summary>
     /// Gets the gradient at the specified position
     /// </summary>
     public GradientPixel this[int y, int x] => Gradients[y][x];
-    
+
     /// <summary>
     /// Gets the maximum gradient magnitude in the map
     /// </summary>
-    public float MaxMagnitude => Gradients
-        .SelectMany(row => row)
-        .Max(g => g.Magnitude);
+    public float MaxMagnitude => Gradients.SelectMany(row => row).Max(g => g.Magnitude);
 }
 
 /// <summary>
@@ -132,15 +129,13 @@ public record EdgeMap(ImmutableArray<EdgePixel> Edges)
     /// <summary>
     /// Gets all strong edges
     /// </summary>
-    public ImmutableArray<EdgePixel> StrongEdges => 
-        Edges.Where(e => e.IsStrong).ToImmutableArray();
-    
+    public ImmutableArray<EdgePixel> StrongEdges => Edges.Where(e => e.IsStrong).ToImmutableArray();
+
     /// <summary>
     /// Gets all weak edges
     /// </summary>
-    public ImmutableArray<EdgePixel> WeakEdges => 
-        Edges.Where(e => !e.IsStrong).ToImmutableArray();
-    
+    public ImmutableArray<EdgePixel> WeakEdges => Edges.Where(e => !e.IsStrong).ToImmutableArray();
+
     /// <summary>
     /// Creates a lookup for efficient neighbor queries
     /// </summary>
@@ -158,21 +153,21 @@ public enum GradientDirection
     /// Horizontal direction (0° or 180°)
     /// </summary>
     Horizontal,
-    
+
     /// <summary>
     /// Diagonal direction (45° or 225°)
     /// </summary>
     Diagonal45,
-    
+
     /// <summary>
     /// Vertical direction (90° or 270°)
     /// </summary>
     Vertical,
-    
+
     /// <summary>
     /// Diagonal direction (135° or 315°)
     /// </summary>
-    Diagonal135
+    Diagonal135,
 }
 
 /// <summary>
@@ -183,18 +178,16 @@ public record CannyConfiguration(
     float GaussianSigma = 1.4f,
     float LowThreshold = 50f,
     float HighThreshold = 150f,
-    bool UseAdaptiveThresholds = false)
+    bool UseAdaptiveThresholds = false
+)
 {
     /// <summary>
     /// Ratio of high to low threshold (typically 2-3)
     /// </summary>
     public float ThresholdRatio => HighThreshold / LowThreshold;
-    
+
     /// <summary>
     /// Validates the configuration
     /// </summary>
-    public bool IsValid => 
-        GaussianSigma > 0 && 
-        LowThreshold > 0 && 
-        HighThreshold > LowThreshold;
+    public bool IsValid => GaussianSigma > 0 && LowThreshold > 0 && HighThreshold > LowThreshold;
 }

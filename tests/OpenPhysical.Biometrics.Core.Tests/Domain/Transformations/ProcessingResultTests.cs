@@ -1,7 +1,7 @@
 using AwesomeAssertions;
 using CSharpFunctionalExtensions;
-using OpenPhysical.Biometrics.Core.Domain.Transformations;
 using NUnit.Framework;
+using OpenPhysical.Biometrics.Core.Domain.Transformations;
 
 namespace OpenPhysical.Biometrics.Core.Tests.Domain.Transformations;
 

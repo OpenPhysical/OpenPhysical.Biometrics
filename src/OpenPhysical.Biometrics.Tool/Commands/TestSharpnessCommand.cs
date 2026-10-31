@@ -1,17 +1,17 @@
 // MIT License
-// 
+//
 // Copyright (c) 2025 FaceOFFx Contributors
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
 // in the Software without restriction, including without limitation the rights
 // to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 // copies of the Software, and to permit persons to whom the Software is
 // furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all
 // copies or substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 // IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 // FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -22,10 +22,11 @@
 
 using System.ComponentModel;
 using System.Diagnostics.CodeAnalysis;
+using System.Drawing;
 using System.Text.Json;
 using OpenPhysical.Biometrics.Core.Domain.Quality.Assessors;
-using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.PixelFormats;
+using OpenPhysical.Biometrics.Imaging;
+using OpenPhysical.Biometrics.Tool.Drawing;
 using Spectre.Console;
 using Spectre.Console.Cli;
 
@@ -38,7 +39,7 @@ namespace OpenPhysical.Biometrics.Tool.Commands;
 public class TestSharpnessCommand : AsyncCommand<TestSharpnessCommand.Settings>
 {
     private const string DefaultTestDirectory = ".faceoffx-test";
-    
+
     /// <summary>
     /// Settings for the test sharpness command
     /// </summary>
@@ -51,7 +52,8 @@ public class TestSharpnessCommand : AsyncCommand<TestSharpnessCommand.Settings>
         /// </summary>
         [CommandOption("-i|--input <DIR>")]
         [Description("Input directory containing blur progressions")]
-        public string InputDirectory { get; set; } = Path.Combine(DefaultTestDirectory, "blur-progressions");
+        public string InputDirectory { get; set; } =
+            Path.Combine(DefaultTestDirectory, "blur-progressions");
 
         /// <summary>
         /// Gets or sets the sharpness threshold for pass/fail (0.0-1.0)
@@ -67,7 +69,7 @@ public class TestSharpnessCommand : AsyncCommand<TestSharpnessCommand.Settings>
         [CommandOption("-o|--output <FILE>")]
         [Description("Output JSON file for test results")]
         public string? OutputFile { get; set; }
-        
+
         /// <summary>
         /// Gets or sets the file pattern to test (e.g., *_blur_*.jpg)
         /// </summary>
@@ -83,11 +85,14 @@ public class TestSharpnessCommand : AsyncCommand<TestSharpnessCommand.Settings>
         if (!Directory.Exists(settings.InputDirectory))
         {
             AnsiConsole.MarkupLine($"[red]Input directory not found:[/] {settings.InputDirectory}");
-            AnsiConsole.MarkupLine("[yellow]Run 'faceoffx test blur' first to generate test images[/]");
+            AnsiConsole.MarkupLine(
+                "[yellow]Run 'faceoffx test blur' first to generate test images[/]"
+            );
             return 1;
         }
 
-        var testFiles = Directory.GetFiles(settings.InputDirectory, settings.Pattern)
+        var testFiles = Directory
+            .GetFiles(settings.InputDirectory, settings.Pattern)
             .OrderBy(f => f)
             .ToList();
 
@@ -101,7 +106,7 @@ public class TestSharpnessCommand : AsyncCommand<TestSharpnessCommand.Settings>
         AnsiConsole.MarkupLine($"[blue]Threshold:[/] {settings.Threshold:P0}");
 
         var results = new List<SharpnessTestResult>();
-        
+
         // Group by base image
         var groupedFiles = testFiles
             .GroupBy(f => ExtractBaseName(Path.GetFileName(f)))
@@ -110,7 +115,7 @@ public class TestSharpnessCommand : AsyncCommand<TestSharpnessCommand.Settings>
         foreach (var group in groupedFiles)
         {
             AnsiConsole.Write(new Rule($"[yellow]{group.Key}[/]"));
-            
+
             var table = new Table();
             table.AddColumn("Blur Level");
             table.AddColumn("Sharpness Score");
@@ -120,7 +125,7 @@ public class TestSharpnessCommand : AsyncCommand<TestSharpnessCommand.Settings>
 
             float? baselineScore = null;
             float? baselineRatio = null;
-            
+
             foreach (var file in group.OrderBy(f => ExtractBlurLevel(f)))
             {
                 var result = await TestImageAsync(file, settings.Threshold);
@@ -133,28 +138,34 @@ public class TestSharpnessCommand : AsyncCommand<TestSharpnessCommand.Settings>
                     baselineRatio = result.HighFrequencyRatio;
                 }
 
-                var deltaString = baselineScore.HasValue && result.SharpnessScore < baselineScore 
-                    ? $"-{(baselineScore.Value - result.SharpnessScore):P1}" 
-                    : "";
-                
+                var deltaString =
+                    baselineScore.HasValue && result.SharpnessScore < baselineScore
+                        ? $"-{(baselineScore.Value - result.SharpnessScore):P1}"
+                        : "";
+
                 table.AddRow(
                     result.BlurLevel.ToString("F2"),
-                    result.Pass 
-                        ? $"[green]{result.SharpnessScore:P1}[/]" 
+                    result.Pass
+                        ? $"[green]{result.SharpnessScore:P1}[/]"
                         : $"[red]{result.SharpnessScore:P1}[/]",
                     result.HighFrequencyRatio.ToString("F4"),
                     result.Pass ? "[green]PASS[/]" : "[red]FAIL[/]",
                     deltaString
                 );
             }
-            
+
             AnsiConsole.Write(table);
-            
+
             // Find calibration point
-            var calibrationPoint = FindCalibrationPoint(group.Select(f => results.First(r => r.FilePath == f)).ToList(), settings.Threshold);
+            var calibrationPoint = FindCalibrationPoint(
+                group.Select(f => results.First(r => r.FilePath == f)).ToList(),
+                settings.Threshold
+            );
             if (calibrationPoint.HasValue)
             {
-                AnsiConsole.MarkupLine($"[blue]Calibration point:[/] Blur {calibrationPoint.Value:F2} (first to fail at {settings.Threshold:P0} threshold)");
+                AnsiConsole.MarkupLine(
+                    $"[blue]Calibration point:[/] Blur {calibrationPoint.Value:F2} (first to fail at {settings.Threshold:P0} threshold)"
+                );
             }
         }
 
@@ -166,15 +177,18 @@ public class TestSharpnessCommand : AsyncCommand<TestSharpnessCommand.Settings>
             {
                 outputPath = Path.Combine(DefaultTestDirectory, "test-results", outputPath);
             }
-            
+
             Directory.CreateDirectory(Path.GetDirectoryName(outputPath)!);
-            
-            var json = JsonSerializer.Serialize(results, new JsonSerializerOptions 
-            { 
-                WriteIndented = true,
-                PropertyNamingPolicy = JsonNamingPolicy.CamelCase
-            });
-            
+
+            var json = JsonSerializer.Serialize(
+                results,
+                new JsonSerializerOptions
+                {
+                    WriteIndented = true,
+                    PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+                }
+            );
+
             await File.WriteAllTextAsync(outputPath, json);
             AnsiConsole.MarkupLine($"\n[green]✓ Results saved to:[/] {outputPath}");
         }
@@ -185,7 +199,10 @@ public class TestSharpnessCommand : AsyncCommand<TestSharpnessCommand.Settings>
     private static string ExtractBaseName(string fileName)
     {
         // Extract base name from pattern like "johnson_blur_0.63.jpg"
-        var match = System.Text.RegularExpressions.Regex.Match(fileName, @"^(.+?)_blur_[\d.]+\.\w+$");
+        var match = System.Text.RegularExpressions.Regex.Match(
+            fileName,
+            @"^(.+?)_blur_[\d.]+\.\w+$"
+        );
         return match.Success ? match.Groups[1].Value : Path.GetFileNameWithoutExtension(fileName);
     }
 
@@ -198,9 +215,9 @@ public class TestSharpnessCommand : AsyncCommand<TestSharpnessCommand.Settings>
 
     private static async Task<SharpnessTestResult> TestImageAsync(string filePath, float threshold)
     {
-        using var image = await Image.LoadAsync<Rgba32>(filePath);
+        using var image = await RgbImage.LoadAsync(filePath);
         var assessmentResult = SharpnessAssessor.Assess(image);
-        
+
         var result = new SharpnessTestResult
         {
             FilePath = filePath,
@@ -208,7 +225,7 @@ public class TestSharpnessCommand : AsyncCommand<TestSharpnessCommand.Settings>
             BaseName = ExtractBaseName(Path.GetFileName(filePath)),
             BlurLevel = ExtractBlurLevel(filePath),
             Threshold = threshold,
-            Timestamp = DateTime.UtcNow
+            Timestamp = DateTime.UtcNow,
         };
 
         if (assessmentResult.IsSuccess)
@@ -229,7 +246,7 @@ public class TestSharpnessCommand : AsyncCommand<TestSharpnessCommand.Settings>
     private static float? FindCalibrationPoint(List<SharpnessTestResult> results, float threshold)
     {
         var orderedResults = results.OrderBy(r => r.BlurLevel).ToList();
-        
+
         for (int i = 0; i < orderedResults.Count - 1; i++)
         {
             if (orderedResults[i].Pass && !orderedResults[i + 1].Pass)
@@ -239,14 +256,14 @@ public class TestSharpnessCommand : AsyncCommand<TestSharpnessCommand.Settings>
                 var y1 = orderedResults[i].SharpnessScore;
                 var x2 = orderedResults[i + 1].BlurLevel;
                 var y2 = orderedResults[i + 1].SharpnessScore;
-                
+
                 if (Math.Abs(y2 - y1) > 0.001f)
                 {
                     return x1 + (threshold - y1) * (x2 - x1) / (y2 - y1);
                 }
             }
         }
-        
+
         return null;
     }
 }
@@ -260,52 +277,52 @@ public class SharpnessTestResult
     /// Gets or sets the full file path of the tested image
     /// </summary>
     public string FilePath { get; set; } = string.Empty;
-    
+
     /// <summary>
     /// Gets or sets the file name of the tested image
     /// </summary>
     public string FileName { get; set; } = string.Empty;
-    
+
     /// <summary>
     /// Gets or sets the base name without blur level suffix
     /// </summary>
     public string BaseName { get; set; } = string.Empty;
-    
+
     /// <summary>
     /// Gets or sets the blur level applied to this image
     /// </summary>
     public float BlurLevel { get; set; }
-    
+
     /// <summary>
     /// Gets or sets the computed sharpness score (0.0-1.0)
     /// </summary>
     public float SharpnessScore { get; set; }
-    
+
     /// <summary>
     /// Gets or sets the high frequency ratio metric
     /// </summary>
     public float HighFrequencyRatio { get; set; }
-    
+
     /// <summary>
     /// Gets or sets the threshold used for pass/fail determination
     /// </summary>
     public float Threshold { get; set; }
-    
+
     /// <summary>
     /// Gets or sets a value indicating whether the image passed the sharpness test
     /// </summary>
     public bool Pass { get; set; }
-    
+
     /// <summary>
     /// Gets or sets the regional sharpness scores for different image regions
     /// </summary>
     public IReadOnlyDictionary<string, float>? RegionalScores { get; set; }
-    
+
     /// <summary>
     /// Gets or sets the error message if assessment failed
     /// </summary>
     public string? Error { get; set; }
-    
+
     /// <summary>
     /// Gets or sets the timestamp when the test was performed
     /// </summary>

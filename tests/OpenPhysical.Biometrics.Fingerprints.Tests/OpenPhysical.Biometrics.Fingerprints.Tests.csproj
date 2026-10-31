@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <IsTestProject>true</IsTestProject>
+        <IsPackable>false</IsPackable>
+    </PropertyGroup>
+    <ItemGroup>
+        <ProjectReference Include="../../src/OpenPhysical.Biometrics.Fingerprints/OpenPhysical.Biometrics.Fingerprints.csproj" />
+        <PackageReference Include="NUnit" Version="4.3.2" />
+        <PackageReference Include="NUnit3TestAdapter" Version="5.0.0" />
+    </ItemGroup>
+    <ItemGroup>
+        <Compile
+            Include="../../../OpenPhysical.Biometrics.NBIS/tests/Shared/Sd04Fixtures.cs"
+            Link="Fixtures/Sd04Fixtures.cs"
+        />
+        <Content
+            Include="../../../OpenPhysical.Biometrics.NBIS/tests/fixtures/sd04/*.gray8;../../../OpenPhysical.Biometrics.NBIS/tests/fixtures/sd04/manifest.json"
+            Link="Fixtures/sd04/%(Filename)%(Extension)"
+            CopyToOutputDirectory="PreserveNewest"
+        />
+    </ItemGroup>
+</Project>

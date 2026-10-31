@@ -1,6 +1,6 @@
-using NUnit.Framework;
 using AwesomeAssertions;
 using CSharpFunctionalExtensions.AwesomeAssertions;
+using NUnit.Framework;
 
 namespace OpenPhysical.Biometrics.Infrastructure.Tests;
 
@@ -8,7 +8,7 @@ namespace OpenPhysical.Biometrics.Infrastructure.Tests;
 /// Very basic tests to verify NuGet packages are correctly installed
 /// </summary>
 [TestFixture]
-public class BasicSetupTests
+internal class BasicSetupTests
 {
     [Test]
     public void NUnit_Framework_Is_Available()
@@ -23,7 +23,7 @@ public class BasicSetupTests
         // Test with Result<T> to verify CSharpFunctionalExtensions.AwesomeAssertions works
         var successResult = CSharpFunctionalExtensions.Result.Success(42);
         successResult.Should().SucceedWith(42);
-        
+
         var failureResult = CSharpFunctionalExtensions.Result.Failure<int>("error");
         failureResult.Should().Fail().Which.Should().Be("error");
     }
@@ -32,17 +32,17 @@ public class BasicSetupTests
     public void All_Required_Packages_Are_Present()
     {
         // Verify we can use types from each required package
-        
+
         // NUnit - already verified by this test running
-        
+
         // CSharpFunctionalExtensions.AwesomeAssertions - just verify the extensions work
         var result = CSharpFunctionalExtensions.Result.Success("test");
         result.Should().Succeed(); // This verifies the extensions are available
-        
+
         // CSharpFunctionalExtensions
         var resultType = typeof(CSharpFunctionalExtensions.Result);
         Assert.That(resultType, Is.Not.Null);
-        
+
         var maybeType = typeof(CSharpFunctionalExtensions.Maybe<>);
         Assert.That(maybeType, Is.Not.Null);
     }
@@ -51,12 +51,20 @@ public class BasicSetupTests
     public void Test_Project_Configuration_Is_Correct()
     {
         // Verify target framework
-        var targetFramework = System.Runtime.InteropServices.RuntimeInformation.FrameworkDescription;
+        var targetFramework = System
+            .Runtime
+            .InteropServices
+            .RuntimeInformation
+            .FrameworkDescription;
         targetFramework.Should().Contain(".NET");
-        
+
         // Log the framework for diagnostic purposes
         TestContext.WriteLine($"Running on: {targetFramework}");
-        TestContext.WriteLine($"OS: {System.Runtime.InteropServices.RuntimeInformation.OSDescription}");
-        TestContext.WriteLine($"Process Architecture: {System.Runtime.InteropServices.RuntimeInformation.ProcessArchitecture}");
+        TestContext.WriteLine(
+            $"OS: {System.Runtime.InteropServices.RuntimeInformation.OSDescription}"
+        );
+        TestContext.WriteLine(
+            $"Process Architecture: {System.Runtime.InteropServices.RuntimeInformation.ProcessArchitecture}"
+        );
     }
 }

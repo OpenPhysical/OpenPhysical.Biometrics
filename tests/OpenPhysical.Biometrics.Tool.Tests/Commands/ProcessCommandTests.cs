@@ -1,9 +1,10 @@
 using System.Diagnostics;
+using System.Drawing;
 using AwesomeAssertions;
-using OpenPhysical.Biometrics.Tests.Common;
 using NUnit.Framework;
-using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.PixelFormats;
+using OpenPhysical.Biometrics.Imaging;
+using OpenPhysical.Biometrics.Tests.Common;
+using OpenPhysical.Biometrics.Tool.Drawing;
 
 namespace OpenPhysical.Biometrics.Tool.Tests.Commands;
 
@@ -28,7 +29,10 @@ public class ProcessCommandTests : IntegrationTestBase
         var currentDir = TestContext.CurrentContext.TestDirectory;
         var searchDir = new DirectoryInfo(currentDir);
 
-        while (searchDir != null && !File.Exists(Path.Combine(searchDir.FullName, "OpenPhysical.Biometrics.sln")))
+        while (
+            searchDir != null
+            && !File.Exists(Path.Combine(searchDir.FullName, "OpenPhysical.Biometrics.sln"))
+        )
         {
             searchDir = searchDir.Parent;
         }
@@ -38,12 +42,9 @@ public class ProcessCommandTests : IntegrationTestBase
             throw new InvalidOperationException("Could not find solution root");
         }
 
-        _cliProjectPath = Path.Combine(
-            searchDir.FullName,
-            "src",
-            "OpenPhysical.Biometrics.Tool",
-            "OpenPhysical.Biometrics.Tool.csproj"
-        );
+        _cliProjectPath = typeof(OpenPhysical.Biometrics.Tool.Commands.ProcessCommand)
+            .Assembly
+            .Location;
     }
 
     /// <summary>
@@ -56,7 +57,10 @@ public class ProcessCommandTests : IntegrationTestBase
         // Use a real test face image directly
         var currentDir = TestContext.CurrentContext.TestDirectory;
         var searchDir = new DirectoryInfo(currentDir);
-        while (searchDir != null && !File.Exists(Path.Combine(searchDir.FullName, "OpenPhysical.Biometrics.sln")))
+        while (
+            searchDir != null
+            && !File.Exists(Path.Combine(searchDir.FullName, "OpenPhysical.Biometrics.sln"))
+        )
         {
             searchDir = searchDir.Parent;
         }
@@ -204,32 +208,15 @@ public class ProcessCommandTests : IntegrationTestBase
     }
 
     // Helper methods
-    private async Task<int> RunCliCommand(string arguments)
-    {
-        var processInfo = new ProcessStartInfo
-        {
-            FileName = "dotnet",
-            Arguments = $"run --project \"{_cliProjectPath}\" -- {arguments}",
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            UseShellExecute = false,
-            CreateNoWindow = true,
-        };
-
-        using var process =
-            Process.Start(processInfo)
-            ?? throw new InvalidOperationException("Failed to start process");
-
-        await process.WaitForExitAsync();
-        return process.ExitCode;
-    }
+    private async Task<int> RunCliCommand(string arguments) =>
+        (await RunCliCommandWithOutput(arguments)).exitCode;
 
     private async Task<(int exitCode, string output)> RunCliCommandWithOutput(string arguments)
     {
         var processInfo = new ProcessStartInfo
         {
             FileName = "dotnet",
-            Arguments = $"run --project \"{_cliProjectPath}\" -- {arguments}",
+            Arguments = $"\"{_cliProjectPath}\" {arguments}",
             RedirectStandardOutput = true,
             RedirectStandardError = true,
             UseShellExecute = false,
@@ -247,7 +234,7 @@ public class ProcessCommandTests : IntegrationTestBase
 
         // Add timeout for process execution
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
-        
+
         var outputTask = process.StandardOutput.ReadToEndAsync();
         var errorTask = process.StandardError.ReadToEndAsync();
         var waitTask = process.WaitForExitAsync(cts.Token);
@@ -271,7 +258,7 @@ public class ProcessCommandTests : IntegrationTestBase
     {
         var imagePath = Path.Combine(TempDirectory, "empty.jpg");
 
-        using (var image = new Image<Rgba32>(100, 100, new Rgba32(255, 255, 255)))
+        using (var image = new RgbImage(100, 100, new RgbaPixel(255, 255, 255)))
         {
             // Small pure white image - YOLOv5 shouldn't detect faces in this
             image.SaveAsJpeg(imagePath);

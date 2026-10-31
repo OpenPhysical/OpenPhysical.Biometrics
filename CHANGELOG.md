@@ -1,110 +1,46 @@
 # Changelog
 
-All notable changes to this project will be documented in this file.
+Releases follow Semantic Versioning. Version 3 is the .NET 10 consolidation release.
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+## Unreleased
 
-## [2.1.0] - 2025-01-05
+## 3.0.0-beta.1 - 2026-10-31
 
-### Added
-- **ISO/IEC 19794-5 Quality Assessment System** - Comprehensive quality assessment for facial images
-  - Facial symmetry assessment using Gabor wavelets
-  - Image sharpness assessment using DCT frequency analysis  
-  - Geometric compliance validation against PIV/TWIC/ICAO/CAC standards
-  - Configurable quality thresholds and enforcement modes
-  - Detailed violation reporting with severity levels
-  - Parallel and sequential assessment modes for performance optimization
+- Centralize canonical fingerprint-to-NBIS coordinate and angle conversion in the fingerprint package.
+- Centralize INCITS 378 and PIV template conversion in the canonical fingerprint
+  adapter, shared by the public API and `biotool convert`.
+- Add named SD04 policy examples and negative different-finger workflow tests across capture/template combinations, including policy boundaries and immutable inputs.
 
-### New API Components
-- `QualityAssessmentPipeline` - Main assessment pipeline with async support
-- `QualityScore` - Normalized quality scores (0-1) with validation
-- `FacialSymmetryScore` - Symmetry assessment results with illumination and pose metrics
-- `SharpnessScore` - Sharpness assessment with regional analysis
-- `GeometricCompliance` - Standards compliance validation
-- `Iso19794Assessment` - Complete assessment results with compliance status
-- `QualityAssessmentOptions` - Configuration with preset options for different standards
-- `Iso19794Standard` - Standard definitions for PIV, TWIC, ICAO, and CAC
-- `ComplianceViolation` - Detailed violation reporting with severity classification
+- Correct INCITS 378 minutia wire types in the compatibility API: Other = 0, RidgeEnding = 1, and Bifurcation = 2. Canonical parsing and writing preserve these values.
 
-### Individual Assessors
-- `SymmetryAssessor` - Gabor wavelet-based facial symmetry analysis
-- `SharpnessAssessor` - DCT-based image sharpness measurement
-- `GeometryAssessor` - Geometric compliance validation against standards
-
-### Technical Improvements
-- **Functional Programming Patterns**: All new code follows railway-oriented programming with `Result<T>` types
-- **No Exceptions**: Quality assessment system uses defensive programming instead of exception handling
-- **Immutable Data**: All assessment results are immutable records
-- **Resource Management**: Proper disposal patterns without manual resource management
-- **Float Consistency**: All mathematical operations use `MathF` for consistent float arithmetic
-- **MIT License Headers**: All new files include proper MIT license headers
-
-### Performance Characteristics
-- Symmetry assessment: ~50-100ms per image
-- Sharpness assessment: ~20-50ms per image  
-- Geometry assessment: ~1-5ms per image
-- Memory overhead: ~10-20MB per concurrent assessment
-- Parallel processing support for optimal performance
-
-### CLI Enhancements
-- **New `quality` command** - Standalone quality assessment with multiple output formats
-  - `--visual` flag generates quality overlay images showing issues
-  - JSON, text, and detailed output formats
-  - Configurable thresholds and standards
-- **Enhanced `process` command** - Integrated quality assessment in processing pipeline
-- **Validation Scripts**:
-  - `setup-test-images.sh` - Test image acquisition with synthetic face support
-  - `batch-quality-test.sh` - Batch assessment with HTML reporting
-  - `quality-review-dashboard.sh` - Interactive human review interface
-  - `apply-quality-variations.sh` - Generate test variations
-
-### Quality Visualization
-- **Visual Overlay System** - Real-time quality feedback on images
-  - Color-coded quality score panels
-  - Violation indicators for each quality issue type
-  - Compliance status badges (pass/fail)
-  - Supports batch generation for validation workflows
-
-### Standards Compliance
-- **PIV (Personal Identity Verification)** - FIPS 201-3 compliance
-- **TWIC (Transportation Worker Identification Credential)** - TSA requirements
-- **ICAO (International Civil Aviation Organization)** - Passport photo standards
-- **CAC (Common Access Card)** - DoD requirements
-
-### Breaking Changes
-- **None** - This release is fully backward compatible
-
-### Dependencies
-- No new external dependencies added
-- Continues to use CSharpFunctionalExtensions, SixLabors.ImageSharp, and JetBrains.Annotations
-
-## [2.0.0] - 2024-12-XX
 
 ### Added
-- Initial release of FaceOFFx
-- PIV-compliant facial processing with FIPS 201-3 support
-- JPEG 2000 ROI encoding capabilities
-- Direct ONNX Runtime integration
-- Clean architecture with functional programming patterns
-- Face detection using RetinaFace
-- 68-point facial landmark extraction
-- PIV transformation processing
-- CLI tools for processing and ROI operations
 
-### Technical Features
-- .NET 8.0 target framework
-- Functional programming with Result patterns
-- No exceptions in core processing pipeline
-- Immutable domain models
-- High-performance image processing with SixLabors.ImageSharp
-- Git LFS for ONNX model storage
+- Canonical immutable INCITS 378, INCITS 385, and CBEFF models, codecs, located
+  diagnostics, PIV profile checks, and structured inspection shared by the CLI.
+- Explicit signature-service contracts, original signed-content preservation,
+  bounded signature-length coordination, and independent verification findings.
+- NBIS extraction/comparison, NFIQ 1 assessment, enrollment ranking, deterministic
+  two-finger record preparation, and application-controlled matching policy.
+- Captured sRGB facial preparation through CoreJ2K.Skia JPEG 2000 encoding.
+- Owned Skia-backed image buffers and transforms for the facial pipeline.
+- Workflow examples, migration guidance, mandatory API documentation, CSharpier,
+  and isolated package-consumer CI across five supported native runtimes.
 
-### Standards Support
-- FIPS 201-3 Personal Identity Verification
-- ISO/IEC 19794-5 facial image standards
-- JPEG 2000 with Region of Interest encoding
-- 68-point facial landmark standard
+### Fixed
 
-[2.1.0]: https://github.com/mistial-dev/FaceOFFx/compare/v2.0.0...v2.1.0
-[2.0.0]: https://github.com/mistial-dev/FaceOFFx/releases/tag/v2.0.0
+- Keep sensitive measurements, identities, paths, external diagnostics, and
+  exception payloads out of operational logs.
+
+- Preserve sRGB facial metadata and encode the complete big-endian quality field
+  when adapting the existing facial writer to the canonical codec.
+- Preserve image aspect ratios and coordinate mapping in facial model input;
+  retain the requested rotation canvas dimensions.
+
+### Changed
+
+- Target .NET 10 with standard .NET and project-owned public contracts.
+- Organize the modern packages and existing facial compatibility solution explicitly.
+- Use SkiaSharp and CoreJ2K.Skia throughout imaging and JPEG 2000 paths.
+- Align first-party licensing and contribution policies with the algorithm bindings,
+  preserving original and dependency notices.

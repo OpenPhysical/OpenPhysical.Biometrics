@@ -1,7 +1,7 @@
+using System.Collections.Immutable;
 using JetBrains.Annotations;
 using OpenPhysical.Biometrics.Core.Domain.Detection;
 using OpenPhysical.Biometrics.Core.Domain.Quality;
-using System.Collections.Immutable;
 
 namespace OpenPhysical.Biometrics.Core.Domain.Pipeline;
 
@@ -20,22 +20,17 @@ public readonly record struct BiometricData(
     /// Creates biometric data from a byte array.
     /// </summary>
     public static BiometricData FromBytes(
-        byte[] data, 
-        BiometricDataType dataType, 
+        byte[] data,
+        BiometricDataType dataType,
         BiometricFormat format
-    ) => new(
-        data.ToImmutableArray(), 
-        dataType, 
-        format, 
-        ImmutableDictionary<string, object>.Empty
-    );
+    ) => new(data.ToImmutableArray(), dataType, format, ImmutableDictionary<string, object>.Empty);
 
     /// <summary>
     /// Creates biometric data from an immutable array.
     /// </summary>
     public static BiometricData FromBytes(
-        ImmutableArray<byte> data, 
-        BiometricDataType dataType, 
+        ImmutableArray<byte> data,
+        BiometricDataType dataType,
         BiometricFormat format
     ) => new(data, dataType, format, ImmutableDictionary<string, object>.Empty);
 
@@ -43,13 +38,19 @@ public readonly record struct BiometricData(
     /// Returns new biometric data with additional metadata.
     /// </summary>
     public BiometricData WithMetadata(string key, object value) =>
-        this with { Metadata = Metadata.SetItem(key, value) };
+        this with
+        {
+            Metadata = Metadata.SetItem(key, value),
+        };
 
     /// <summary>
     /// Returns new biometric data with multiple metadata entries.
     /// </summary>
     public BiometricData WithMetadata(ImmutableDictionary<string, object> additionalMetadata) =>
-        this with { Metadata = Metadata.SetItems(additionalMetadata) };
+        this with
+        {
+            Metadata = Metadata.SetItems(additionalMetadata),
+        };
 
     /// <summary>
     /// Gets metadata value by key if it exists.
@@ -81,16 +82,21 @@ public enum BiometricDataType
 {
     /// <summary>Facial image data</summary>
     FacialImage,
+
     /// <summary>Fingerprint image data</summary>
     FingerprintImage,
+
     /// <summary>Fingerprint minutiae data</summary>
     FingerprintMinutiae,
+
     /// <summary>Iris image data</summary>
     IrisImage,
+
     /// <summary>Multi-modal biometric data</summary>
     MultiModal,
+
     /// <summary>CBEFF container with biometric data</summary>
-    CbeffContainer
+    CbeffContainer,
 }
 
 /// <summary>
@@ -106,36 +112,28 @@ public readonly record struct BiometricFormat(
     /// <summary>
     /// JPEG image format.
     /// </summary>
-    public static readonly BiometricFormat Jpeg = new(
-        "JPEG", 
-        "image/jpeg", 
-        Maybe<string>.None
-    );
+    public static readonly BiometricFormat Jpeg = new("JPEG", "image/jpeg", Maybe<string>.None);
 
     /// <summary>
     /// JPEG 2000 image format.
     /// </summary>
     public static readonly BiometricFormat Jpeg2000 = new(
-        "JPEG 2000", 
-        "image/jp2", 
+        "JPEG 2000",
+        "image/jp2",
         Maybe<string>.From("ISO/IEC 15444-1")
     );
 
     /// <summary>
     /// PNG image format.
     /// </summary>
-    public static readonly BiometricFormat Png = new(
-        "PNG", 
-        "image/png", 
-        Maybe<string>.None
-    );
+    public static readonly BiometricFormat Png = new("PNG", "image/png", Maybe<string>.None);
 
     /// <summary>
     /// INCITS 385 facial image format.
     /// </summary>
     public static readonly BiometricFormat Incits385 = new(
-        "INCITS 385", 
-        "application/octet-stream", 
+        "INCITS 385",
+        "application/octet-stream",
         Maybe<string>.From("ANSI/INCITS 385-2004")
     );
 
@@ -143,8 +141,8 @@ public readonly record struct BiometricFormat(
     /// INCITS 378 fingerprint minutiae format.
     /// </summary>
     public static readonly BiometricFormat Incits378 = new(
-        "INCITS 378", 
-        "application/octet-stream", 
+        "INCITS 378",
+        "application/octet-stream",
         Maybe<string>.From("ANSI/INCITS 378-2004")
     );
 
@@ -152,8 +150,8 @@ public readonly record struct BiometricFormat(
     /// CBEFF format.
     /// </summary>
     public static readonly BiometricFormat Cbeff = new(
-        "CBEFF", 
-        "application/octet-stream", 
+        "CBEFF",
+        "application/octet-stream",
         Maybe<string>.From("ISO/IEC 19785")
     );
 }
@@ -176,31 +174,41 @@ public readonly record struct ProcessedBiometricData(
     public static ProcessedBiometricData FromBiometricData(
         BiometricData data,
         QualityMetrics quality
-    ) => new(
-        data,
-        quality,
-        ImmutableList<DetectedFace>.Empty,
-        Maybe<FaceLandmarks68>.None,
-        ImmutableDictionary<string, object>.Empty
-    );
+    ) =>
+        new(
+            data,
+            quality,
+            ImmutableList<DetectedFace>.Empty,
+            Maybe<FaceLandmarks68>.None,
+            ImmutableDictionary<string, object>.Empty
+        );
 
     /// <summary>
     /// Returns new processed data with detected faces.
     /// </summary>
     public ProcessedBiometricData WithDetectedFaces(ImmutableList<DetectedFace> faces) =>
-        this with { DetectedFaces = faces };
+        this with
+        {
+            DetectedFaces = faces,
+        };
 
     /// <summary>
     /// Returns new processed data with landmarks.
     /// </summary>
     public ProcessedBiometricData WithLandmarks(FaceLandmarks68 landmarks) =>
-        this with { Landmarks = Maybe<FaceLandmarks68>.From(landmarks) };
+        this with
+        {
+            Landmarks = Maybe<FaceLandmarks68>.From(landmarks),
+        };
 
     /// <summary>
     /// Returns new processed data with processing metadata.
     /// </summary>
     public ProcessedBiometricData WithProcessingMetadata(string key, object value) =>
-        this with { ProcessingMetadata = ProcessingMetadata.SetItem(key, value) };
+        this with
+        {
+            ProcessingMetadata = ProcessingMetadata.SetItem(key, value),
+        };
 }
 
 /// <summary>
@@ -218,35 +226,48 @@ public readonly record struct QualityMetrics(
     /// <summary>
     /// Creates quality metrics with only overall quality.
     /// </summary>
-    public static QualityMetrics WithOverallQuality(QualityScore overallQuality) => new(
-        overallQuality,
-        Maybe<QualityScore>.None,
-        Maybe<QualityScore>.None,
-        Maybe<QualityScore>.None,
-        ImmutableDictionary<string, QualityScore>.Empty
-    );
+    public static QualityMetrics WithOverallQuality(QualityScore overallQuality) =>
+        new(
+            overallQuality,
+            Maybe<QualityScore>.None,
+            Maybe<QualityScore>.None,
+            Maybe<QualityScore>.None,
+            ImmutableDictionary<string, QualityScore>.Empty
+        );
 
     /// <summary>
     /// Returns new quality metrics with sharpness score.
     /// </summary>
     public QualityMetrics WithSharpness(QualityScore sharpness) =>
-        this with { SharpnessScore = Maybe<QualityScore>.From(sharpness) };
+        this with
+        {
+            SharpnessScore = Maybe<QualityScore>.From(sharpness),
+        };
 
     /// <summary>
     /// Returns new quality metrics with exposure score.
     /// </summary>
     public QualityMetrics WithExposure(QualityScore exposure) =>
-        this with { ExposureScore = Maybe<QualityScore>.From(exposure) };
+        this with
+        {
+            ExposureScore = Maybe<QualityScore>.From(exposure),
+        };
 
     /// <summary>
     /// Returns new quality metrics with geometry score.
     /// </summary>
     public QualityMetrics WithGeometry(QualityScore geometry) =>
-        this with { GeometryScore = Maybe<QualityScore>.From(geometry) };
+        this with
+        {
+            GeometryScore = Maybe<QualityScore>.From(geometry),
+        };
 
     /// <summary>
     /// Returns new quality metrics with an additional metric.
     /// </summary>
     public QualityMetrics WithAdditionalMetric(string name, QualityScore score) =>
-        this with { AdditionalMetrics = AdditionalMetrics.SetItem(name, score) };
+        this with
+        {
+            AdditionalMetrics = AdditionalMetrics.SetItem(name, score),
+        };
 }

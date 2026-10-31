@@ -1,12 +1,10 @@
+using System.Drawing;
 using AwesomeAssertions;
-using OpenPhysical.Biometrics.Infrastructure.Services;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
 using NUnit.Framework;
-using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.Drawing.Processing;
-using SixLabors.ImageSharp.PixelFormats;
-using SixLabors.ImageSharp.Processing;
+using OpenPhysical.Biometrics.Imaging;
+using OpenPhysical.Biometrics.Infrastructure.Services;
 
 namespace OpenPhysical.Biometrics.Infrastructure.Tests.Services;
 
@@ -18,7 +16,7 @@ namespace OpenPhysical.Biometrics.Infrastructure.Tests.Services;
 /// including its behavior with different image sizes, cancellation token handling, and multiple concurrent executions.
 /// </remarks>
 [TestFixture]
-public class RetinaFaceDetectorTests : IDisposable
+internal class RetinaFaceDetectorTests : IDisposable
 {
     /// <summary>
     /// Instance of <see cref="ILogger{RetinaFaceDetector}"/> used for logging operations
@@ -75,7 +73,7 @@ public class RetinaFaceDetectorTests : IDisposable
     [Test]
     public async Task DetectFacesAsync_WithValidImage_ShouldReturnSuccess()
     {
-        using var image = new Image<Rgba32>(640, 480);
+        using var image = new RgbImage(640, 480);
         image.Mutate(static ctx => ctx.Fill(Color.White));
 
         var result = await _detector.DetectFacesAsync(image);
@@ -94,7 +92,7 @@ public class RetinaFaceDetectorTests : IDisposable
     [Test]
     public async Task DetectFacesAsync_WithSmallImage_ShouldHandleCorrectly()
     {
-        using var image = new Image<Rgba32>(100, 100);
+        using var image = new RgbImage(100, 100);
         image.Mutate(static ctx => ctx.Fill(Color.Gray));
 
         var result = await _detector.DetectFacesAsync(image);
@@ -113,7 +111,7 @@ public class RetinaFaceDetectorTests : IDisposable
     [Test]
     public async Task DetectFacesAsync_WithLargeImage_ShouldHandleCorrectly()
     {
-        using var image = new Image<Rgba32>(3000, 2000);
+        using var image = new RgbImage(3000, 2000);
         image.Mutate(static ctx => ctx.Fill(Color.Blue));
 
         var result = await _detector.DetectFacesAsync(image);
@@ -133,7 +131,7 @@ public class RetinaFaceDetectorTests : IDisposable
     [Test]
     public async Task DetectFacesAsync_WithCancellation_ShouldRespectCancellationToken()
     {
-        using var image = new Image<Rgba32>(640, 480);
+        using var image = new RgbImage(640, 480);
         using var cts = new CancellationTokenSource();
         cts.Cancel();
 
@@ -151,7 +149,7 @@ public class RetinaFaceDetectorTests : IDisposable
     [Test]
     public async Task DetectFacesAsync_WithNonSquareImage_ShouldMaintainAspectRatio()
     {
-        using var image = new Image<Rgba32>(1920, 1080);
+        using var image = new RgbImage(1920, 1080);
         image.Mutate(ctx => ctx.Fill(Color.Green));
 
         var result = await _detector.DetectFacesAsync(image);
@@ -182,8 +180,8 @@ public class RetinaFaceDetectorTests : IDisposable
     [Test]
     public async Task DetectFacesAsync_MultipleCalls_ShouldNotInterfere()
     {
-        using var image1 = new Image<Rgba32>(640, 480);
-        using var image2 = new Image<Rgba32>(800, 600);
+        using var image1 = new RgbImage(640, 480);
+        using var image2 = new RgbImage(800, 600);
 
         var task1 = _detector.DetectFacesAsync(image1);
         var task2 = _detector.DetectFacesAsync(image2);
@@ -238,7 +236,7 @@ public class RetinaFaceDetectorTests : IDisposable
         int height
     )
     {
-        using var image = new Image<Rgba32>(width, height);
+        using var image = new RgbImage(width, height);
         image.Mutate(ctx => ctx.Fill(Color.White));
 
         var result = await _detector.DetectFacesAsync(image);
@@ -258,7 +256,7 @@ public class RetinaFaceDetectorTests : IDisposable
     [Test]
     public async Task DetectFacesAsync_ResultFaces_ShouldHaveValidProperties()
     {
-        using var image = new Image<Rgba32>(640, 480);
+        using var image = new RgbImage(640, 480);
         image.Mutate(static ctx => ctx.Fill(Color.White));
 
         var result = await _detector.DetectFacesAsync(image);
@@ -283,7 +281,7 @@ public class RetinaFaceDetectorTests : IDisposable
     [Test]
     public async Task DetectFacesAsync_WithRealImageData_ShouldDetectFacesIfPresent()
     {
-        using var image = new Image<Rgba32>(640, 480);
+        using var image = new RgbImage(640, 480);
         DrawSimulatedFace(image);
 
         var result = await _detector.DetectFacesAsync(image);
@@ -295,7 +293,7 @@ public class RetinaFaceDetectorTests : IDisposable
     /// Draws a simulated face on the provided image.
     /// The simulated face includes facial features such as eyes and a mouth.
     /// <param name="image">The image on which the simulated face will be drawn.</param>
-    private static void DrawSimulatedFace(Image<Rgba32> image)
+    private static void DrawSimulatedFace(RgbImage image)
     {
         image.Mutate(ctx =>
         {

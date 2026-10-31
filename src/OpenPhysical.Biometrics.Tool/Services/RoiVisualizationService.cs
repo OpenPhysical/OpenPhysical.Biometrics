@@ -1,12 +1,10 @@
+using System.Drawing;
 using CSharpFunctionalExtensions;
+using Microsoft.Extensions.Logging;
 using OpenPhysical.Biometrics.Core.Domain.Detection;
 using OpenPhysical.Biometrics.Core.Domain.Standards;
-using Microsoft.Extensions.Logging;
-using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.Drawing;
-using SixLabors.ImageSharp.Drawing.Processing;
-using SixLabors.ImageSharp.PixelFormats;
-using SixLabors.ImageSharp.Processing;
+using OpenPhysical.Biometrics.Imaging;
+using OpenPhysical.Biometrics.Tool.Drawing;
 
 namespace OpenPhysical.Biometrics.Tool.Services;
 
@@ -65,8 +63,8 @@ public static class RoiVisualizationService
     /// }
     /// </code>
     /// </example>
-    public static Result<Image<Rgba32>> DrawRoiRegions(
-        Image<Rgba32> sourceImage,
+    public static Result<RgbImage> DrawRoiRegions(
+        RgbImage sourceImage,
         FacialRoiSet roiSet,
         float strokeWidth = 3f,
         bool showLabels = true,
@@ -83,20 +81,22 @@ public static class RoiVisualizationService
         var validationResult = roiSet.Validate();
         if (validationResult.IsFailure)
         {
-            logger?.LogError("Invalid ROI set validation failed: {Error}", validationResult.Error);
-            return Result.Failure<Image<Rgba32>>($"Invalid ROI set: {validationResult.Error}");
+            logger?.LogError(
+                new EventId(627573, "RoiVisualizationService"),
+                "RoiVisualizationService failed."
+            );
+            return Result.Failure<RgbImage>($"Invalid ROI set: {validationResult.Error}");
         }
 
         logger?.LogDebug(
-            "ROI set validated successfully. Contains {RegionCount} region",
-            roiSet.AllRegions.Count()
+            new EventId(876591, "RoiVisualizationService"),
+            "RoiVisualizationService stage completed."
         );
 
         // Clone the image to avoid modifying the original
         logger?.LogDebug(
-            "Cloning source image with dimensions {Width}x{Height}",
-            sourceImage.Width,
-            sourceImage.Height
+            new EventId(638201, "RoiVisualizationService"),
+            "RoiVisualizationService stage completed."
         );
         var annotatedImage = sourceImage.Clone(ctx =>
         {
@@ -117,13 +117,8 @@ public static class RoiVisualizationService
                 var bbox = region.BoundingBox;
 
                 logger?.LogDebug(
-                    "Drawing ROI {RegionName} with priority {Priority} at ({X},{Y}) size {Width}x{Height}",
-                    region.Name,
-                    region.Priority,
-                    bbox.X,
-                    bbox.Y,
-                    bbox.Width,
-                    bbox.Height
+                    new EventId(705484, "RoiVisualizationService"),
+                    "RoiVisualizationService stage completed."
                 );
 
                 // Draw the bounding rectangle
@@ -133,7 +128,10 @@ public static class RoiVisualizationService
                 // Draw priority label if requested
                 if (showLabels)
                 {
-                    logger?.LogDebug("Drawing priority label for region {RegionName}", region.Name);
+                    logger?.LogDebug(
+                        new EventId(687670, "RoiVisualizationService"),
+                        "RoiVisualizationService stage completed."
+                    );
                     DrawPriorityLabel(ctx, region, color, logger);
                 }
             }
@@ -161,8 +159,8 @@ public static class RoiVisualizationService
     /// Useful for verifying landmark detection accuracy and understanding
     /// the relationship between landmarks and the ROI Inner Region.
     /// </remarks>
-    public static Result<Image<Rgba32>> DrawLandmarkPoints(
-        Image<Rgba32> sourceImage,
+    public static Result<RgbImage> DrawLandmarkPoints(
+        RgbImage sourceImage,
         FaceLandmarks68 landmarks,
         float pointSize = 2f,
         Color? pointColor = null,
@@ -178,15 +176,15 @@ public static class RoiVisualizationService
         if (!landmarks.IsValid)
         {
             logger?.LogError(
-                "Invalid landmarks - expected 68 points, got {Count}",
-                landmarks.Points.Count
+                new EventId(860359, "RoiVisualizationService"),
+                "RoiVisualizationService failed."
             );
-            return Result.Failure<Image<Rgba32>>("Invalid landmarks: must have exactly 68 points");
+            return Result.Failure<RgbImage>("Invalid landmarks: must have exactly 68 points");
         }
 
         logger?.LogDebug(
-            "Landmarks validated successfully - {Count} points found",
-            landmarks.Points.Count
+            new EventId(848246, "RoiVisualizationService"),
+            "RoiVisualizationService stage completed."
         );
 
         var color = pointColor ?? Color.Blue;
@@ -206,16 +204,17 @@ public static class RoiVisualizationService
                 if (pointIndex % 10 == 0) // Log every 10th point to avoid spam
                 {
                     logger?.LogDebug(
-                        "Drawing landmark point {Index} at ({X},{Y})",
-                        pointIndex,
-                        landmarks.Points[pointIndex].X,
-                        landmarks.Points[pointIndex].Y
+                        new EventId(840666, "RoiVisualizationService"),
+                        "RoiVisualizationService stage completed."
                     );
                 }
                 ctx.Fill(color, circle);
                 pointIndex++;
             }
-            logger?.LogDebug("Drew {Count} landmark points", pointIndex);
+            logger?.LogDebug(
+                new EventId(612556, "RoiVisualizationService"),
+                "RoiVisualizationService stage completed."
+            );
         });
 
         logger?.LogDebug("Successfully created annotated image with landmark points");
@@ -242,8 +241,8 @@ public static class RoiVisualizationService
     /// a complete view of the facial analysis results. The ROI Inner Region is drawn
     /// as a colored rectangle while landmarks appear as small blue dots.
     /// </remarks>
-    public static Result<Image<Rgba32>> DrawCompleteVisualization(
-        Image<Rgba32> sourceImage,
+    public static Result<RgbImage> DrawCompleteVisualization(
+        RgbImage sourceImage,
         FaceLandmarks68 landmarks,
         FacialRoiSet roiSet,
         float strokeWidth = 3f,
@@ -264,7 +263,10 @@ public static class RoiVisualizationService
         var roiResult = DrawRoiRegions(sourceImage, roiSet, strokeWidth, showLabels, logger);
         if (roiResult.IsFailure)
         {
-            logger?.LogError("Failed to draw ROI Inner Region: {Error}", roiResult.Error);
+            logger?.LogError(
+                new EventId(630549, "RoiVisualizationService"),
+                "RoiVisualizationService failed."
+            );
             return roiResult;
         }
 
@@ -279,7 +281,10 @@ public static class RoiVisualizationService
         );
         if (completeResult.IsFailure)
         {
-            logger?.LogError("Failed to draw landmark points: {Error}", completeResult.Error);
+            logger?.LogError(
+                new EventId(772882, "RoiVisualizationService"),
+                "RoiVisualizationService failed."
+            );
             return completeResult;
         }
 
@@ -317,38 +322,19 @@ public static class RoiVisualizationService
     /// in the top-left corner of each bounding box.
     /// </remarks>
     private static void DrawPriorityLabel(
-        IImageProcessingContext context,
+        RgbImage context,
         RoiRegion region,
         Color color,
         ILogger? logger = null
     )
     {
-        try
-        {
-            logger?.LogDebug(
-                "Attempting to draw priority label for region {RegionName} with priority {Priority}",
-                region.Name,
-                region.Priority
-            );
-
-            // Note: Text rendering requires SixLabors.Fonts package which is not currently included
-            // The colored bounding box provides sufficient visual distinction for the ROI Inner Region
-            // Once the fonts package is added, implement text rendering here
-
-            logger?.LogDebug(
-                "Text rendering not available - SixLabors.Fonts package not included. "
-                    + "Using colored bounding boxes for ROI distinction"
-            );
-        }
-        catch (Exception ex)
-        {
-            logger?.LogWarning(
-                ex,
-                "Failed to draw priority label for region {RegionName}",
-                region.Name
-            );
-            // Silently ignore label drawing failures to avoid breaking ROI visualization
-        }
+        var box = region.BoundingBox;
+        context.DrawText(
+            region.Name,
+            OverlayFonts.CreateFont("Arial", 12),
+            color,
+            new PointF(box.X, Math.Max(0, box.Y - 16))
+        );
     }
 
     /// <summary>
@@ -372,8 +358,8 @@ public static class RoiVisualizationService
     /// - Line CC (Head Width): Purple line connecting ear points, with compliance color
     /// Also draws key points (nose center, mouth center, eye centers) as small circles.
     /// </remarks>
-    public static Result<Image<Rgba32>> DrawPivComplianceLines(
-        Image<Rgba32> sourceImage,
+    public static Result<RgbImage> DrawPivComplianceLines(
+        RgbImage sourceImage,
         PivComplianceLines pivLines,
         PivComplianceValidation complianceValidation,
         float strokeWidth = 2f,
@@ -399,12 +385,11 @@ public static class RoiVisualizationService
             ctx.Draw(
                 lineAaColor,
                 strokeWidth,
-                new SixLabors.ImageSharp.Drawing.Path(new LinearLineSegment(verticalLine))
+                new OverlayPath(new LinearLineSegment(verticalLine))
             );
             logger?.LogDebug(
-                "Drew Line AA (vertical center) at X={X} in {Color}",
-                pivLines.LineAA_X,
-                lineAaColor
+                new EventId(878361, "RoiVisualizationService"),
+                "RoiVisualizationService stage completed."
             );
 
             // Line BB (Horizontal Eye Line) - Green if positioned correctly, Orange if incorrect
@@ -417,12 +402,11 @@ public static class RoiVisualizationService
             ctx.Draw(
                 lineBbColor,
                 strokeWidth,
-                new SixLabors.ImageSharp.Drawing.Path(new LinearLineSegment(horizontalLine))
+                new OverlayPath(new LinearLineSegment(horizontalLine))
             );
             logger?.LogDebug(
-                "Drew Line BB (horizontal eye line) at Y={Y} in {Color}",
-                pivLines.LineBB_Y,
-                lineBbColor
+                new EventId(815439, "RoiVisualizationService"),
+                "RoiVisualizationService stage completed."
             );
 
             // Line CC (Head Width Line) - Purple if valid ratio, Red if invalid
@@ -435,15 +419,11 @@ public static class RoiVisualizationService
             ctx.Draw(
                 lineCcColor,
                 strokeWidth,
-                new SixLabors.ImageSharp.Drawing.Path(new LinearLineSegment(headWidthLine))
+                new OverlayPath(new LinearLineSegment(headWidthLine))
             );
             logger?.LogDebug(
-                "Drew Line CC (head width) from ({X1},{Y1}) to ({X2},{Y2}) in {Color}",
-                pivLines.LeftEarPoint.X,
-                pivLines.LeftEarPoint.Y,
-                pivLines.RightEarPoint.X,
-                pivLines.RightEarPoint.Y,
-                lineCcColor
+                new EventId(622412, "RoiVisualizationService"),
+                "RoiVisualizationService stage completed."
             );
 
             // Draw key points as small circles

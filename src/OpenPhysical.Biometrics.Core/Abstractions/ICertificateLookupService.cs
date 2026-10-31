@@ -45,7 +45,10 @@ public interface ICertificateLookupService
     /// <param name="serialNumber">The certificate serial number.</param>
     /// <param name="issuerDN">The issuer DN.</param>
     /// <returns>A result containing the matching certificate (should be unique).</returns>
-    Result<Maybe<X509Certificate>> FindBySerialNumberAndIssuer(BigInteger serialNumber, string issuerDN);
+    Result<Maybe<X509Certificate>> FindBySerialNumberAndIssuer(
+        BigInteger serialNumber,
+        string issuerDN
+    );
 
     /// <summary>
     /// Finds a certificate by its SHA-256 fingerprint.
@@ -71,7 +74,9 @@ public interface ICertificateLookupService
     /// </summary>
     /// <param name="predicate">The predicate to match certificates against.</param>
     /// <returns>A result containing matching certificates.</returns>
-    Result<ImmutableArray<X509Certificate>> FindWhere(System.Func<CertificateMetadata, bool> predicate);
+    Result<ImmutableArray<X509Certificate>> FindWhere(
+        System.Func<CertificateMetadata, bool> predicate
+    );
 
     /// <summary>
     /// Calculates the SHA-256 fingerprint for a certificate.

@@ -1,12 +1,11 @@
+using System.Drawing;
 using AwesomeAssertions;
+using Microsoft.Extensions.DependencyInjection;
+using NUnit.Framework;
 using OpenPhysical.Biometrics.Core.Domain.Transformations;
+using OpenPhysical.Biometrics.Imaging;
 using OpenPhysical.Biometrics.Infrastructure.Services;
 using OpenPhysical.Biometrics.Tests.Common;
-using NUnit.Framework;
-using Microsoft.Extensions.DependencyInjection;
-using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.PixelFormats;
-using SixLabors.ImageSharp.Processing;
 
 namespace OpenPhysical.Biometrics.Infrastructure.Tests.Services;
 
@@ -14,7 +13,7 @@ namespace OpenPhysical.Biometrics.Infrastructure.Tests.Services;
 /// Tests for the new no-resize functionality in FacialImageEncoderService using functional approach
 /// </summary>
 [TestFixture]
-public class FacialImageEncoderServiceNoResizeTests : BiometricIntegrationTestBase
+internal class FacialImageEncoderServiceNoResizeTests : BiometricIntegrationTestBase
 {
     private FacialImageEncoderService _encoderService = null!;
 
@@ -29,9 +28,9 @@ public class FacialImageEncoderServiceNoResizeTests : BiometricIntegrationTestBa
     public async Task ProcessWithoutFaceDetectionAsync_WithJpegFormat_ShouldPreserveOriginalDimensions()
     {
         // Arrange
-        using var image = new Image<Rgba32>(800, 600);
+        using var image = new RgbImage(800, 600);
         image.Mutate(x => x.BackgroundColor(Color.Blue));
-        
+
         using var ms = new MemoryStream();
         await image.SaveAsJpegAsync(ms);
         var imageData = ms.ToArray();
@@ -59,9 +58,9 @@ public class FacialImageEncoderServiceNoResizeTests : BiometricIntegrationTestBa
     public async Task ProcessWithoutFaceDetectionAsync_WithPngFormat_ShouldProducePngOutput()
     {
         // Arrange
-        using var image = new Image<Rgba32>(640, 480);
+        using var image = new RgbImage(640, 480);
         image.Mutate(x => x.BackgroundColor(Color.Green));
-        
+
         using var ms = new MemoryStream();
         await image.SaveAsPngAsync(ms);
         var imageData = ms.ToArray();
@@ -76,14 +75,14 @@ public class FacialImageEncoderServiceNoResizeTests : BiometricIntegrationTestBa
         result.IsSuccess.Should().BeTrue();
         result.Value.Should().NotBeNull();
         result.Value.ImageData.Should().NotBeNull();
-        
+
         // Verify PNG signature
         result.Value.ImageData.Length.Should().BeGreaterThan(8);
         result.Value.ImageData[0].Should().Be((byte)0x89); // PNG signature
         result.Value.ImageData[1].Should().Be((byte)0x50); // P
         result.Value.ImageData[2].Should().Be((byte)0x4E); // N
         result.Value.ImageData[3].Should().Be((byte)0x47); // G
-        
+
         result.Value.Metadata.AdditionalData["OutputFormat"].Should().Be("PNG");
     }
 
@@ -91,9 +90,9 @@ public class FacialImageEncoderServiceNoResizeTests : BiometricIntegrationTestBa
     public async Task ProcessWithoutFaceDetectionAsync_WithTiffFormat_ShouldProduceTiffOutput()
     {
         // Arrange
-        using var image = new Image<Rgba32>(320, 240);
+        using var image = new RgbImage(320, 240);
         image.Mutate(x => x.BackgroundColor(Color.Red));
-        
+
         using var ms = new MemoryStream();
         await image.SaveAsPngAsync(ms);
         var imageData = ms.ToArray();
@@ -108,13 +107,13 @@ public class FacialImageEncoderServiceNoResizeTests : BiometricIntegrationTestBa
         result.IsSuccess.Should().BeTrue();
         result.Value.Should().NotBeNull();
         result.Value.ImageData.Should().NotBeNull();
-        
+
         // Verify TIFF signature (little-endian or big-endian)
         result.Value.ImageData.Length.Should().BeGreaterThan(4);
         var isLittleEndian = result.Value.ImageData[0] == 0x49 && result.Value.ImageData[1] == 0x49;
         var isBigEndian = result.Value.ImageData[0] == 0x4D && result.Value.ImageData[1] == 0x4D;
         (isLittleEndian || isBigEndian).Should().BeTrue("Invalid TIFF signature");
-        
+
         result.Value.Metadata.AdditionalData["OutputFormat"].Should().Be("TIFF");
     }
 
@@ -122,9 +121,9 @@ public class FacialImageEncoderServiceNoResizeTests : BiometricIntegrationTestBa
     public async Task ProcessWithoutFaceDetectionAsync_WithJp2Format_ShouldApplyDynamicRoi()
     {
         // Arrange
-        using var image = new Image<Rgba32>(1000, 800);
+        using var image = new RgbImage(1000, 800);
         image.Mutate(x => x.BackgroundColor(Color.Blue));
-        
+
         using var ms = new MemoryStream();
         await image.SaveAsJpegAsync(ms);
         var imageData = ms.ToArray();
@@ -156,7 +155,7 @@ public class FacialImageEncoderServiceNoResizeTests : BiometricIntegrationTestBa
     public async Task ProcessWithoutFaceDetectionAsync_WithJpegVariants_ShouldAllWork(string format)
     {
         // Arrange
-        using var image = new Image<Rgba32>(200, 200);
+        using var image = new RgbImage(200, 200);
         using var ms = new MemoryStream();
         await image.SaveAsJpegAsync(ms);
         var imageData = ms.ToArray();
@@ -179,7 +178,7 @@ public class FacialImageEncoderServiceNoResizeTests : BiometricIntegrationTestBa
     public async Task ProcessWithoutFaceDetectionAsync_ShouldSetFaceConfidenceToOne()
     {
         // Arrange
-        using var image = new Image<Rgba32>(100, 100);
+        using var image = new RgbImage(100, 100);
         using var ms = new MemoryStream();
         await image.SaveAsJpegAsync(ms);
         var imageData = ms.ToArray();
@@ -199,7 +198,7 @@ public class FacialImageEncoderServiceNoResizeTests : BiometricIntegrationTestBa
     public async Task ProcessWithoutFaceDetectionAsync_ShouldHaveNoRotation()
     {
         // Arrange
-        using var image = new Image<Rgba32>(100, 100);
+        using var image = new RgbImage(100, 100);
         using var ms = new MemoryStream();
         await image.SaveAsJpegAsync(ms);
         var imageData = ms.ToArray();
@@ -217,10 +216,12 @@ public class FacialImageEncoderServiceNoResizeTests : BiometricIntegrationTestBa
 
     [TestCase("png")]
     [TestCase("tiff")]
-    public async Task ProcessWithoutFaceDetectionAsync_WithDifferentFormats_ShouldSetCorrectMetadata(string format)
+    public async Task ProcessWithoutFaceDetectionAsync_WithDifferentFormats_ShouldSetCorrectMetadata(
+        string format
+    )
     {
         // Arrange
-        using var image = new Image<Rgba32>(300, 400);
+        using var image = new RgbImage(300, 400);
         using var ms = new MemoryStream();
         await image.SaveAsJpegAsync(ms);
         var imageData = ms.ToArray();
@@ -243,7 +244,7 @@ public class FacialImageEncoderServiceNoResizeTests : BiometricIntegrationTestBa
     public async Task ProcessWithoutFaceDetectionAsync_WithInvalidJpegQuality_ShouldReturnFailure()
     {
         // Arrange
-        using var image = new Image<Rgba32>(100, 100);
+        using var image = new RgbImage(100, 100);
         using var ms = new MemoryStream();
         await image.SaveAsJpegAsync(ms);
         var imageData = ms.ToArray();
@@ -275,7 +276,7 @@ public class FacialImageEncoderServiceNoResizeTests : BiometricIntegrationTestBa
     public async Task ProcessWithoutFaceDetectionAsync_WithInvalidOptions_ShouldReturnFailure()
     {
         // Arrange
-        using var image = new Image<Rgba32>(100, 100);
+        using var image = new RgbImage(100, 100);
         using var ms = new MemoryStream();
         await image.SaveAsJpegAsync(ms);
         var imageData = ms.ToArray();
@@ -283,7 +284,7 @@ public class FacialImageEncoderServiceNoResizeTests : BiometricIntegrationTestBa
         // Invalid options with negative confidence
         var invalidOptions = ProcessingOptions.PivBalanced with
         {
-            MinFaceConfidence = -0.5f
+            MinFaceConfidence = -0.5f,
         };
 
         // Act
@@ -302,7 +303,7 @@ public class FacialImageEncoderServiceNoResizeTests : BiometricIntegrationTestBa
     public async Task ProcessWithoutFaceDetectionAsync_WithUnsupportedFormat_ShouldReturnFailure()
     {
         // Arrange
-        using var image = new Image<Rgba32>(100, 100);
+        using var image = new RgbImage(100, 100);
         using var ms = new MemoryStream();
         await image.SaveAsJpegAsync(ms);
         var imageData = ms.ToArray();
@@ -344,15 +345,15 @@ public class FacialImageEncoderServiceNoResizeTests : BiometricIntegrationTestBa
             (width: 100, height: 100),
             (width: 640, height: 480),
             (width: 1920, height: 1080),
-            (width: 4096, height: 2160)
+            (width: 4096, height: 2160),
         };
 
         foreach (var (width, height) in testCases)
         {
             // Arrange
-            using var image = new Image<Rgba32>(width, height);
+            using var image = new RgbImage(width, height);
             image.Mutate(x => x.BackgroundColor(Color.Gray));
-            
+
             using var ms = new MemoryStream();
             await image.SaveAsJpegAsync(ms);
             var imageData = ms.ToArray();
@@ -365,7 +366,9 @@ public class FacialImageEncoderServiceNoResizeTests : BiometricIntegrationTestBa
             );
 
             // Assert
-            result.IsSuccess.Should().BeTrue($"Should process {width}x{height} image successfully");
+            result
+                .IsSuccess.Should()
+                .BeTrue($"Should process {width}x{height} image successfully");
             result.Value.Metadata.OutputDimensions.Width.Should().Be(width);
             result.Value.Metadata.OutputDimensions.Height.Should().Be(height);
         }

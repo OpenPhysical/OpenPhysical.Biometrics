@@ -1,22 +1,22 @@
 <Project Sdk="Microsoft.NET.Sdk">
-  <PropertyGroup>
-    <TargetFramework>net9.0</TargetFramework>
-    <RootNamespace>OpenPhysical.Biometrics.Onnx</RootNamespace>
-    <Description>ONNX models for OpenPhysical Biometrics library</Description>
-    <IsPackable>false</IsPackable>
-  </PropertyGroup>
-  <ItemGroup>
-    <EmbeddedResource Include="Resources\*.onnx" />
-  </ItemGroup>
-  <ItemGroup>
-    <None
-      Include="..\..\icon.png"
-      Pack="true"
-      PackagePath="\"
-      Condition="Exists('..\..\icon.png')"
-    />
-  </ItemGroup>
-  <ItemGroup>
-    <PackageReference Include="JetBrains.Annotations" Version="2025.2.0" />
-  </ItemGroup>
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <RootNamespace>OpenPhysical.Biometrics.Onnx</RootNamespace>
+        <Description>ONNX models for OpenPhysical Biometrics library</Description>
+        <IsPackable>true</IsPackable>
+        <PackageId>OpenPhysical.Biometrics.Facial.Models</PackageId>
+    </PropertyGroup>
+    <ItemGroup>
+        <EmbeddedResource Include="Resources\*.onnx" />
+        <None Update="Resources/README.md" Pack="true" PackagePath="models/README.md" />
+        <None Update="Resources/provenance.json" Pack="true" PackagePath="models/provenance.json" />
+        <None
+            Update="Resources/LICENSE-FaceONNX-MIT.txt"
+            Pack="true"
+            PackagePath="models/LICENSE-FaceONNX-MIT.txt"
+        />
+    </ItemGroup>
+    <ItemGroup>
+        <PackageReference Include="JetBrains.Annotations" Version="2025.2.0" />
+    </ItemGroup>
 </Project>

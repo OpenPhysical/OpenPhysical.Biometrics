@@ -1,5 +1,5 @@
-using JetBrains.Annotations;
 using System.Collections.Immutable;
+using JetBrains.Annotations;
 
 namespace OpenPhysical.Biometrics.Core.Abstractions.Pipeline;
 
@@ -63,14 +63,18 @@ public enum CheckpointOptionType
 {
     /// <summary>Continue processing with current data</summary>
     Continue,
+
     /// <summary>Continue with user-provided modifications</summary>
     ContinueWithModifications,
+
     /// <summary>Retry the previous step</summary>
     Retry,
+
     /// <summary>Skip this checkpoint and continue</summary>
     Skip,
+
     /// <summary>Abort the pipeline</summary>
-    Abort
+    Abort,
 }
 
 /// <summary>
@@ -93,8 +97,17 @@ public readonly record struct CheckpointResult(
     /// <summary>
     /// Creates a continue decision with modifications.
     /// </summary>
-    public static CheckpointResult ContinueWithModifications(string optionId, object modifiedData, string? comment = null) =>
-        new(optionId, CheckpointDecision.ContinueWithModifications, Maybe<object>.From(modifiedData), Maybe<string>.From(comment));
+    public static CheckpointResult ContinueWithModifications(
+        string optionId,
+        object modifiedData,
+        string? comment = null
+    ) =>
+        new(
+            optionId,
+            CheckpointDecision.ContinueWithModifications,
+            Maybe<object>.From(modifiedData),
+            Maybe<string>.From(comment)
+        );
 
     /// <summary>
     /// Creates a retry decision.
@@ -123,12 +136,16 @@ public enum CheckpointDecision
 {
     /// <summary>Continue with current data</summary>
     Continue,
+
     /// <summary>Continue with user modifications</summary>
     ContinueWithModifications,
+
     /// <summary>Retry the previous step</summary>
     Retry,
+
     /// <summary>Skip this checkpoint</summary>
     Skip,
+
     /// <summary>Abort the pipeline</summary>
-    Abort
+    Abort,
 }

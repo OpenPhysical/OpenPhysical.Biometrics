@@ -1,116 +1,126 @@
+using AwesomeAssertions;
 using CSharpFunctionalExtensions;
+using NUnit.Framework;
 using OpenPhysical.Biometrics.Core.Domain.Quality;
 using OpenPhysical.Biometrics.Core.Domain.Transformations;
-using AwesomeAssertions;
-using NUnit.Framework;
 
 namespace OpenPhysical.Biometrics.Core.Tests.Domain.Quality;
 
+/// <summary>Verifies normalized quality-score construction and conversion.</summary>
 [TestFixture]
 public class QualityScoreTests
 {
+    /// <summary>Checks that values in the normalized quality range are accepted.</summary>
     [Test]
     public void Create_WithValidValue_ReturnsSuccess()
     {
         // Arrange
         var values = new[] { 0f, 0.5f, 0.75f, 1f };
-        
+
         // Act & Assert
         foreach (var value in values)
         {
             var result = QualityScore.Create(value);
-            
+
             result.IsSuccess.Should().Be(true);
             result.Value.Value.Should().Be(value);
         }
     }
-    
+
+    /// <summary>Checks that values outside the normalized quality range are rejected.</summary>
     [Test]
     public void Create_WithInvalidValue_ReturnsFailure()
     {
         // Arrange
         var invalidValues = new[] { -0.1f, -1f, 1.1f, 2f, float.NaN, float.PositiveInfinity };
-        
+
         // Act & Assert
         foreach (var value in invalidValues)
         {
             var result = QualityScore.Create(value);
-            
+
             result.IsFailure.Should().Be(true);
             result.Error.Should().Contain("between 0 and 1");
         }
     }
-    
+
+    /// <summary>Checks conversion from a valid percentage to a normalized quality score.</summary>
     [Test]
     public void FromPercentage_WithValidPercentage_ReturnsSuccess()
     {
         // Arrange & Act
         var result = QualityScore.FromPercentage(75f);
-        
+
         // Assert
         result.IsSuccess.Should().Be(true);
         result.Value.Value.Should().Be(0.75f);
         result.Value.AsPercentage().Should().Be(75f);
     }
-    
+
+    /// <summary>Checks that percentages outside the supported range are rejected.</summary>
     [Test]
     public void FromPercentage_WithInvalidPercentage_ReturnsFailure()
     {
         // Arrange
         var invalidPercentages = new[] { -10f, 101f, 150f };
-        
+
         // Act & Assert
         foreach (var percentage in invalidPercentages)
         {
             var result = QualityScore.FromPercentage(percentage);
-            
+
             result.IsFailure.Should().Be(true);
         }
     }
-    
+
+    /// <summary>Checks conversion from a normalized score to its percentage representation.</summary>
     [Test]
     public void AsPercentage_ReturnsCorrectValue()
     {
         // Arrange
         var score = QualityScore.Create(0.85f).Value;
-        
+
         // Act
         var percentage = score.AsPercentage();
-        
+
         // Assert
         percentage.Should().Be(85f);
     }
-    
+
+    /// <summary>Checks that the numeric conversion preserves the normalized score.</summary>
     [Test]
     public void ImplicitConversion_ToFloat_ReturnsValue()
     {
         // Arrange
         var score = QualityScore.Create(0.7f).Value;
-        
+
         // Act
         float value = score;
-        
+
         // Assert
         value.Should().Be(0.7f);
     }
-    
+
+    /// <summary>Checks the human-readable percentage representation of a quality score.</summary>
     [Test]
     public void ToString_ReturnsPercentageFormat()
     {
         // Arrange
         var score = QualityScore.Create(0.856f).Value;
-        
+
         // Act
         var str = score.ToString();
-        
+
         // Assert
         str.Should().Be("85.6%");
     }
 }
 
+/// <summary>Verifies normalization of facial asymmetry measurements.</summary>
 [TestFixture]
 public class FacialSymmetryScoreTests
 {
+    /// <summary>Checks score construction from valid asymmetry measurements.</summary>
     [Test]
     public void FromAsymmetryValues_WithValidValues_ReturnsSuccess()
     {
@@ -118,23 +128,25 @@ public class FacialSymmetryScoreTests
         var illuminationAsymmetry = 0.2f;
         var poseAsymmetry = 0.15f;
         var gaborResponses = new[] { 0.1f, 0.2f, 0.15f, 0.18f, 0.12f };
-        
+
         // Act
         var result = FacialSymmetryScore.FromAsymmetryValues(
             illuminationAsymmetry,
             poseAsymmetry,
-            gaborResponses);
-        
+            gaborResponses
+        );
+
         // Assert
         result.IsSuccess.Should().Be(true);
         var score = result.Value;
-        
+
         score.Illumination.Value.Should().Be(0.8f); // 1 - 0.2
         score.Pose.Value.Should().Be(0.85f); // 1 - 0.15
         score.Overall.Value.Should().BeApproximately(0.825f, 0.001f); // Average of illumination and pose
         score.GaborResponses.Should().BeEquivalentTo(gaborResponses);
     }
-    
+
+    /// <summary>Checks that extreme asymmetry still produces a bounded score.</summary>
     [Test]
     public void FromAsymmetryValues_WithHighAsymmetry_ClampsToValidRange()
     {
@@ -142,26 +154,29 @@ public class FacialSymmetryScoreTests
         var illuminationAsymmetry = 1.5f; // > 1
         var poseAsymmetry = 2f; // > 1
         var gaborResponses = new[] { 0.5f };
-        
+
         // Act
         var result = FacialSymmetryScore.FromAsymmetryValues(
             illuminationAsymmetry,
             poseAsymmetry,
-            gaborResponses);
-        
+            gaborResponses
+        );
+
         // Assert
         result.IsSuccess.Should().Be(true);
         var score = result.Value;
-        
+
         score.Illumination.Value.Should().Be(0f); // 1 - min(1.5, 1) = 0
         score.Pose.Value.Should().Be(0f); // 1 - min(2, 1) = 0
         score.Overall.Value.Should().Be(0f);
     }
 }
 
+/// <summary>Verifies sharpness-score construction from DCT energy ratios.</summary>
 [TestFixture]
 public class SharpnessScoreTests
 {
+    /// <summary>Checks sharpness scoring for a valid frequency-energy ratio.</summary>
     [Test]
     public void FromDctAnalysis_WithValidRatio_ReturnsSuccess()
     {
@@ -171,39 +186,42 @@ public class SharpnessScoreTests
         {
             { "center", 0.8f },
             { "top", 0.7f },
-            { "bottom", 0.65f }
+            { "bottom", 0.65f },
         };
-        
+
         // Act
         var result = SharpnessScore.FromDctAnalysis(highFrequencyRatio, regionalScores);
-        
+
         // Assert
         result.IsSuccess.Should().Be(true);
         var score = result.Value;
-        
+
         score.Overall.Value.Should().Be(0.75f);
         score.HighFrequencyRatio.Should().Be(0.75f);
         score.RegionalScores.Should().BeEquivalentTo(regionalScores);
     }
-    
+
+    /// <summary>Checks rejection of an invalid frequency-energy ratio.</summary>
     [Test]
     public void FromDctAnalysis_WithInvalidRatio_ReturnsFailure()
     {
         // Arrange
         var highFrequencyRatio = 1.5f; // > 1
         var regionalScores = new Dictionary<string, float>();
-        
+
         // Act
         var result = SharpnessScore.FromDctAnalysis(highFrequencyRatio, regionalScores);
-        
+
         // Assert
         result.IsFailure.Should().Be(true);
     }
 }
 
+/// <summary>Verifies aggregation of facial geometry components.</summary>
 [TestFixture]
 public class GeometricComplianceTests
 {
+    /// <summary>Checks that geometric compliance averages its normalized component scores.</summary>
     [Test]
     public void Overall_CalculatesAverageOfComponents()
     {
@@ -213,25 +231,28 @@ public class GeometricComplianceTests
         var ipd = QualityScore.Create(0.7f).Value;
         var actualDims = new ImageDimensions(420, 560);
         var expectedDims = new ImageDimensions(420, 560);
-        
+
         var compliance = new GeometricCompliance(
             headSize,
             centering,
             ipd,
             actualDims,
-            expectedDims);
-        
+            expectedDims
+        );
+
         // Act
         var overall = compliance.Overall;
-        
+
         // Assert
         overall.Value.Should().Be(0.8f); // (0.8 + 0.9 + 0.7) / 3
     }
 }
 
+/// <summary>Verifies the quality and critical-violation rules used by facial assessments.</summary>
 [TestFixture]
 public class Iso19794AssessmentTests
 {
+    /// <summary>Checks acceptance of a sufficiently high score with no critical violations.</summary>
     [Test]
     public void IsCompliant_WithHighScoreAndNoCriticalViolations_ReturnsTrue()
     {
@@ -242,21 +263,23 @@ public class Iso19794AssessmentTests
         var geometry = CreateMockGeometricCompliance(0.7f);
         var violations = new List<ComplianceViolation>
         {
-            new("Lighting", "Minor shadow on left side", ViolationSeverity.Minor)
+            new("Lighting", "Minor shadow on left side", ViolationSeverity.Minor),
         };
-        
+
         var assessment = new Iso19794Assessment(
             overall,
             symmetry,
             sharpness,
             geometry,
             violations,
-            DateTime.UtcNow);
-        
+            DateTime.UtcNow
+        );
+
         // Act & Assert
         assessment.IsCompliant.Should().Be(true);
     }
-    
+
+    /// <summary>Checks that insufficient quality prevents a compliant outcome.</summary>
     [Test]
     public void IsCompliant_WithLowScore_ReturnsFalse()
     {
@@ -266,19 +289,21 @@ public class Iso19794AssessmentTests
         var sharpness = CreateMockSharpnessScore(0.7f);
         var geometry = CreateMockGeometricCompliance(0.65f);
         var violations = new List<ComplianceViolation>();
-        
+
         var assessment = new Iso19794Assessment(
             overall,
             symmetry,
             sharpness,
             geometry,
             violations,
-            DateTime.UtcNow);
-        
+            DateTime.UtcNow
+        );
+
         // Act & Assert
         assessment.IsCompliant.Should().Be(false);
     }
-    
+
+    /// <summary>Checks that a critical violation prevents a compliant outcome despite a high score.</summary>
     [Test]
     public void IsCompliant_WithCriticalViolation_ReturnsFalse()
     {
@@ -289,21 +314,23 @@ public class Iso19794AssessmentTests
         var geometry = CreateMockGeometricCompliance(0.8f);
         var violations = new List<ComplianceViolation>
         {
-            new("Focus", "Image is severely out of focus", ViolationSeverity.Critical)
+            new("Focus", "Image is severely out of focus", ViolationSeverity.Critical),
         };
-        
+
         var assessment = new Iso19794Assessment(
             overall,
             symmetry,
             sharpness,
             geometry,
             violations,
-            DateTime.UtcNow);
-        
+            DateTime.UtcNow
+        );
+
         // Act & Assert
         assessment.IsCompliant.Should().Be(false);
     }
-    
+
+    /// <summary>Checks that the assessment summary reflects its compliance result.</summary>
     [Test]
     public void Summary_ReturnsCorrectMessage()
     {
@@ -315,16 +342,17 @@ public class Iso19794AssessmentTests
             CreateMockSharpnessScore(0.85f),
             CreateMockGeometricCompliance(0.85f),
             new List<ComplianceViolation>(),
-            DateTime.UtcNow);
-        
+            DateTime.UtcNow
+        );
+
         // Act
         var summary = assessment.Summary;
-        
+
         // Assert
         summary.Should().Contain("Compliant");
         summary.Should().Contain("85.0%");
     }
-    
+
     private FacialSymmetryScore CreateMockSymmetryScore(float overallValue)
     {
         var overall = QualityScore.Create(overallValue).Value;
@@ -332,13 +360,13 @@ public class Iso19794AssessmentTests
         var pose = QualityScore.Create(overallValue - 0.05f).Value;
         return new FacialSymmetryScore(overall, illumination, pose, Array.Empty<float>());
     }
-    
+
     private SharpnessScore CreateMockSharpnessScore(float overallValue)
     {
         var overall = QualityScore.Create(overallValue).Value;
         return new SharpnessScore(overall, overallValue, new Dictionary<string, float>());
     }
-    
+
     private GeometricCompliance CreateMockGeometricCompliance(float avgValue)
     {
         var headSize = QualityScore.Create(avgValue).Value;

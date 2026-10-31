@@ -1,8 +1,7 @@
-using OpenPhysical.Biometrics.Onnx;
+using System.Drawing;
 using JetBrains.Annotations;
-using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.PixelFormats;
-using SixLabors.ImageSharp.Processing;
+using OpenPhysical.Biometrics.Imaging;
+using OpenPhysical.Biometrics.Onnx;
 
 namespace OpenPhysical.Biometrics.Infrastructure.Services;
 
@@ -41,9 +40,12 @@ public sealed class OnnxLandmarkExtractor : ILandmarkExtractor, IDisposable
             // Get input/output names from the model
             _inputName = _session.InputMetadata.Keys.First();
         }
-        catch (Exception ex)
+        catch (Exception)
         {
-            _logger.LogError(ex, "Failed to initialize OnnxLandmarkExtractor");
+            _logger.LogError(
+                new EventId(34400, "OnnxLandmarkExtractor"),
+                "Failed to initialize OnnxLandmarkExtractor"
+            );
             throw;
         }
     }
@@ -52,7 +54,7 @@ public sealed class OnnxLandmarkExtractor : ILandmarkExtractor, IDisposable
     /// Extracts 68 facial landmark points from a face region
     /// </summary>
     public async Task<Result<FaceLandmarks68>> ExtractLandmarksAsync(
-        Image<Rgba32> image,
+        RgbImage image,
         FaceBox faceBox,
         CancellationToken cancellationToken = default
     )
@@ -68,14 +70,11 @@ public sealed class OnnxLandmarkExtractor : ILandmarkExtractor, IDisposable
             var cropWidth = Math.Min(image.Width - cropX, (int)faceBox.Width + 2 * padding);
             var cropHeight = Math.Min(image.Height - cropY, (int)faceBox.Height + 2 * padding);
 
-            using var faceImage = image.Clone(ctx =>
-                ctx.Crop(new Rectangle(cropX, cropY, cropWidth, cropHeight))
+            using var prepared = PrepareModelInput(
+                image,
+                new Rectangle(cropX, cropY, cropWidth, cropHeight)
             );
-
-            // Step 2: Resize to model input size (112x112) with padding to preserve aspect ratio
-            faceImage.Mutate(static ctx =>
-                ctx.Resize(ModelInputSize, ModelInputSize, KnownResamplers.Lanczos3)
-            );
+            var faceImage = prepared.Pixels;
 
             // Step 3: Convert to tensor and normalize to [0, 1]
             var tensor = ImageToTensor(faceImage);
@@ -98,28 +97,6 @@ public sealed class OnnxLandmarkExtractor : ILandmarkExtractor, IDisposable
                 );
             }
 
-            // Calculate padding used when resizing with Mode=Pad
-            var aspectRatio = (float)cropWidth / cropHeight;
-            var targetAspectRatio = 1.0f; // 112x112 is square
-            float padX = 0,
-                padY = 0;
-            float scaleFactor;
-
-            if (aspectRatio > targetAspectRatio)
-            {
-                // Image is wider - padding on top/bottom
-                scaleFactor = (float)ModelInputSize / cropWidth;
-                var scaledHeight = cropHeight * scaleFactor;
-                padY = (ModelInputSize - scaledHeight) / 2f;
-            }
-            else
-            {
-                // Image is taller - padding on left/right
-                scaleFactor = (float)ModelInputSize / cropHeight;
-                var scaledWidth = cropWidth * scaleFactor;
-                padX = (ModelInputSize - scaledWidth) / 2f;
-            }
-
             var landmarks = new List<Point2D>();
             for (var i = 0; i < NumLandmarks; i++)
             {
@@ -127,27 +104,21 @@ public sealed class OnnxLandmarkExtractor : ILandmarkExtractor, IDisposable
                 var modelX = output[i * 2] * ModelInputSize;
                 var modelY = output[i * 2 + 1] * ModelInputSize;
 
-                // Remove padding offset
-                var unpaddedX = modelX - padX;
-                var unpaddedY = modelY - padY;
-
-                // Scale back to crop region coordinates
-                var cropRegionX = unpaddedX / scaleFactor;
-                var cropRegionY = unpaddedY / scaleFactor;
-
-                // Convert to original image coordinates
-                var imageX = cropX + cropRegionX;
-                var imageY = cropY + cropRegionY;
-
-                landmarks.Add(new Point2D(imageX, imageY));
+                landmarks.Add(prepared.MapToSource(new Point2D(modelX, modelY)));
             }
 
-            _logger.LogDebug("Successfully extracted {Count} landmarks", landmarks.Count);
+            _logger.LogDebug(
+                new EventId(34401, "OnnxLandmarkExtractor"),
+                "OnnxLandmarkExtractor processing completed."
+            );
             return Result.Success(new FaceLandmarks68(landmarks));
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Landmark extraction failed");
+            _logger.LogError(
+                new EventId(34402, "OnnxLandmarkExtractor"),
+                "Landmark extraction failed"
+            );
             return Result.Failure<FaceLandmarks68>($"Landmark extraction failed: {ex.Message}");
         }
     }
@@ -155,7 +126,71 @@ public sealed class OnnxLandmarkExtractor : ILandmarkExtractor, IDisposable
     /// <summary>
     /// Converts an image to a tensor normalized to [0, 1]
     /// </summary>
-    private DenseTensor<float> ImageToTensor(Image<Rgba32> image)
+    internal static PreparedFaceImage PrepareModelInput(RgbImage source, Rectangle crop)
+    {
+        var scale = Math.Min(
+            (float)ModelInputSize / crop.Width,
+            (float)ModelInputSize / crop.Height
+        );
+        var width = Math.Clamp((int)Math.Round(crop.Width * scale), 1, ModelInputSize);
+        var height = Math.Clamp((int)Math.Round(crop.Height * scale), 1, ModelInputSize);
+        var padX = (ModelInputSize - width) / 2;
+        var padY = (ModelInputSize - height) / 2;
+        using var resized = source.Clone(image => image.Crop(crop).Resize(width, height));
+        var pixels = new RgbImage(ModelInputSize, ModelInputSize, Color.Black);
+        try
+        {
+            pixels.DrawImage(resized, new Point(padX, padY));
+            // Map through the actual raster dimensions, including integer padding.
+            return new PreparedFaceImage(
+                pixels,
+                crop,
+                (float)width / crop.Width,
+                (float)height / crop.Height,
+                padX,
+                padY
+            );
+        }
+        catch
+        {
+            pixels.Dispose();
+            throw;
+        }
+    }
+
+    internal sealed class PreparedFaceImage : IDisposable
+    {
+        internal PreparedFaceImage(
+            RgbImage pixels,
+            Rectangle crop,
+            float scaleX,
+            float scaleY,
+            float padX,
+            float padY
+        )
+        {
+            Pixels = pixels;
+            Crop = crop;
+            ScaleX = scaleX;
+            ScaleY = scaleY;
+            PadX = padX;
+            PadY = padY;
+        }
+
+        internal RgbImage Pixels { get; }
+        internal Rectangle Crop { get; }
+        internal float ScaleX { get; }
+        internal float ScaleY { get; }
+        internal float PadX { get; }
+        internal float PadY { get; }
+
+        internal Point2D MapToSource(Point2D point) =>
+            new(Crop.X + (point.X - PadX) / ScaleX, Crop.Y + (point.Y - PadY) / ScaleY);
+
+        public void Dispose() => Pixels.Dispose();
+    }
+
+    private DenseTensor<float> ImageToTensor(RgbImage image)
     {
         var tensor = new DenseTensor<float>([1, 3, ModelInputSize, ModelInputSize]);
 
@@ -191,9 +226,9 @@ public sealed class OnnxLandmarkExtractor : ILandmarkExtractor, IDisposable
         {
             _session.Dispose();
         }
-        catch (Exception ex)
+        catch (Exception)
         {
-            _logger.LogError(ex, "Error during disposal");
+            _logger.LogError(new EventId(34403, "OnnxLandmarkExtractor"), "Error during disposal");
         }
         finally
         {

@@ -1,14 +1,14 @@
 namespace OpenPhysical.Biometrics.Tool.Commands;
 
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics.CodeAnalysis;
-using Spectre.Console;
-using Spectre.Console.Cli;
-using Org.BouncyCastle.Cms;
-using Org.BouncyCastle.X509;
-using System.Collections.Generic;
 using System.Linq;
 using CSharpFunctionalExtensions;
+using Org.BouncyCastle.Cms;
+using Org.BouncyCastle.X509;
+using Spectre.Console;
+using Spectre.Console.Cli;
 
 /// <summary>
 /// Command to extract signing certificate from CHUID data.
@@ -57,7 +57,10 @@ public sealed class ExtractChuidCertCommand : AsyncCommand<ExtractChuidCertComma
     /// <summary>
     /// Executes the extract CHUID certificate command.
     /// </summary>
-    public override async Task<int> ExecuteAsync([NotNull] CommandContext context, [NotNull] Settings settings)
+    public override async Task<int> ExecuteAsync(
+        [NotNull] CommandContext context,
+        [NotNull] Settings settings
+    )
     {
         if (!File.Exists(settings.ChuidFilePath))
         {
@@ -68,14 +71,18 @@ public sealed class ExtractChuidCertCommand : AsyncCommand<ExtractChuidCertComma
         try
         {
             var chuidData = await File.ReadAllBytesAsync(settings.ChuidFilePath);
-            _console.MarkupLine($"[green]Processing CHUID file:[/] {settings.ChuidFilePath} ({chuidData.Length:N0} bytes)");
+            _console.MarkupLine(
+                $"[green]Processing CHUID file:[/] {settings.ChuidFilePath} ({chuidData.Length:N0} bytes)"
+            );
             _console.WriteLine();
 
             // Parse CHUID structure according to SP 800-73-4
             var parseResult = ParseChuidStructure(chuidData);
             if (parseResult.IsFailure)
             {
-                _console.MarkupLine($"[red]Failed to parse CHUID structure:[/] {parseResult.Error}");
+                _console.MarkupLine(
+                    $"[red]Failed to parse CHUID structure:[/] {parseResult.Error}"
+                );
                 return 1;
             }
 
@@ -97,17 +104,25 @@ public sealed class ExtractChuidCertCommand : AsyncCommand<ExtractChuidCertComma
                     _console.MarkupLine($"  Subject: {certificate.SubjectDN}");
                     _console.MarkupLine($"  Issuer: {certificate.IssuerDN}");
                     _console.MarkupLine($"  Serial: {certificate.SerialNumber}");
-                    _console.MarkupLine($"  Valid: {certificate.NotBefore:yyyy-MM-dd} to {certificate.NotAfter:yyyy-MM-dd}");
+                    _console.MarkupLine(
+                        $"  Valid: {certificate.NotBefore:yyyy-MM-dd} to {certificate.NotAfter:yyyy-MM-dd}"
+                    );
 
                     // Save certificate if output directory specified
                     if (!string.IsNullOrEmpty(settings.OutputDirectory))
                     {
-                        await SaveCertificate(certificate, settings.OutputDirectory, Path.GetFileNameWithoutExtension(settings.ChuidFilePath));
+                        await SaveCertificate(
+                            certificate,
+                            settings.OutputDirectory,
+                            Path.GetFileNameWithoutExtension(settings.ChuidFilePath)
+                        );
                     }
                 }
                 else
                 {
-                    _console.MarkupLine($"[red]Failed to extract certificate:[/] {certResult.Error}");
+                    _console.MarkupLine(
+                        $"[red]Failed to extract certificate:[/] {certResult.Error}"
+                    );
                     return 1;
                 }
             }
@@ -139,7 +154,8 @@ public sealed class ExtractChuidCertCommand : AsyncCommand<ExtractChuidCertComma
 
             while (offset < data.Length)
             {
-                if (offset + 2 > data.Length) break;
+                if (offset + 2 > data.Length)
+                    break;
 
                 var tag = data[offset];
                 var length = data[offset + 1];
@@ -178,7 +194,15 @@ public sealed class ExtractChuidCertCommand : AsyncCommand<ExtractChuidCertComma
                 }
             }
 
-            return Result.Success(new ChuidStructure(fascN, cardUuid, expirationDate, asymmetricSignature, lrcSignature));
+            return Result.Success(
+                new ChuidStructure(
+                    fascN,
+                    cardUuid,
+                    expirationDate,
+                    asymmetricSignature,
+                    lrcSignature
+                )
+            );
         }
         catch (Exception ex)
         {
@@ -192,11 +216,11 @@ public sealed class ExtractChuidCertCommand : AsyncCommand<ExtractChuidCertComma
         {
             // The asymmetric signature is a CMS SignedData structure
             var cmsSignedData = new CmsSignedData(signatureData);
-            
+
             // Get certificates from the CMS structure
             var certificates = cmsSignedData.GetCertificates();
             var certList = new List<X509Certificate>(certificates.EnumerateMatches(null));
-            
+
             if (certList.Count == 0)
             {
                 return Result.Failure<X509Certificate>("No certificates found in CHUID signature");
@@ -208,14 +232,16 @@ public sealed class ExtractChuidCertCommand : AsyncCommand<ExtractChuidCertComma
             }
 
             // If multiple certificates, find the signing certificate
-            // Per FIPS 201-3: "If the signature on the biometric was generated with a different key 
+            // Per FIPS 201-3: "If the signature on the biometric was generated with a different key
             // than the signature on the CHUID, the certificates field shall include only a single certificate"
             var signers = cmsSignedData.GetSignerInfos();
             var signerList = signers.Cast<Org.BouncyCastle.Cms.SignerInformation>().ToList();
-            
+
             if (signerList.Count != 1)
             {
-                return Result.Failure<X509Certificate>($"Expected exactly one signer, found {signerList.Count}");
+                return Result.Failure<X509Certificate>(
+                    $"Expected exactly one signer, found {signerList.Count}"
+                );
             }
 
             var signerInfo = signerList[0];
@@ -230,7 +256,9 @@ public sealed class ExtractChuidCertCommand : AsyncCommand<ExtractChuidCertComma
                 }
             }
 
-            return Result.Failure<X509Certificate>("Could not find signing certificate matching signer ID");
+            return Result.Failure<X509Certificate>(
+                "Could not find signing certificate matching signer ID"
+            );
         }
         catch (Exception ex)
         {
@@ -259,30 +287,38 @@ public sealed class ExtractChuidCertCommand : AsyncCommand<ExtractChuidCertComma
 
         if (chuid.AsymmetricSignature != null)
         {
-            tree.AddNode($"Asymmetric Signature (0x3E): {chuid.AsymmetricSignature.Length:N0} bytes");
+            tree.AddNode(
+                $"Asymmetric Signature (0x3E): {chuid.AsymmetricSignature.Length:N0} bytes"
+            );
         }
 
         if (chuid.LrcSignature != null)
         {
-            tree.AddNode($"LRC/Error Detection Code (0xFE): {Convert.ToHexString(chuid.LrcSignature)}");
+            tree.AddNode(
+                $"LRC/Error Detection Code (0xFE): {Convert.ToHexString(chuid.LrcSignature)}"
+            );
         }
 
         _console.Write(tree);
         _console.WriteLine();
     }
 
-    private async Task SaveCertificate(X509Certificate certificate, string outputDirectory, string baseFileName)
+    private async Task SaveCertificate(
+        X509Certificate certificate,
+        string outputDirectory,
+        string baseFileName
+    )
     {
         try
         {
             Directory.CreateDirectory(outputDirectory);
-            
+
             var certFileName = $"{baseFileName}_signer.crt";
             var certPath = Path.Combine(outputDirectory, certFileName);
-            
+
             var certBytes = certificate.GetEncoded();
             await File.WriteAllBytesAsync(certPath, certBytes);
-            
+
             _console.MarkupLine($"[green]Saved certificate:[/] {certPath}");
         }
         catch (Exception ex)
@@ -296,10 +332,19 @@ public sealed class ExtractChuidCertCommand : AsyncCommand<ExtractChuidCertComma
         try
         {
             // CHUID dates are in YYYYMMDD format (8 bytes)
-            if (dateBytes.Length != 8) return null;
+            if (dateBytes.Length != 8)
+                return null;
 
             var dateString = System.Text.Encoding.ASCII.GetString(dateBytes);
-            if (DateTime.TryParseExact(dateString, "yyyyMMdd", null, System.Globalization.DateTimeStyles.None, out var date))
+            if (
+                DateTime.TryParseExact(
+                    dateString,
+                    "yyyyMMdd",
+                    null,
+                    System.Globalization.DateTimeStyles.None,
+                    out var date
+                )
+            )
             {
                 return date;
             }
@@ -319,5 +364,6 @@ public sealed class ExtractChuidCertCommand : AsyncCommand<ExtractChuidCertComma
         Guid? CardUuid,
         DateTime? ExpirationDate,
         byte[]? AsymmetricSignature,
-        byte[]? LrcSignature);
+        byte[]? LrcSignature
+    );
 }

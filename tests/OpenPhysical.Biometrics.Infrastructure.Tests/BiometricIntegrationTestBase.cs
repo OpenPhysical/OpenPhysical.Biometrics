@@ -17,7 +17,7 @@ public abstract class BiometricIntegrationTestBase : IntegrationTestBase
 
         // Add biometric configuration
         services.AddBiometricConfiguration();
-        
+
         // Add biometric services
         services.AddBiometricServices();
     }

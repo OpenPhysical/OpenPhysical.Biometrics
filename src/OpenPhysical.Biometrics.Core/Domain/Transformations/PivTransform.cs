@@ -1,5 +1,5 @@
-using OpenPhysical.Biometrics.Core.Domain.Detection;
 using JetBrains.Annotations;
+using OpenPhysical.Biometrics.Core.Domain.Detection;
 
 namespace OpenPhysical.Biometrics.Core.Domain.Transformations;
 

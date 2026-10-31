@@ -1,17 +1,17 @@
 // MIT License
-// 
+//
 // Copyright (c) 2025 FaceOFFx
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
 // in the Software without restriction, including without limitation the rights
 // to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 // copies of the Software, and to permit persons to whom the Software is
 // furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all
 // copies or substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 // IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 // FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -100,15 +100,17 @@ public class DatasetReviewCommand : AsyncCommand<DatasetReviewCommand.Settings>
             // Load results
             if (!File.Exists(settings.ResultsFile))
             {
-                AnsiConsole.MarkupLine($"[red]Error: Results file not found: {settings.ResultsFile}[/]");
+                AnsiConsole.MarkupLine(
+                    $"[red]Error: Results file not found: {settings.ResultsFile}[/]"
+                );
                 return 1;
             }
 
             var jsonContent = await File.ReadAllTextAsync(settings.ResultsFile);
-            var results = JsonSerializer.Deserialize<List<ValidationResult>>(jsonContent, new JsonSerializerOptions
-            {
-                PropertyNameCaseInsensitive = true
-            });
+            var results = JsonSerializer.Deserialize<List<ValidationResult>>(
+                jsonContent,
+                new JsonSerializerOptions { PropertyNameCaseInsensitive = true }
+            );
 
             if (results == null || results.Count == 0)
             {
@@ -124,9 +126,11 @@ public class DatasetReviewCommand : AsyncCommand<DatasetReviewCommand.Settings>
                 AnsiConsole.MarkupLine("[yellow]No results match the filter criteria[/]");
                 return 0;
             }
-            
+
             // Sort filtered results by filename
-            filteredResults = filteredResults.OrderBy(r => r.FileName, StringComparer.OrdinalIgnoreCase).ToList();
+            filteredResults = filteredResults
+                .OrderBy(r => r.FileName, StringComparer.OrdinalIgnoreCase)
+                .ToList();
 
             // Generate review HTML
             var outputDir = Path.GetDirectoryName(settings.ResultsFile) ?? ".";
@@ -137,7 +141,9 @@ public class DatasetReviewCommand : AsyncCommand<DatasetReviewCommand.Settings>
             OpenInBrowser(reviewHtmlPath);
 
             AnsiConsole.MarkupLine($"[green]Review page generated: {reviewHtmlPath}[/]");
-            AnsiConsole.MarkupLine($"[cyan]Found {filteredResults.Count} images matching criteria[/]");
+            AnsiConsole.MarkupLine(
+                $"[cyan]Found {filteredResults.Count} images matching criteria[/]"
+            );
 
             // If output file requested, prompt for override selection
             if (settings.OutputFile != null)
@@ -165,9 +171,12 @@ public class DatasetReviewCommand : AsyncCommand<DatasetReviewCommand.Settings>
 
         if (settings.FailureReason != null)
         {
-            filtered = filtered.Where(r => 
-                r.Metadata?.ContainsKey("FailureReason") == true &&
-                r.Metadata["FailureReason"].ToString()?.Equals(settings.FailureReason, StringComparison.OrdinalIgnoreCase) == true);
+            filtered = filtered.Where(r =>
+                r.Metadata?.ContainsKey("FailureReason") == true
+                && r.Metadata["FailureReason"]
+                    .ToString()
+                    ?.Equals(settings.FailureReason, StringComparison.OrdinalIgnoreCase) == true
+            );
         }
 
         if (settings.MinSharpness.HasValue || settings.MaxSharpness.HasValue)
@@ -177,13 +186,13 @@ public class DatasetReviewCommand : AsyncCommand<DatasetReviewCommand.Settings>
                 if (r.Metadata?.ContainsKey("SharpnessScore") == true)
                 {
                     var sharpness = Convert.ToSingle(r.Metadata["SharpnessScore"]);
-                    
+
                     if (settings.MinSharpness.HasValue && sharpness < settings.MinSharpness.Value)
                         return false;
-                    
+
                     if (settings.MaxSharpness.HasValue && sharpness > settings.MaxSharpness.Value)
                         return false;
-                    
+
                     return true;
                 }
                 return false;
@@ -193,13 +202,17 @@ public class DatasetReviewCommand : AsyncCommand<DatasetReviewCommand.Settings>
         return filtered.ToList();
     }
 
-    private async Task GenerateReviewHtml(List<ValidationResult> results, string htmlPath, string outputDir)
+    private async Task GenerateReviewHtml(
+        List<ValidationResult> results,
+        string htmlPath,
+        string outputDir
+    )
     {
         // Determine the dataset directory from the results file path
         // Assuming structure: dataset/results.json or processed_dataset/results.json
         var datasetDir = "";
         var resultsDir = Path.GetDirectoryName(outputDir) ?? "";
-        
+
         // Try to find the original dataset directory
         if (resultsDir.StartsWith("processed_"))
         {
@@ -214,8 +227,9 @@ public class DatasetReviewCommand : AsyncCommand<DatasetReviewCommand.Settings>
                 }
             }
         }
-        
-        var html = $@"<!DOCTYPE html>
+
+        var html =
+            $@"<!DOCTYPE html>
 <html>
 <head>
     <title>FaceOFFx Dataset Review</title>
@@ -396,16 +410,18 @@ public class DatasetReviewCommand : AsyncCommand<DatasetReviewCommand.Settings>
     private string GenerateReviewCards(List<ValidationResult> results, string outputDir)
     {
         var cards = new StringBuilder();
-        
+
         // Sort results by filename using natural string comparison
-        var sortedResults = results.OrderBy(r => r.FileName, StringComparer.OrdinalIgnoreCase).ToList();
-        
+        var sortedResults = results
+            .OrderBy(r => r.FileName, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
         foreach (var result in sortedResults)
         {
             var sharpness = 0.0;
             var overallQuality = result.QualityScore ?? 0.0;
             var failureReason = "Other";
-            
+
             if (result.Metadata != null)
             {
                 // Try to get sharpness from QualityAssessment structure
@@ -413,8 +429,17 @@ public class DatasetReviewCommand : AsyncCommand<DatasetReviewCommand.Settings>
                 {
                     try
                     {
-                        var qa = qaObj as JsonElement? ?? (qaObj != null ? JsonSerializer.SerializeToElement(qaObj) : (JsonElement?)null);
-                        if (qa.HasValue && qa.Value.TryGetProperty("Sharpness", out var sharpnessObj))
+                        var qa =
+                            qaObj as JsonElement?
+                            ?? (
+                                qaObj != null
+                                    ? JsonSerializer.SerializeToElement(qaObj)
+                                    : (JsonElement?)null
+                            );
+                        if (
+                            qa.HasValue
+                            && qa.Value.TryGetProperty("Sharpness", out var sharpnessObj)
+                        )
                         {
                             if (sharpnessObj.TryGetProperty("Overall", out var overall))
                             {
@@ -432,25 +457,28 @@ public class DatasetReviewCommand : AsyncCommand<DatasetReviewCommand.Settings>
                             sharpness = Convert.ToDouble(s);
                     }
                 }
-                
+
                 if (result.Metadata.TryGetValue("FailureReason", out var r))
                     failureReason = r.ToString() ?? "Other";
             }
-            
-            var qualityClass = overallQuality >= 0.8 ? "quality-high" : 
-                              overallQuality >= 0.6 ? "quality-medium" : "quality-low";
-            
+
+            var qualityClass =
+                overallQuality >= 0.8 ? "quality-high"
+                : overallQuality >= 0.6 ? "quality-medium"
+                : "quality-low";
+
             // Try to show image preview
             var imagePreview = "";
-            
+
             // Look for the original image
             var possiblePaths = new List<string>();
-            
+
             // If we have the full file path from the result
             if (!string.IsNullOrEmpty(result.FilePath) && File.Exists(result.FilePath))
             {
                 var relativePath = GetRelativePathForHtml(result.FilePath, outputDir);
-                imagePreview = $@"<a href=""{relativePath}"" target=""_blank"">
+                imagePreview =
+                    $@"<a href=""{relativePath}"" target=""_blank"">
                                     <img src=""{relativePath}"" alt=""{result.FileName}"" 
                                          style=""max-width: 100%; height: 200px; object-fit: contain; 
                                          border-radius: 5px; margin-bottom: 10px; background-color: #f0f0f0; cursor: pointer;"" />
@@ -463,15 +491,16 @@ public class DatasetReviewCommand : AsyncCommand<DatasetReviewCommand.Settings>
                 {
                     Path.Combine(outputDir, "..", result.FileName),
                     Path.Combine(outputDir, "..", "tests", "sample_images", result.FileName),
-                    Path.Combine(outputDir, result.FileName)
+                    Path.Combine(outputDir, result.FileName),
                 };
-                
+
                 foreach (var path in searchPaths)
                 {
                     if (File.Exists(path))
                     {
                         var relativePath = GetRelativePathForHtml(path, outputDir);
-                        imagePreview = $@"<a href=""{relativePath}"" target=""_blank"">
+                        imagePreview =
+                            $@"<a href=""{relativePath}"" target=""_blank"">
                                             <img src=""{relativePath}"" alt=""{result.FileName}"" 
                                                  style=""max-width: 100%; height: 200px; object-fit: contain; 
                                                  border-radius: 5px; margin-bottom: 10px; background-color: #f0f0f0; cursor: pointer;"" />
@@ -480,15 +509,17 @@ public class DatasetReviewCommand : AsyncCommand<DatasetReviewCommand.Settings>
                     }
                 }
             }
-            
+
             if (string.IsNullOrEmpty(imagePreview))
             {
-                imagePreview = $@"<div style=""height: 200px; display: flex; align-items: center; 
+                imagePreview =
+                    $@"<div style=""height: 200px; display: flex; align-items: center;
                                  justify-content: center; background-color: #f0f0f0; border-radius: 5px; 
                                  margin-bottom: 10px;""><span class=""text-muted"">Image not found</span></div>";
             }
-            
-            cards.AppendLine($@"
+
+            cards.AppendLine(
+                $@"
                 <div class=""review-card"" data-filename=""{result.FileName}"" 
                      data-sharpness=""{sharpness}"" data-reason=""{failureReason}""
                      onclick=""toggleSelection('{result.FileName}')"">
@@ -516,9 +547,10 @@ public class DatasetReviewCommand : AsyncCommand<DatasetReviewCommand.Settings>
                     </div>
                     
                     <p class=""small text-danger mb-0"">{result.ErrorMessage}</p>
-                </div>");
+                </div>"
+            );
         }
-        
+
         return cards.ToString();
     }
 
@@ -535,34 +567,41 @@ public class DatasetReviewCommand : AsyncCommand<DatasetReviewCommand.Settings>
         }
         catch
         {
-            AnsiConsole.MarkupLine($"[yellow]Could not open browser automatically. Please open: {htmlPath}[/]");
+            AnsiConsole.MarkupLine(
+                $"[yellow]Could not open browser automatically. Please open: {htmlPath}[/]"
+            );
         }
     }
 
     private async Task GenerateOverrideList(List<ValidationResult> results, string outputFile)
     {
         AnsiConsole.MarkupLine("\n[cyan]Select images to override:[/]");
-        
-        var choices = results.Select(r => new
-        {
-            Display = $"{r.FileName} - Sharpness: {GetSharpnessScore(r):P0}, Quality: {r.QualityScore:P0}",
-            FileName = r.FileName
-        }).ToList();
-        
+
+        var choices = results
+            .Select(r => new
+            {
+                Display = $"{r.FileName} - Sharpness: {GetSharpnessScore(r):P0}, Quality: {r.QualityScore:P0}",
+                FileName = r.FileName,
+            })
+            .ToList();
+
         var selected = AnsiConsole.Prompt(
             new MultiSelectionPrompt<string>()
                 .Title("Select images to include in override list")
                 .PageSize(10)
                 .MoreChoicesText("[grey](Move up and down to reveal more images)[/]")
-                .InstructionsText("[grey](Press [blue]<space>[/] to toggle, [green]<enter>[/] to accept)[/]")
-                .AddChoices(choices.Select(c => c.Display)));
-        
+                .InstructionsText(
+                    "[grey](Press [blue]<space>[/] to toggle, [green]<enter>[/] to accept)[/]"
+                )
+                .AddChoices(choices.Select(c => c.Display))
+        );
+
         if (selected.Count > 0)
         {
             var fileNames = selected
                 .Select(s => choices.First(c => c.Display == s).FileName)
                 .ToList();
-            
+
             await File.WriteAllLinesAsync(outputFile, fileNames);
             AnsiConsole.MarkupLine($"[green]Override list saved to: {outputFile}[/]");
             AnsiConsole.MarkupLine($"[cyan]{fileNames.Count} images selected for override[/]");
@@ -581,7 +620,7 @@ public class DatasetReviewCommand : AsyncCommand<DatasetReviewCommand.Settings>
         }
         return 0.0;
     }
-    
+
     private string GetRelativePathForHtml(string absolutePath, string htmlDir)
     {
         try
@@ -589,10 +628,10 @@ public class DatasetReviewCommand : AsyncCommand<DatasetReviewCommand.Settings>
             // Get the relative path from the HTML directory to the image
             var htmlDirFullPath = Path.GetFullPath(htmlDir);
             var imageFullPath = Path.GetFullPath(absolutePath);
-            
+
             // Calculate relative path
             var relativePath = Path.GetRelativePath(htmlDirFullPath, imageFullPath);
-            
+
             // Convert to forward slashes for HTML
             return relativePath.Replace('\\', '/');
         }

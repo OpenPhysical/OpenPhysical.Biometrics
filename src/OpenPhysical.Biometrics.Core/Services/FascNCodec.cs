@@ -34,15 +34,19 @@ public static class FascNCodec
     private const int HexFascnSize = 50;
     private const int BcdChunkSize = 5;
 
-    private static readonly int[] FsPositions = {
+    private static readonly int[] FsPositions =
+    {
         PositionSystemStart - 1,
         PositionCredentialNumber - 1,
         PositionCredentialSeries - 1,
         PositionCredentialIssue - 1,
-        PositionPersonIdentifier - 1
+        PositionPersonIdentifier - 1,
     };
 
-    private static readonly ImmutableDictionary<int, string> BcdFourBitParity = new Dictionary<int, string>
+    private static readonly ImmutableDictionary<int, string> BcdFourBitParity = new Dictionary<
+        int,
+        string
+    >
     {
         { StartSentinel, "11010" },
         { EndSentinel, "11111" },
@@ -56,11 +60,11 @@ public static class FascNCodec
         { 6, "01101" },
         { 7, "11100" },
         { 8, "00010" },
-        { 9, "10011" }
+        { 9, "10011" },
     }.ToImmutableDictionary();
 
-    private static readonly ImmutableDictionary<string, int> FourBitParityBcd = BcdFourBitParity
-        .ToImmutableDictionary(kvp => kvp.Value, kvp => kvp.Key);
+    private static readonly ImmutableDictionary<string, int> FourBitParityBcd =
+        BcdFourBitParity.ToImmutableDictionary(kvp => kvp.Value, kvp => kvp.Key);
 
     /// <summary>
     /// Decodes a FASC-N from byte array.
@@ -85,7 +89,10 @@ public static class FascNCodec
         var cleaned = identifier.Replace(" ", "");
 
         return ValidateAndConvertToBinary(cleaned)
-            .Bind(binary => ParseBinarySegments(binary).Map(segments => (segments, SplitIntoBcdSegments(binary))))
+            .Bind(binary =>
+                ParseBinarySegments(binary)
+                    .Map(segments => (segments, SplitIntoBcdSegments(binary)))
+            )
             .Bind(tuple => ValidateSegments(tuple.segments, tuple.Item2))
             .Bind(ExtractFascNData);
     }
@@ -95,7 +102,8 @@ public static class FascNCodec
     /// </summary>
     public static Result<string> Encode(FascN fascn)
     {
-        return Result.Success(fascn)
+        return Result
+            .Success(fascn)
             .Map(CreateSegments)
             .Map(ConvertToBinary)
             .Map(CalculateAndAppendLrc)
@@ -106,13 +114,17 @@ public static class FascNCodec
     {
         return cleaned.Length switch
         {
-            BinaryFascnSize when !Regex.IsMatch(cleaned, "^[01]+$") =>
-                Result.Failure<string>("Binary string must contain only 0 and 1"),
+            BinaryFascnSize when !Regex.IsMatch(cleaned, "^[01]+$") => Result.Failure<string>(
+                "Binary string must contain only 0 and 1"
+            ),
             BinaryFascnSize => Result.Success(cleaned),
-            HexFascnSize when !Regex.IsMatch(cleaned, "^[0-9a-fA-F]+$") =>
-                Result.Failure<string>("Hex string must contain only hexadecimal characters"),
+            HexFascnSize when !Regex.IsMatch(cleaned, "^[0-9a-fA-F]+$") => Result.Failure<string>(
+                "Hex string must contain only hexadecimal characters"
+            ),
             HexFascnSize => Result.Success(HexToBinary(cleaned)),
-            _ => Result.Failure<string>($"Input must be either {HexFascnSize} hex chars or {BinaryFascnSize} binary chars")
+            _ => Result.Failure<string>(
+                $"Input must be either {HexFascnSize} hex chars or {BinaryFascnSize} binary chars"
+            ),
         };
     }
 
@@ -129,7 +141,9 @@ public static class FascNCodec
                 {
                     if (!FourBitParityBcd.TryGetValue(segments[i], out result[i]))
                     {
-                        return Result.Failure<int[]>($"Unknown BCD segment at position {i}: {segments[i]}");
+                        return Result.Failure<int[]>(
+                            $"Unknown BCD segment at position {i}: {segments[i]}"
+                        );
                     }
                 }
                 else
@@ -148,10 +162,14 @@ public static class FascNCodec
 
     private static Result<int[]> ValidateSegments(int[] segments, string[] bcdSegments)
     {
-        return Result.Success(segments)
+        return Result
+            .Success(segments)
             .Ensure(_ => segments[PositionStartSentinel] == StartSentinel, "Missing start sentinel")
             .Ensure(_ => segments[PositionEndSentinel] == EndSentinel, "Missing end sentinel")
-            .Ensure(_ => FsPositions.All(pos => segments[pos] == FieldSeparator), "Missing field separators")
+            .Ensure(
+                _ => FsPositions.All(pos => segments[pos] == FieldSeparator),
+                "Missing field separators"
+            )
             .Bind(segs => ValidateLrc(segs, bcdSegments));
     }
 
@@ -171,7 +189,8 @@ public static class FascNCodec
             // Count the number of 1 bits in the LRC segment
             var lrcParity = bcdSegments[PositionLrc].Count(c => c == '1');
 
-            return Result.Success(segments)
+            return Result
+                .Success(segments)
                 .Ensure(_ => lrcParity % 2 == 1, "Invalid LRC parity")
                 .Ensure(_ => lrc == 0, "Invalid LRC checksum");
         }
@@ -185,15 +204,51 @@ public static class FascNCodec
     {
         try
         {
-            var agencyCode = CoalesceIntegerArray(segments, PositionAgencyStart, PositionSystemStart - 1);
-            var systemCode = CoalesceIntegerArray(segments, PositionSystemStart, PositionCredentialNumber - 1);
-            var credentialNumber = CoalesceIntegerArray(segments, PositionCredentialNumber, PositionCredentialSeries - 1);
-            var credentialSeries = CoalesceIntegerArray(segments, PositionCredentialSeries, PositionCredentialIssue - 1);
-            var credentialIssue = CoalesceIntegerArray(segments, PositionCredentialIssue, PositionPersonIdentifier - 1);
-            var personIdentifier = CoalesceIntegerArrayLong(segments, PositionPersonIdentifier, PositionOrganizationalCategory);
-            var organizationalCategory = CoalesceIntegerArray(segments, PositionOrganizationalCategory, PositionOrganizationalIdentifier);
-            var organizationalIdentifier = CoalesceIntegerArray(segments, PositionOrganizationalIdentifier, PositionPersonOrganizationalAffiliation);
-            var personOrganizationAffiliation = CoalesceIntegerArray(segments, PositionPersonOrganizationalAffiliation, PositionEndSentinel);
+            var agencyCode = CoalesceIntegerArray(
+                segments,
+                PositionAgencyStart,
+                PositionSystemStart - 1
+            );
+            var systemCode = CoalesceIntegerArray(
+                segments,
+                PositionSystemStart,
+                PositionCredentialNumber - 1
+            );
+            var credentialNumber = CoalesceIntegerArray(
+                segments,
+                PositionCredentialNumber,
+                PositionCredentialSeries - 1
+            );
+            var credentialSeries = CoalesceIntegerArray(
+                segments,
+                PositionCredentialSeries,
+                PositionCredentialIssue - 1
+            );
+            var credentialIssue = CoalesceIntegerArray(
+                segments,
+                PositionCredentialIssue,
+                PositionPersonIdentifier - 1
+            );
+            var personIdentifier = CoalesceIntegerArrayLong(
+                segments,
+                PositionPersonIdentifier,
+                PositionOrganizationalCategory
+            );
+            var organizationalCategory = CoalesceIntegerArray(
+                segments,
+                PositionOrganizationalCategory,
+                PositionOrganizationalIdentifier
+            );
+            var organizationalIdentifier = CoalesceIntegerArray(
+                segments,
+                PositionOrganizationalIdentifier,
+                PositionPersonOrganizationalAffiliation
+            );
+            var personOrganizationAffiliation = CoalesceIntegerArray(
+                segments,
+                PositionPersonOrganizationalAffiliation,
+                PositionEndSentinel
+            );
 
             return FascN.Create(
                 agencyCode,
@@ -204,7 +259,8 @@ public static class FascNCodec
                 personIdentifier,
                 (FascN.OrganizationalCategory)organizationalCategory,
                 organizationalIdentifier,
-                (FascN.PersonOrganizationAffiliation)personOrganizationAffiliation);
+                (FascN.PersonOrganizationAffiliation)personOrganizationAffiliation
+            );
         }
         catch (Exception ex)
         {
@@ -246,7 +302,10 @@ public static class FascNCodec
 
         for (int i = 0; i < binary.Length / 5; i++)
         {
-            var lrcBlock = binary.Substring(i * 5, 5).Select(c => int.Parse(c.ToString())).ToArray();
+            var lrcBlock = binary
+                .Substring(i * 5, 5)
+                .Select(c => int.Parse(c.ToString()))
+                .ToArray();
             for (int j = 0; j < lrcBlock.Length; j++)
                 lrc[j] ^= lrcBlock[j];
         }
@@ -259,7 +318,8 @@ public static class FascNCodec
     private static string ConvertToHex(string binary)
     {
         var nBytes = binary.Length / 8;
-        var bytes = Enumerable.Range(0, nBytes)
+        var bytes = Enumerable
+            .Range(0, nBytes)
             .Select(i => Convert.ToByte(binary.Substring(8 * i, 8), 2))
             .ToArray();
 
@@ -268,17 +328,19 @@ public static class FascNCodec
 
     private static string HexToBinary(string hex)
     {
-        return string.Concat(hex.Select(c => Convert.ToString(Convert.ToInt32(c.ToString(), 16), 2).PadLeft(4, '0')));
+        return string.Concat(
+            hex.Select(c => Convert.ToString(Convert.ToInt32(c.ToString(), 16), 2).PadLeft(4, '0'))
+        );
     }
 
     private static string[] SplitIntoBcdSegments(string binary)
     {
         var segmentCount = binary.Length / BcdChunkSize;
-        return Enumerable.Range(0, segmentCount)
+        return Enumerable
+            .Range(0, segmentCount)
             .Select(i => binary.Substring(i * BcdChunkSize, BcdChunkSize))
             .ToArray();
     }
-
 
     private static int CoalesceIntegerArray(int[] segments, int start, int end)
     {
@@ -292,7 +354,10 @@ public static class FascNCodec
 
     private static void SetDigits(int[] segments, int position, long value, int digits)
     {
-        var digitArray = value.ToString($"D{digits}").Select(c => int.Parse(c.ToString())).ToArray();
+        var digitArray = value
+            .ToString($"D{digits}")
+            .Select(c => int.Parse(c.ToString()))
+            .ToArray();
         Array.Copy(digitArray, 0, segments, position, digitArray.Length);
     }
 }

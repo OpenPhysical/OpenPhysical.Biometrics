@@ -1,5 +1,5 @@
-using JetBrains.Annotations;
 using System.Collections.Immutable;
+using JetBrains.Annotations;
 
 namespace OpenPhysical.Biometrics.Core.Abstractions.Pipeline;
 
@@ -107,17 +107,21 @@ public readonly record struct PipelineConfiguration(
     /// <summary>
     /// Creates a default pipeline configuration.
     /// </summary>
-    public static PipelineConfiguration Default => new(
-        ImmutableDictionary<string, object>.Empty,
-        PipelineExecutionMode.Standard,
-        TimeSpan.FromMinutes(5)
-    );
+    public static PipelineConfiguration Default =>
+        new(
+            ImmutableDictionary<string, object>.Empty,
+            PipelineExecutionMode.Standard,
+            TimeSpan.FromMinutes(5)
+        );
 
     /// <summary>
     /// Returns a new configuration with the specified setting.
     /// </summary>
     public PipelineConfiguration WithSetting(string key, object value) =>
-        this with { Settings = Settings.SetItem(key, value) };
+        this with
+        {
+            Settings = Settings.SetItem(key, value),
+        };
 }
 
 /// <summary>
@@ -128,12 +132,15 @@ public enum PipelineExecutionMode
 {
     /// <summary>Standard execution with all steps</summary>
     Standard,
+
     /// <summary>Interactive execution with checkpoint prompts</summary>
     Interactive,
+
     /// <summary>Automated execution without human intervention</summary>
     Automated,
+
     /// <summary>Validation mode for testing pipeline integrity</summary>
-    Validation
+    Validation,
 }
 
 /// <summary>
@@ -164,7 +171,14 @@ public readonly record struct PipelineExecutionResult<TOutput>(
         IPipelineContext context,
         TimeSpan duration,
         string errorMessage
-    ) => new(default!, context, duration, PipelineExecutionStatus.Failed, Maybe<string>.From(errorMessage));
+    ) =>
+        new(
+            default!,
+            context,
+            duration,
+            PipelineExecutionStatus.Failed,
+            Maybe<string>.From(errorMessage)
+        );
 
     /// <summary>
     /// Creates an aborted pipeline result.
@@ -173,7 +187,14 @@ public readonly record struct PipelineExecutionResult<TOutput>(
         IPipelineContext context,
         TimeSpan duration,
         string reason
-    ) => new(default!, context, duration, PipelineExecutionStatus.Aborted, Maybe<string>.From(reason));
+    ) =>
+        new(
+            default!,
+            context,
+            duration,
+            PipelineExecutionStatus.Aborted,
+            Maybe<string>.From(reason)
+        );
 }
 
 /// <summary>
@@ -184,10 +205,13 @@ public enum PipelineExecutionStatus
 {
     /// <summary>Pipeline completed successfully</summary>
     Completed,
+
     /// <summary>Pipeline failed due to an error</summary>
     Failed,
+
     /// <summary>Pipeline was aborted by user or system</summary>
     Aborted,
+
     /// <summary>Pipeline execution was cancelled</summary>
-    Cancelled
+    Cancelled,
 }

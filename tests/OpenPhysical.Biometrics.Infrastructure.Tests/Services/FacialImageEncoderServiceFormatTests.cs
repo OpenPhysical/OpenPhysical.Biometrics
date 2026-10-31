@@ -1,10 +1,10 @@
 using AwesomeAssertions;
+using CSharpFunctionalExtensions;
+using Microsoft.Extensions.DependencyInjection;
+using NUnit.Framework;
 using OpenPhysical.Biometrics.Core.Domain.Transformations;
 using OpenPhysical.Biometrics.Infrastructure.Services;
 using OpenPhysical.Biometrics.Tests.Common;
-using NUnit.Framework;
-using Microsoft.Extensions.DependencyInjection;
-using CSharpFunctionalExtensions;
 
 namespace OpenPhysical.Biometrics.Infrastructure.Tests.Services;
 
@@ -12,7 +12,7 @@ namespace OpenPhysical.Biometrics.Infrastructure.Tests.Services;
 /// Tests for FacialImageEncoderService with various image formats and configurations
 /// </summary>
 [TestFixture]
-public class FacialImageEncoderServiceFormatTests : BiometricIntegrationTestBase
+internal class FacialImageEncoderServiceFormatTests : BiometricIntegrationTestBase
 {
     private static readonly string TestImagesPath = Path.Combine(
         AppDomain.CurrentDomain.BaseDirectory,
@@ -99,7 +99,7 @@ public class FacialImageEncoderServiceFormatTests : BiometricIntegrationTestBase
 
         // ImageSharp doesn't support JP2 as input, only as output through our encoder
         var result = await _encoderService.ProcessAsync(imageData);
-        
+
         result.IsFailure.Should().BeTrue();
         result.Error.Should().Contain("Invalid image data");
     }
@@ -145,13 +145,23 @@ public class FacialImageEncoderServiceFormatTests : BiometricIntegrationTestBase
         var imageData = await File.ReadAllBytesAsync(pngPath);
 
         // Test JPEG output
-        var jpegResult = await _encoderService.ProcessAsync(imageData, ProcessingOptions.PivBalanced, "jpeg", 85);
+        var jpegResult = await _encoderService.ProcessAsync(
+            imageData,
+            ProcessingOptions.PivBalanced,
+            "jpeg",
+            85
+        );
         jpegResult.IsSuccess.Should().BeTrue();
         jpegResult.Value.ImageData[0].Should().Be(0xFF); // JPEG signature
         jpegResult.Value.ImageData[1].Should().Be(0xD8);
 
         // Test PNG output
-        var pngResult = await _encoderService.ProcessAsync(imageData, ProcessingOptions.PivBalanced, "png", 85);
+        var pngResult = await _encoderService.ProcessAsync(
+            imageData,
+            ProcessingOptions.PivBalanced,
+            "png",
+            85
+        );
         pngResult.IsSuccess.Should().BeTrue();
         pngResult.Value.ImageData[0].Should().Be(0x89); // PNG signature
         pngResult.Value.ImageData[1].Should().Be(0x50);
@@ -159,10 +169,17 @@ public class FacialImageEncoderServiceFormatTests : BiometricIntegrationTestBase
         pngResult.Value.ImageData[3].Should().Be(0x47);
 
         // Test TIFF output
-        var tiffResult = await _encoderService.ProcessAsync(imageData, ProcessingOptions.PivBalanced, "tiff", 85);
+        var tiffResult = await _encoderService.ProcessAsync(
+            imageData,
+            ProcessingOptions.PivBalanced,
+            "tiff",
+            85
+        );
         tiffResult.IsSuccess.Should().BeTrue();
-        var isLittleEndian = tiffResult.Value.ImageData[0] == 0x49 && tiffResult.Value.ImageData[1] == 0x49;
-        var isBigEndian = tiffResult.Value.ImageData[0] == 0x4D && tiffResult.Value.ImageData[1] == 0x4D;
+        var isLittleEndian =
+            tiffResult.Value.ImageData[0] == 0x49 && tiffResult.Value.ImageData[1] == 0x49;
+        var isBigEndian =
+            tiffResult.Value.ImageData[0] == 0x4D && tiffResult.Value.ImageData[1] == 0x4D;
         (isLittleEndian || isBigEndian).Should().BeTrue("Should have valid TIFF signature");
     }
 
@@ -211,7 +228,7 @@ public class FacialImageEncoderServiceFormatTests : BiometricIntegrationTestBase
         var corruptedData = new byte[] { 0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x10 }; // Partial JPEG header
 
         var result = await _encoderService.ProcessAsync(corruptedData);
-        
+
         result.IsFailure.Should().BeTrue();
         result.Error.Should().Contain("Invalid image data");
     }
@@ -225,7 +242,7 @@ public class FacialImageEncoderServiceFormatTests : BiometricIntegrationTestBase
         var bmpHeader = new byte[] { 0x42, 0x4D, 0x00, 0x00, 0x00, 0x00 }; // BMP header (not supported by ImageSharp)
 
         var result = await _encoderService.ProcessAsync(bmpHeader);
-        
+
         result.IsFailure.Should().BeTrue();
         result.Error.Should().Contain("Invalid image data");
     }
@@ -241,23 +258,26 @@ public class FacialImageEncoderServiceFormatTests : BiometricIntegrationTestBase
 
         // Test low quality JPEG
         var lowQualityResult = await _encoderService.ProcessAsync(
-            imageData, 
-            ProcessingOptions.PivBalanced, 
-            "jpeg", 
-            30);
-        
+            imageData,
+            ProcessingOptions.PivBalanced,
+            "jpeg",
+            30
+        );
+
         // Test high quality JPEG
         var highQualityResult = await _encoderService.ProcessAsync(
-            imageData, 
-            ProcessingOptions.PivBalanced, 
-            "jpeg", 
-            95);
+            imageData,
+            ProcessingOptions.PivBalanced,
+            "jpeg",
+            95
+        );
 
         lowQualityResult.IsSuccess.Should().BeTrue();
         highQualityResult.IsSuccess.Should().BeTrue();
-        
+
         // Low quality should be smaller
-        lowQualityResult.Value.ImageData.Length.Should()
+        lowQualityResult
+            .Value.ImageData.Length.Should()
             .BeLessThan(highQualityResult.Value.ImageData.Length);
     }
 
@@ -275,10 +295,11 @@ public class FacialImageEncoderServiceFormatTests : BiometricIntegrationTestBase
         var imageData = await File.ReadAllBytesAsync(pngPath);
 
         var result = await _encoderService.ProcessAsync(
-            imageData, 
-            ProcessingOptions.PivBalanced, 
-            format, 
-            85);
+            imageData,
+            ProcessingOptions.PivBalanced,
+            format,
+            85
+        );
 
         result.IsSuccess.Should().BeTrue();
         result.Value.ImageData.Should().NotBeEmpty();
@@ -297,10 +318,11 @@ public class FacialImageEncoderServiceFormatTests : BiometricIntegrationTestBase
         var imageData = await File.ReadAllBytesAsync(pngPath);
 
         var result = await _encoderService.ProcessAsync(
-            imageData, 
-            ProcessingOptions.PivBalanced, 
+            imageData,
+            ProcessingOptions.PivBalanced,
             "bmp", // Unsupported format
-            85);
+            85
+        );
 
         result.IsFailure.Should().BeTrue();
         result.Error.Should().Contain("Unsupported output format");

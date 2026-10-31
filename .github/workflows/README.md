@@ -1,53 +1,19 @@
-# GitHub Actions Workflows
+# Build and package checks
 
-This directory contains the CI/CD workflows for FaceOFFx.
+`ci.yml` builds and tests .NET 10 on Windows x64, Linux x64/ARM64, and macOS
+x64/ARM64. It checks CSharpier formatting, proves public API documentation
+failures, runs the modern and compatibility suites serially, captures managed
+coverage, and exercises the paired NIST SD04 example plus explicit different-finger rejection workflows.
 
-## Workflows
+The workflow builds its pinned NBIS and NFIQ dependency checkouts into sibling
+local package feeds. Their own workflows run independent reference parity,
+µnit, allocation-failure checks, ASan, UBSan, and complete native-package tests.
 
-### CI Build (`ci.yml`)
+Each Biometrics job packs the modern components and optional facial pipeline, consumes them in a temporary
+project outside the checkout, installs the CLI, and uploads test coverage and
+packages for review. Dependency versions and source commit pins are updated
+together when adopting a new algorithm build.
 
-- **Triggers**: Push to main/develop branches, PRs to main
-- **Purpose**: Build and test on multiple platforms (Ubuntu, Windows, macOS)
-- **Actions**:
-  - Build solution in Release mode
-  - Run all tests
-  - Pack NuGet packages (Ubuntu only)
-  - Test tool installation (Ubuntu only)
-
-### Publish NuGet (`publish.yml`)
-
-- **Triggers**: Push of version tags (v*), manual dispatch
-- **Purpose**: Publish packages to NuGet.org
-- **Actions**:
-  - Build and test
-  - Pack all projects
-  - Upload artifacts
-  - Publish to NuGet.org (requires NUGET_API_KEY secret)
-
-### Create Release (`release.yml`)
-
-- **Triggers**: Push of version tags (v*)
-- **Purpose**: Create GitHub releases with packages
-- **Actions**:
-  - Build and pack all projects
-  - Generate SBOM (Software Bill of Materials)
-  - Create GitHub release with artifacts
-
-## Required Secrets
-
-- `NUGET_API_KEY`: API key for publishing to NuGet.org
-  - Get from: <https://www.nuget.org/account/apikeys>
-  - Set in: Settings → Secrets and variables → Actions
-
-## Versioning
-
-Tag format: `v1.0.0`
-
-To create a new release:
-
-```bash
-git tag v1.0.0
-git push origin v1.0.0
-```
-
-This will trigger both the publish and release workflows.
+Releases use Semantic Versioning and the maintained changelog. Release preparation
+selects the reviewed package versions and native dependency packages from the
+successful runtime matrix before signing a release tag.

@@ -14,17 +14,17 @@ public interface IImageMetadataExtractor
     /// Gets the supported image formats.
     /// </summary>
     ImmutableHashSet<ImageFormat> SupportedFormats { get; }
-    
+
     /// <summary>
     /// Determines if this extractor can handle the given image data.
     /// </summary>
     Result<bool> CanExtract(ImmutableArray<byte> imageData);
-    
+
     /// <summary>
     /// Extracts metadata from the image data.
     /// </summary>
     Task<Result<ImageMetadata>> ExtractAsync(ImmutableArray<byte> imageData);
-    
+
     /// <summary>
     /// Extracts metadata from the image data synchronously.
     /// </summary>

@@ -1,8 +1,8 @@
 using AwesomeAssertions;
+using NUnit.Framework;
 using OpenPhysical.Biometrics.Core.Domain.Common;
 using OpenPhysical.Biometrics.Core.Domain.Detection;
 using OpenPhysical.Biometrics.Core.Domain.Transformations;
-using NUnit.Framework;
 
 namespace OpenPhysical.Biometrics.Core.Tests.Domain.Transformations;
 

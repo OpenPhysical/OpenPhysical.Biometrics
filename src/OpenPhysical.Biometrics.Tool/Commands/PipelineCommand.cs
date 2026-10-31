@@ -1,14 +1,14 @@
+using System.Collections.Immutable;
 using System.ComponentModel;
 using CSharpFunctionalExtensions;
 using JetBrains.Annotations;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using OpenPhysical.Biometrics.Core.Domain.Pipeline;
-using OpenPhysical.Biometrics.Infrastructure.Services;
 using OpenPhysical.Biometrics.Infrastructure.Extensions;
+using OpenPhysical.Biometrics.Infrastructure.Services;
 using Spectre.Console;
 using Spectre.Console.Cli;
-using System.Collections.Immutable;
 
 namespace OpenPhysical.Biometrics.Tool.Commands;
 
@@ -99,34 +99,40 @@ public sealed class PipelineCommand : AsyncCommand<PipelineCommand.Settings>
             // Validate input
             if (!File.Exists(settings.InputPath))
             {
-                AnsiConsole.MarkupLine($"[red]Error: Input file '{settings.InputPath}' not found.[/]");
+                AnsiConsole.MarkupLine(
+                    $"[red]Error: Input file '{settings.InputPath}' not found.[/]"
+                );
                 return 1;
             }
 
             // Parse standard
             if (!Enum.TryParse<BiometricStandard>(settings.Standard, true, out var standard))
             {
-                AnsiConsole.MarkupLine($"[red]Error: Invalid standard '{settings.Standard}'. Valid options: piv, twic, icao[/]");
+                AnsiConsole.MarkupLine(
+                    $"[red]Error: Invalid standard '{settings.Standard}'. Valid options: piv, twic, icao[/]"
+                );
                 return 1;
             }
 
             // Determine output path
-            var outputPath = settings.OutputPath ?? GenerateOutputPath(settings.InputPath, standard);
+            var outputPath =
+                settings.OutputPath ?? GenerateOutputPath(settings.InputPath, standard);
 
             // Create service provider
             var services = new ServiceCollection();
             services.AddLogging(builder => builder.AddConsole());
             // Configure biometric services
             services.AddBiometricServices();
-            
+
             // Configure pipeline defaults if needed
             services.Configure<BiometricPipelineDefaults>(defaults =>
             {
                 // Adjust defaults based on settings
                 if (settings.QualityThreshold != 0.7f)
                 {
-                    defaults.DefaultStandards = defaults.DefaultStandards
-                        .WithQualityThreshold(settings.QualityThreshold);
+                    defaults.DefaultStandards = defaults.DefaultStandards.WithQualityThreshold(
+                        settings.QualityThreshold
+                    );
                 }
             });
 
@@ -138,19 +144,19 @@ public sealed class PipelineCommand : AsyncCommand<PipelineCommand.Settings>
             var imageData = ImmutableArray.Create(await File.ReadAllBytesAsync(settings.InputPath));
 
             // Configure pipeline execution policy
-            var executionPolicy = settings.Interactive 
-                ? PipelineExecutionPolicy.Interactive 
+            var executionPolicy = settings.Interactive
+                ? PipelineExecutionPolicy.Interactive
                 : PipelineExecutionPolicy.Automated;
-                
+
             // Override specific settings if verbose mode
             if (settings.Verbose)
             {
                 executionPolicy = executionPolicy.WithErrorHandling(stopOnFirstError: false);
             }
-            
+
             // Pipeline metadata
-            var metadata = ImmutableDictionary<string, object>.Empty
-                .Add("Source", settings.InputPath)
+            var metadata = ImmutableDictionary<string, object>
+                .Empty.Add("Source", settings.InputPath)
                 .Add("TargetSize", settings.TargetSize ?? 0)
                 .Add("QualityThreshold", settings.QualityThreshold)
                 .Add("SkipQuality", settings.SkipQuality)
@@ -159,35 +165,49 @@ public sealed class PipelineCommand : AsyncCommand<PipelineCommand.Settings>
 
             // Execute pipeline with progress
             Result<BiometricPipelineResult>? result = null;
-            
+
             if (settings.Verbose)
             {
                 // Verbose mode - show each step
                 AnsiConsole.WriteLine();
                 AnsiConsole.Write(new Rule($"[blue]{standard} Pipeline Execution[/]"));
-                
+
                 result = await ExecuteWithDetailedProgress(
-                    pipelineService, imageData, standard, executionPolicy, metadata, logger);
+                    pipelineService,
+                    imageData,
+                    standard,
+                    executionPolicy,
+                    metadata,
+                    logger
+                );
             }
             else
             {
                 // Normal mode - use status display
-                await AnsiConsole.Status()
-                    .StartAsync($"Executing {standard} pipeline...", async ctx =>
-                    {
-                        var execResult = await pipelineService.ExecuteStandardPipelineAsync(
-                            imageData, standard, executionPolicy, metadata);
-                        result = execResult;
-                            
-                        if (execResult.IsSuccess)
+                await AnsiConsole
+                    .Status()
+                    .StartAsync(
+                        $"Executing {standard} pipeline...",
+                        async ctx =>
                         {
-                            ctx.Status($"[green]Pipeline completed successfully[/]");
+                            var execResult = await pipelineService.ExecuteStandardPipelineAsync(
+                                imageData,
+                                standard,
+                                executionPolicy,
+                                metadata
+                            );
+                            result = execResult;
+
+                            if (execResult.IsSuccess)
+                            {
+                                ctx.Status($"[green]Pipeline completed successfully[/]");
+                            }
+                            else
+                            {
+                                ctx.Status($"[red]Pipeline failed: {execResult.Error}[/]");
+                            }
                         }
-                        else
-                        {
-                            ctx.Status($"[red]Pipeline failed: {execResult.Error}[/]");
-                        }
-                    });
+                    );
             }
 
             if (result == null)
@@ -195,7 +215,7 @@ public sealed class PipelineCommand : AsyncCommand<PipelineCommand.Settings>
                 AnsiConsole.MarkupLine("[red]Pipeline execution failed: Unknown error[/]");
                 return 1;
             }
-            
+
             // Now result is not null, we can access its properties
             if (result.Value.IsFailure)
             {
@@ -207,8 +227,10 @@ public sealed class PipelineCommand : AsyncCommand<PipelineCommand.Settings>
             // Extract the successful result value
             var pipelineResult = result.Value.Value;
             var finalData = pipelineResult.FinalData;
-            if (finalData.ProcessingMetadata.TryGetValue("encoded_data", out var encodedData) && 
-                encodedData is byte[])
+            if (
+                finalData.ProcessingMetadata.TryGetValue("encoded_data", out var encodedData)
+                && encodedData is byte[]
+            )
             {
                 var encodedBytes = (byte[])encodedData;
                 await File.WriteAllBytesAsync(outputPath, encodedBytes);
@@ -238,7 +260,8 @@ public sealed class PipelineCommand : AsyncCommand<PipelineCommand.Settings>
         BiometricStandard standard,
         PipelineExecutionPolicy executionPolicy,
         ImmutableDictionary<string, object> metadata,
-        ILogger<PipelineCommand> logger)
+        ILogger<PipelineCommand> logger
+    )
     {
         var table = new Table()
             .Border(TableBorder.Rounded)
@@ -246,7 +269,8 @@ public sealed class PipelineCommand : AsyncCommand<PipelineCommand.Settings>
             .AddColumn("Status")
             .AddColumn("Duration");
 
-        AnsiConsole.Live(table)
+        AnsiConsole
+            .Live(table)
             .Start(liveContext =>
             {
                 // This would need to be enhanced to show real-time progress
@@ -255,7 +279,11 @@ public sealed class PipelineCommand : AsyncCommand<PipelineCommand.Settings>
             });
 
         var result = await pipelineService.ExecuteStandardPipelineAsync(
-            imageData, standard, executionPolicy, metadata);
+            imageData,
+            standard,
+            executionPolicy,
+            metadata
+        );
 
         return result;
     }
@@ -278,45 +306,45 @@ public sealed class PipelineCommand : AsyncCommand<PipelineCommand.Settings>
                 StepStatus.Completed => "[green]✓ Completed[/]",
                 StepStatus.Failed => "[red]✗ Failed[/]",
                 StepStatus.Skipped => "[yellow]- Skipped[/]",
-                _ => "[gray]Unknown[/]"
+                _ => "[gray]Unknown[/]",
             };
 
-            table.AddRow(
-                step.StepName,
-                statusMarkup,
-                $"{step.Duration.TotalMilliseconds:F0}ms");
+            table.AddRow(step.StepName, statusMarkup, $"{step.Duration.TotalMilliseconds:F0}ms");
 
             if (step.ErrorMessage.HasValue)
             {
-                table.AddRow(
-                    string.Empty,
-                    $"[red]{step.ErrorMessage.Value}[/]",
-                    string.Empty);
+                table.AddRow(string.Empty, $"[red]{step.ErrorMessage.Value}[/]", string.Empty);
             }
         }
 
         AnsiConsole.Write(table);
 
         AnsiConsole.WriteLine();
-        AnsiConsole.MarkupLine($"[bold]Total Duration:[/] {result.Duration.TotalMilliseconds:F0}ms");
+        AnsiConsole.MarkupLine(
+            $"[bold]Total Duration:[/] {result.Duration.TotalMilliseconds:F0}ms"
+        );
         AnsiConsole.MarkupLine($"[bold]Pipeline Status:[/] {GetStatusMarkup(result.Status)}");
     }
 
-    private static string GetStatusMarkup(PipelineStatus status) => status switch
-    {
-        PipelineStatus.Completed => "[green]Completed[/]",
-        PipelineStatus.PartiallyCompleted => "[yellow]Partially Completed[/]",
-        PipelineStatus.Failed => "[red]Failed[/]",
-        PipelineStatus.Cancelled => "[gray]Cancelled[/]",
-        _ => "[gray]Unknown[/]"
-    };
+    private static string GetStatusMarkup(PipelineStatus status) =>
+        status switch
+        {
+            PipelineStatus.Completed => "[green]Completed[/]",
+            PipelineStatus.PartiallyCompleted => "[yellow]Partially Completed[/]",
+            PipelineStatus.Failed => "[red]Failed[/]",
+            PipelineStatus.Cancelled => "[gray]Cancelled[/]",
+            _ => "[gray]Unknown[/]",
+        };
 
     private static string GenerateOutputPath(string inputPath, BiometricStandard standard)
     {
         var directory = Path.GetDirectoryName(inputPath) ?? ".";
         var nameWithoutExt = Path.GetFileNameWithoutExtension(inputPath);
         var extension = standard == BiometricStandard.Icao ? "jpg" : "jp2";
-        
-        return Path.Combine(directory, $"{nameWithoutExt}.{standard.ToString().ToLower()}.{extension}");
+
+        return Path.Combine(
+            directory,
+            $"{nameWithoutExt}.{standard.ToString().ToLower()}.{extension}"
+        );
     }
 }

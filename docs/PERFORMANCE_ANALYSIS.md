@@ -2,7 +2,7 @@
 
 ## Executive Summary
 
-This document analyzes the performance characteristics of the ISO/IEC 19794-5 quality assessment implementation in FaceOFFx. The analysis identifies potential performance bottlenecks and provides recommendations for optimization.
+This document analyzes the performance characteristics of the ISO/IEC 19794-5 quality assessment implementation in the optional facial pipeline. The analysis identifies potential performance bottlenecks and provides recommendations for optimization.
 
 ## Performance Characteristics
 
@@ -154,7 +154,7 @@ if (options.EnableParallelAssessment)
    ```
 
 2. **Reduce Image Cloning**
-   - Use `ImageSharp`'s built-in crop operations without cloning
+   - Use `RgbImage` crop operations and account for each owned output buffer
    - Process regions directly on source image
 
 3. **Cache Gabor Filters**

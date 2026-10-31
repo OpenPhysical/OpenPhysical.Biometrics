@@ -1,13 +1,12 @@
+using System.Drawing;
 using AwesomeAssertions;
-using OpenPhysical.Biometrics.Core.Domain.Detection;
-using OpenPhysical.Biometrics.Infrastructure.Services;
-using OpenPhysical.Biometrics.Tests.Common;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
 using NUnit.Framework;
-using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.PixelFormats;
-using SixLabors.ImageSharp.Processing;
+using OpenPhysical.Biometrics.Core.Domain.Detection;
+using OpenPhysical.Biometrics.Imaging;
+using OpenPhysical.Biometrics.Infrastructure.Services;
+using OpenPhysical.Biometrics.Tests.Common;
 
 namespace OpenPhysical.Biometrics.Infrastructure.Tests.Services;
 
@@ -15,7 +14,7 @@ namespace OpenPhysical.Biometrics.Infrastructure.Tests.Services;
 /// Contains unit and integration tests for the ONNX-based landmark extractor.
 /// </summary>
 [TestFixture]
-public class OnnxLandmarkExtractorTests : IntegrationTestBase
+internal class OnnxLandmarkExtractorTests : IntegrationTestBase
 {
     /// <summary>
     /// Private member variable used for testing the <see cref="OnnxLandmarkExtractor"/> class functionality within
@@ -230,11 +229,11 @@ public class OnnxLandmarkExtractorTests : IntegrationTestBase
     /// in unit tests to simulate a graphical input for landmark
     /// extraction.
     /// <returns>
-    /// A new instance of an Image&lt;Rgba32&gt; with defined dimensions and gradient texture.
+    /// A new instance of an RgbImage with defined dimensions and gradient texture.
     /// </returns>
-    private static Image<Rgba32> CreateTestImage()
+    private static RgbImage CreateTestImage()
     {
-        var image = new Image<Rgba32>(256, 256);
+        var image = new RgbImage(256, 256);
 
         // Fill with a gradient to provide some texture
         image.Mutate(ctx =>
@@ -242,7 +241,7 @@ public class OnnxLandmarkExtractorTests : IntegrationTestBase
             // Create a simple gradient background
             for (var y = 0; y < image.Height; y++)
             {
-                var color = new Rgba32(
+                var color = new RgbaPixel(
                     (byte)(255 * y / image.Height),
                     (byte)(200 * y / image.Height),
                     (byte)(150 * y / image.Height)

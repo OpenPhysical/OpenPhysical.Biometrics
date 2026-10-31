@@ -1,9 +1,9 @@
+using System.Diagnostics;
 using JetBrains.Annotations;
 using Microsoft.Extensions.DependencyInjection;
 using OpenPhysical.Biometrics.Core.Abstractions.Pipeline;
 using OpenPhysical.Biometrics.Core.Domain.Pipeline;
 using OpenPhysical.Biometrics.Infrastructure.Pipeline.Steps;
-using System.Diagnostics;
 using static OpenPhysical.Biometrics.Core.Domain.Pipeline.BiometricPipelineSteps;
 
 namespace OpenPhysical.Biometrics.Infrastructure.Pipeline;
@@ -12,7 +12,8 @@ namespace OpenPhysical.Biometrics.Infrastructure.Pipeline;
 /// Composite implementation of a biometric pipeline that orchestrates multiple processing steps.
 /// </summary>
 [PublicAPI]
-public sealed class CompositeBiometricPipeline<TInput, TOutput> : IBiometricPipeline<TInput, TOutput>
+public sealed class CompositeBiometricPipeline<TInput, TOutput>
+    : IBiometricPipeline<TInput, TOutput>
 {
     private readonly IServiceProvider _serviceProvider;
     private readonly ILogger<CompositeBiometricPipeline<TInput, TOutput>> _logger;
@@ -46,7 +47,8 @@ public sealed class CompositeBiometricPipeline<TInput, TOutput> : IBiometricPipe
         string description,
         PipelineConfiguration configuration,
         IServiceProvider serviceProvider,
-        ILogger<CompositeBiometricPipeline<TInput, TOutput>> logger)
+        ILogger<CompositeBiometricPipeline<TInput, TOutput>> logger
+    )
     {
         PipelineId = pipelineId;
         Name = name;
@@ -61,7 +63,8 @@ public sealed class CompositeBiometricPipeline<TInput, TOutput> : IBiometricPipe
     /// </summary>
     public async Task<Result<PipelineExecutionResult<TOutput>>> ExecuteAsync(
         TInput input,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default
+    )
     {
         var context = PipelineContext.Create();
         return await ExecuteAsync(input, context, cancellationToken);
@@ -73,26 +76,43 @@ public sealed class CompositeBiometricPipeline<TInput, TOutput> : IBiometricPipe
     public async Task<Result<PipelineExecutionResult<TOutput>>> ExecuteAsync(
         TInput input,
         IPipelineContext context,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default
+    )
     {
-        _logger.LogInformation("Starting pipeline execution: {PipelineId} ({Name})", PipelineId, Name);
+        _logger.LogInformation(
+            "Starting pipeline execution: {PipelineId} ({Name})",
+            PipelineId,
+            Name
+        );
         var stopwatch = Stopwatch.StartNew();
 
         try
         {
             if (!CanProcess(input))
             {
-                var error = $"Pipeline {PipelineId} cannot process input of type {typeof(TInput).Name}";
-                _logger.LogError(error);
+                var error =
+                    $"Pipeline {PipelineId} cannot process input of type {typeof(TInput).Name}";
+                _logger.LogError(
+                    new EventId(649954, "CompositeBiometricPipeline"),
+                    "CompositeBiometricPipeline failed."
+                );
                 return Result.Failure<PipelineExecutionResult<TOutput>>(error);
             }
 
             // Determine execution strategy based on pipeline type
             var result = PipelineId.Value switch
             {
-                "piv-processing" => await ExecutePivPipelineAsync(input, context, cancellationToken),
-                "quality-assessment" => await ExecuteQualityAssessmentPipelineAsync(input, context, cancellationToken),
-                _ => throw new NotSupportedException($"Pipeline {PipelineId} is not supported")
+                "piv-processing" => await ExecutePivPipelineAsync(
+                    input,
+                    context,
+                    cancellationToken
+                ),
+                "quality-assessment" => await ExecuteQualityAssessmentPipelineAsync(
+                    input,
+                    context,
+                    cancellationToken
+                ),
+                _ => throw new NotSupportedException($"Pipeline {PipelineId} is not supported"),
             };
 
             stopwatch.Stop();
@@ -100,35 +120,59 @@ public sealed class CompositeBiometricPipeline<TInput, TOutput> : IBiometricPipe
             if (result.IsFailure)
             {
                 _logger.LogError(
-                    "Pipeline execution failed after {Duration}ms: {Error}",
-                    stopwatch.ElapsedMilliseconds, result.Error);
+                    new EventId(683960, "CompositeBiometricPipeline"),
+                    "CompositeBiometricPipeline failed."
+                );
 
-                return Result.Success(PipelineExecutionResult<TOutput>.Failure(
-                    context, stopwatch.Elapsed, result.Error));
+                return Result.Success(
+                    PipelineExecutionResult<TOutput>.Failure(
+                        context,
+                        stopwatch.Elapsed,
+                        result.Error
+                    )
+                );
             }
 
             _logger.LogInformation(
                 "Pipeline execution completed successfully in {Duration}ms",
-                stopwatch.ElapsedMilliseconds);
+                stopwatch.ElapsedMilliseconds
+            );
 
-            return Result.Success(PipelineExecutionResult<TOutput>.Success(
-                result.Value, context, stopwatch.Elapsed));
+            return Result.Success(
+                PipelineExecutionResult<TOutput>.Success(result.Value, context, stopwatch.Elapsed)
+            );
         }
         catch (OperationCanceledException)
         {
             stopwatch.Stop();
-            _logger.LogWarning("Pipeline execution was cancelled after {Duration}ms", stopwatch.ElapsedMilliseconds);
-            
-            return Result.Success(PipelineExecutionResult<TOutput>.Aborted(
-                context, stopwatch.Elapsed, "Pipeline execution was cancelled"));
+            _logger.LogWarning(
+                "Pipeline execution was cancelled after {Duration}ms",
+                stopwatch.ElapsedMilliseconds
+            );
+
+            return Result.Success(
+                PipelineExecutionResult<TOutput>.Aborted(
+                    context,
+                    stopwatch.Elapsed,
+                    "Pipeline execution was cancelled"
+                )
+            );
         }
         catch (Exception ex)
         {
             stopwatch.Stop();
-            _logger.LogError(ex, "Pipeline execution failed with exception after {Duration}ms", stopwatch.ElapsedMilliseconds);
-            
-            return Result.Success(PipelineExecutionResult<TOutput>.Failure(
-                context, stopwatch.Elapsed, $"Pipeline execution failed: {ex.Message}"));
+            _logger.LogError(
+                new EventId(811931, "CompositeBiometricPipeline"),
+                "CompositeBiometricPipeline failed."
+            );
+
+            return Result.Success(
+                PipelineExecutionResult<TOutput>.Failure(
+                    context,
+                    stopwatch.Elapsed,
+                    $"Pipeline execution failed: {ex.Message}"
+                )
+            );
         }
     }
 
@@ -153,7 +197,8 @@ public sealed class CompositeBiometricPipeline<TInput, TOutput> : IBiometricPipe
     private async Task<Result<TOutput>> ExecutePivPipelineAsync(
         TInput input,
         IPipelineContext context,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         if (input is not BiometricData biometricData)
         {
@@ -165,24 +210,36 @@ public sealed class CompositeBiometricPipeline<TInput, TOutput> : IBiometricPipe
             // Step 1: Face Detection
             var faceDetectionStep = CreateFaceDetectionStep();
             var faceResult = await ExecuteStepWithTracing(
-                faceDetectionStep, biometricData, context, cancellationToken);
-            
+                faceDetectionStep,
+                biometricData,
+                context,
+                cancellationToken
+            );
+
             if (faceResult.IsFailure)
                 return Result.Failure<TOutput>(faceResult.Error);
 
             // Step 2: Quality Assessment
             var qualityStep = CreateQualityAssessmentStep();
             var qualityResult = await ExecuteStepWithTracing(
-                qualityStep, faceResult.Value, context, cancellationToken);
-            
+                qualityStep,
+                faceResult.Value,
+                context,
+                cancellationToken
+            );
+
             if (qualityResult.IsFailure)
                 return Result.Failure<TOutput>(qualityResult.Error);
 
             // Step 3: Landmark Extraction
             var landmarkStep = CreateLandmarkExtractionStep();
             var landmarkResult = await ExecuteStepWithTracing(
-                landmarkStep, qualityResult.Value, context, cancellationToken);
-            
+                landmarkStep,
+                qualityResult.Value,
+                context,
+                cancellationToken
+            );
+
             if (landmarkResult.IsFailure)
                 return Result.Failure<TOutput>(landmarkResult.Error);
 
@@ -196,7 +253,10 @@ public sealed class CompositeBiometricPipeline<TInput, TOutput> : IBiometricPipe
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "PIV pipeline execution failed");
+            _logger.LogError(
+                new EventId(853441, "CompositeBiometricPipeline"),
+                "CompositeBiometricPipeline failed."
+            );
             return Result.Failure<TOutput>($"PIV pipeline failed: {ex.Message}");
         }
     }
@@ -207,11 +267,14 @@ public sealed class CompositeBiometricPipeline<TInput, TOutput> : IBiometricPipe
     private async Task<Result<TOutput>> ExecuteQualityAssessmentPipelineAsync(
         TInput input,
         IPipelineContext context,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         if (input is not BiometricData biometricData)
         {
-            return Result.Failure<TOutput>("Quality assessment pipeline requires BiometricData input");
+            return Result.Failure<TOutput>(
+                "Quality assessment pipeline requires BiometricData input"
+            );
         }
 
         try
@@ -219,16 +282,24 @@ public sealed class CompositeBiometricPipeline<TInput, TOutput> : IBiometricPipe
             // Step 1: Face Detection
             var faceDetectionStep = CreateFaceDetectionStep();
             var faceResult = await ExecuteStepWithTracing(
-                faceDetectionStep, biometricData, context, cancellationToken);
-            
+                faceDetectionStep,
+                biometricData,
+                context,
+                cancellationToken
+            );
+
             if (faceResult.IsFailure)
                 return Result.Failure<TOutput>(faceResult.Error);
 
             // Step 2: Quality Assessment
             var qualityStep = CreateQualityAssessmentStep();
             var qualityResult = await ExecuteStepWithTracing(
-                qualityStep, faceResult.Value, context, cancellationToken);
-            
+                qualityStep,
+                faceResult.Value,
+                context,
+                cancellationToken
+            );
+
             if (qualityResult.IsFailure)
                 return Result.Failure<TOutput>(qualityResult.Error);
 
@@ -242,7 +313,10 @@ public sealed class CompositeBiometricPipeline<TInput, TOutput> : IBiometricPipe
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Quality assessment pipeline execution failed");
+            _logger.LogError(
+                new EventId(887095, "CompositeBiometricPipeline"),
+                "CompositeBiometricPipeline failed."
+            );
             return Result.Failure<TOutput>($"Quality assessment pipeline failed: {ex.Message}");
         }
     }
@@ -254,7 +328,8 @@ public sealed class CompositeBiometricPipeline<TInput, TOutput> : IBiometricPipe
         IPipelineStep<TStepInput, ProcessedBiometricData> step,
         TStepInput input,
         IPipelineContext context,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         var startTime = DateTimeOffset.UtcNow;
         _logger.LogDebug("Executing step: {StepId} ({StepName})", step.StepId, step.Name);
@@ -268,14 +343,26 @@ public sealed class CompositeBiometricPipeline<TInput, TOutput> : IBiometricPipe
             {
                 var trace = PipelineStepTrace.Success(step.StepId, step.Name, startTime, endTime);
                 context = context.WithStepTrace(trace);
-                _logger.LogDebug("Step completed successfully: {StepId} in {Duration}ms", 
-                    step.StepId, (endTime - startTime).TotalMilliseconds);
+                _logger.LogDebug(
+                    "Step completed successfully: {StepId} in {Duration}ms",
+                    step.StepId,
+                    (endTime - startTime).TotalMilliseconds
+                );
             }
             else
             {
-                var trace = PipelineStepTrace.Failure(step.StepId, step.Name, startTime, endTime, result.Error);
+                var trace = PipelineStepTrace.Failure(
+                    step.StepId,
+                    step.Name,
+                    startTime,
+                    endTime,
+                    result.Error
+                );
                 context = context.WithStepTrace(trace);
-                _logger.LogError("Step failed: {StepId} - {Error}", step.StepId, result.Error);
+                _logger.LogError(
+                    new EventId(858122, "CompositeBiometricPipeline"),
+                    "CompositeBiometricPipeline failed."
+                );
             }
 
             return result;
@@ -283,10 +370,21 @@ public sealed class CompositeBiometricPipeline<TInput, TOutput> : IBiometricPipe
         catch (Exception ex)
         {
             var endTime = DateTimeOffset.UtcNow;
-            var trace = PipelineStepTrace.Failure(step.StepId, step.Name, startTime, endTime, ex.Message);
+            var trace = PipelineStepTrace.Failure(
+                step.StepId,
+                step.Name,
+                startTime,
+                endTime,
+                ex.Message
+            );
             context = context.WithStepTrace(trace);
-            _logger.LogError(ex, "Step failed with exception: {StepId}", step.StepId);
-            return Result.Failure<ProcessedBiometricData>($"Step {step.StepId} failed: {ex.Message}");
+            _logger.LogError(
+                new EventId(829660, "CompositeBiometricPipeline"),
+                "CompositeBiometricPipeline failed."
+            );
+            return Result.Failure<ProcessedBiometricData>(
+                $"Step {step.StepId} failed: {ex.Message}"
+            );
         }
     }
 
@@ -295,8 +393,12 @@ public sealed class CompositeBiometricPipeline<TInput, TOutput> : IBiometricPipe
     /// </summary>
     private IFaceDetectionStep CreateFaceDetectionStep()
     {
-        var confidence = Configuration.GetSetting<float>("face_detection_confidence").GetValueOrDefault(0.8f);
-        var allowMultiple = Configuration.GetSetting<bool>("allow_multiple_faces").GetValueOrDefault(false);
+        var confidence = Configuration
+            .GetSetting<float>("face_detection_confidence")
+            .GetValueOrDefault(0.8f);
+        var allowMultiple = Configuration
+            .GetSetting<bool>("allow_multiple_faces")
+            .GetValueOrDefault(false);
 
         return new FaceDetectionStep(
             _serviceProvider.GetRequiredService<IFaceDetector>(),
@@ -311,8 +413,12 @@ public sealed class CompositeBiometricPipeline<TInput, TOutput> : IBiometricPipe
     /// </summary>
     private IQualityAssessmentStep CreateQualityAssessmentStep()
     {
-        var threshold = Configuration.GetSetting<float>("quality_threshold").GetValueOrDefault(0.7f);
-        var standard = Configuration.GetSetting<QualityStandard>("quality_standard").GetValueOrDefault(QualityStandard.NistSp800_76);
+        var threshold = Configuration
+            .GetSetting<float>("quality_threshold")
+            .GetValueOrDefault(0.7f);
+        var standard = Configuration
+            .GetSetting<QualityStandard>("quality_standard")
+            .GetValueOrDefault(QualityStandard.NistSp800_76);
 
         return new QualityAssessmentStep(
             _serviceProvider.GetRequiredService<IQualityAssessor>(),

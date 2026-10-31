@@ -1,15 +1,15 @@
+using System.Drawing;
 using JetBrains.Annotations;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using OpenPhysical.Biometrics.Core.Abstractions;
 using OpenPhysical.Biometrics.Core.Abstractions.Pipeline;
-using OpenPhysical.Biometrics.Core.Domain.Quality;
 using OpenPhysical.Biometrics.Core.Domain.Pipeline;
-using OpenPhysical.Biometrics.Infrastructure.Pipeline.Steps;
+using OpenPhysical.Biometrics.Core.Domain.Quality;
+using OpenPhysical.Biometrics.Imaging;
 using OpenPhysical.Biometrics.Infrastructure.Pipeline.Checkpoints;
+using OpenPhysical.Biometrics.Infrastructure.Pipeline.Steps;
 using OpenPhysical.Biometrics.Infrastructure.Services;
-using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.PixelFormats;
 using Spectre.Console;
 
 namespace OpenPhysical.Biometrics.Infrastructure.Extensions;
@@ -37,7 +37,7 @@ public static class BiometricServiceExtensions
         services.AddSingleton<IBiometricPipelineService, BiometricPipelineService>();
         services.AddSingleton<IBiometricEncodingService, BiometricEncodingService>();
         services.AddSingleton<IBiometricProcessingService, BiometricProcessingService>();
-        
+
         // Legacy service with new architecture support
         services.AddTransient<FacialImageEncoderService>(provider =>
         {
@@ -46,32 +46,46 @@ public static class BiometricServiceExtensions
             var jpeg2000Encoder = provider.GetRequiredService<IJpeg2000Encoder>();
             var processingService = provider.GetRequiredService<IBiometricProcessingService>();
             var logger = provider.GetRequiredService<ILogger<FacialImageEncoderService>>();
-            
+
             return new FacialImageEncoderService(
                 faceDetector,
                 landmarkExtractor,
                 jpeg2000Encoder,
                 processingService,
-                logger);
+                logger
+            );
         });
 
         // Pipeline steps
         services.AddTransient<BiometricPipelineSteps.IFaceDetectionStep, FaceDetectionStep>();
-        services.AddTransient<BiometricPipelineSteps.ILandmarkExtractionStep, LandmarkExtractionStep>();
-        services.AddTransient<BiometricPipelineSteps.IQualityAssessmentStep, QualityAssessmentStep>();
-        services.AddTransient<BiometricPipelineSteps.IImageTransformStep, ImageTransformationStep>();
+        services.AddTransient<
+            BiometricPipelineSteps.ILandmarkExtractionStep,
+            LandmarkExtractionStep
+        >();
+        services.AddTransient<
+            BiometricPipelineSteps.IQualityAssessmentStep,
+            QualityAssessmentStep
+        >();
+        services.AddTransient<
+            BiometricPipelineSteps.IImageTransformStep,
+            ImageTransformationStep
+        >();
         services.AddTransient<BiometricPipelineSteps.IJpeg2000EncodingStep, EncodingStep>();
 
         // Checkpoints
-        services.AddTransient<ICheckpoint<Core.Domain.Pipeline.QualityMetrics>>(provider =>
-            new ConsoleQualityApprovalCheckpoint(
+        services.AddTransient<ICheckpoint<Core.Domain.Pipeline.QualityMetrics>>(
+            provider => new ConsoleQualityApprovalCheckpoint(
                 AnsiConsole.Console,
-                provider.GetRequiredService<ILogger<QualityApprovalCheckpoint>>()));
+                provider.GetRequiredService<ILogger<QualityApprovalCheckpoint>>()
+            )
+        );
 
-        services.AddTransient<ICheckpoint<IReadOnlyList<Core.Domain.Detection.DetectedFace>>>(provider =>
-            new ConsoleFaceSelectionCheckpoint(
+        services.AddTransient<ICheckpoint<IReadOnlyList<Core.Domain.Detection.DetectedFace>>>(
+            provider => new ConsoleFaceSelectionCheckpoint(
                 AnsiConsole.Console,
-                provider.GetRequiredService<ILogger<FaceSelectionCheckpoint>>()));
+                provider.GetRequiredService<ILogger<FaceSelectionCheckpoint>>()
+            )
+        );
 
         // CBEFF services - use the static method from CbeffServiceExtensions
         CbeffServiceExtensions.AddCbeffServices(services);
@@ -84,7 +98,8 @@ public static class BiometricServiceExtensions
     /// </summary>
     public static IServiceCollection AddBiometricServices(
         this IServiceCollection services,
-        Action<BiometricServiceOptions> configureOptions)
+        Action<BiometricServiceOptions> configureOptions
+    )
     {
         var options = new BiometricServiceOptions();
         configureOptions(options);
@@ -92,8 +107,9 @@ public static class BiometricServiceExtensions
         // Register based on options
         if (options.UseMockDetector)
         {
-            services.AddSingleton<IFaceDetector>(provider =>
-                new MockFaceDetector(provider.GetRequiredService<ILogger<MockFaceDetector>>()));
+            services.AddSingleton<IFaceDetector>(provider => new MockFaceDetector(
+                provider.GetRequiredService<ILogger<MockFaceDetector>>()
+            ));
         }
         else
         {
@@ -111,7 +127,7 @@ public static class BiometricServiceExtensions
         services.AddSingleton<IBiometricPipelineService, BiometricPipelineService>();
         services.AddSingleton<IBiometricEncodingService, BiometricEncodingService>();
         services.AddSingleton<IBiometricProcessingService, BiometricProcessingService>();
-        
+
         // Legacy service with new architecture support
         services.AddTransient<FacialImageEncoderService>(provider =>
         {
@@ -120,49 +136,64 @@ public static class BiometricServiceExtensions
             var jpeg2000Encoder = provider.GetRequiredService<IJpeg2000Encoder>();
             var processingService = provider.GetRequiredService<IBiometricProcessingService>();
             var logger = provider.GetRequiredService<ILogger<FacialImageEncoderService>>();
-            
+
             return new FacialImageEncoderService(
                 faceDetector,
                 landmarkExtractor,
                 jpeg2000Encoder,
                 processingService,
-                logger);
+                logger
+            );
         });
 
         // Pipeline steps with custom configuration
         if (options.RegisterPipelineSteps)
         {
-            services.AddTransient<BiometricPipelineSteps.IFaceDetectionStep>(provider =>
-                new FaceDetectionStep(
+            services.AddTransient<BiometricPipelineSteps.IFaceDetectionStep>(
+                provider => new FaceDetectionStep(
                     provider.GetRequiredService<IFaceDetector>(),
                     provider.GetRequiredService<ILogger<FaceDetectionStep>>(),
-                    options.MinFaceConfidence));
+                    options.MinFaceConfidence
+                )
+            );
 
-            services.AddTransient<BiometricPipelineSteps.ILandmarkExtractionStep, LandmarkExtractionStep>();
-            
-            services.AddTransient<BiometricPipelineSteps.IQualityAssessmentStep>(provider =>
-                new QualityAssessmentStep(
+            services.AddTransient<
+                BiometricPipelineSteps.ILandmarkExtractionStep,
+                LandmarkExtractionStep
+            >();
+
+            services.AddTransient<BiometricPipelineSteps.IQualityAssessmentStep>(
+                provider => new QualityAssessmentStep(
                     provider.GetRequiredService<IQualityAssessor>(),
                     provider.GetRequiredService<ILogger<QualityAssessmentStep>>(),
                     options.QualityStandard,
-                    Core.Domain.Quality.QualityScore.Create(options.MinQualityThreshold).Value));
+                    Core.Domain.Quality.QualityScore.Create(options.MinQualityThreshold).Value
+                )
+            );
 
-            services.AddTransient<BiometricPipelineSteps.IImageTransformStep, ImageTransformationStep>();
+            services.AddTransient<
+                BiometricPipelineSteps.IImageTransformStep,
+                ImageTransformationStep
+            >();
             services.AddTransient<BiometricPipelineSteps.IJpeg2000EncodingStep, EncodingStep>();
         }
 
         // Checkpoints
         if (options.RegisterCheckpoints)
         {
-            services.AddTransient<ICheckpoint<Core.Domain.Pipeline.QualityMetrics>>(provider =>
-                new ConsoleQualityApprovalCheckpoint(
+            services.AddTransient<ICheckpoint<Core.Domain.Pipeline.QualityMetrics>>(
+                provider => new ConsoleQualityApprovalCheckpoint(
                     AnsiConsole.Console,
-                    provider.GetRequiredService<ILogger<QualityApprovalCheckpoint>>()));
+                    provider.GetRequiredService<ILogger<QualityApprovalCheckpoint>>()
+                )
+            );
 
-            services.AddTransient<ICheckpoint<IReadOnlyList<Core.Domain.Detection.DetectedFace>>>(provider =>
-                new ConsoleFaceSelectionCheckpoint(
+            services.AddTransient<ICheckpoint<IReadOnlyList<Core.Domain.Detection.DetectedFace>>>(
+                provider => new ConsoleFaceSelectionCheckpoint(
                     AnsiConsole.Console,
-                    provider.GetRequiredService<ILogger<FaceSelectionCheckpoint>>()));
+                    provider.GetRequiredService<ILogger<FaceSelectionCheckpoint>>()
+                )
+            );
         }
 
         // CBEFF services if requested
@@ -183,13 +214,13 @@ public static class BiometricServiceExtensions
         services.AddSingleton<ILandmarkExtractor, OnnxLandmarkExtractor>();
         services.AddSingleton<IJpeg2000Encoder, Jpeg2000EncoderService>();
         services.AddSingleton<IQualityAssessor, QualityAssessor>();
-        
+
         // Functional facial image encoder service (Result<T> pattern)
         services.AddTransient<FacialImageEncoderService>();
-        
+
         // Aggregated biometric processing services for convenience
         services.AddTransient<BiometricProcessingServices>();
-        
+
         return services;
     }
 
@@ -201,7 +232,7 @@ public static class BiometricServiceExtensions
         services.AddSingleton<IImageProcessingService, ImageProcessingService>();
         services.AddSingleton<IJpeg2000Service, Jpeg2000Service>();
         services.AddSingleton<IBiometricPipelineService, BiometricPipelineService>();
-        
+
         return services;
     }
 
@@ -218,23 +249,29 @@ public static class BiometricServiceExtensions
         }
 
         public Task<Result<IReadOnlyList<Core.Domain.Detection.DetectedFace>>> DetectFacesAsync(
-            Image<Rgba32> image,
-            CancellationToken cancellationToken = default)
+            RgbImage image,
+            CancellationToken cancellationToken = default
+        )
         {
-            _logger.LogDebug("Mock face detection returning single face");
-            
-            var faceBox = Core.Domain.Detection.FaceBox.Create(
-                image.Width / 4f,
-                image.Height / 4f,
-                image.Width / 2f,
-                image.Height / 2f).Value;
+            _logger.LogDebug(
+                new EventId(401900, "BiometricServiceExtensions"),
+                "Mock face detection returning single face"
+            );
 
-            var faces = new List<Core.Domain.Detection.DetectedFace>
-            {
-                new(faceBox, 0.95f)
-            };
+            var faceBox = Core
+                .Domain.Detection.FaceBox.Create(
+                    image.Width / 4f,
+                    image.Height / 4f,
+                    image.Width / 2f,
+                    image.Height / 2f
+                )
+                .Value;
 
-            return Task.FromResult(Result.Success<IReadOnlyList<Core.Domain.Detection.DetectedFace>>(faces));
+            var faces = new List<Core.Domain.Detection.DetectedFace> { new(faceBox, 0.95f) };
+
+            return Task.FromResult(
+                Result.Success<IReadOnlyList<Core.Domain.Detection.DetectedFace>>(faces)
+            );
         }
 
         public void Dispose()

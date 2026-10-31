@@ -14,12 +14,12 @@ public interface IJpegMetadataExtractor : IImageMetadataExtractor
     /// Extracts JPEG-specific metadata including EXIF data.
     /// </summary>
     new Task<Result<JpegMetadata>> ExtractAsync(ImmutableArray<byte> imageData);
-    
+
     /// <summary>
     /// Extracts JPEG-specific metadata including EXIF data synchronously.
     /// </summary>
     new Result<JpegMetadata> Extract(ImmutableArray<byte> imageData);
-    
+
     /// <summary>
     /// Extracts only EXIF data from JPEG image.
     /// </summary>

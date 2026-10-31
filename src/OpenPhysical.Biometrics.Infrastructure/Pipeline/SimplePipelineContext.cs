@@ -1,6 +1,6 @@
-using OpenPhysical.Biometrics.Core.Abstractions.Pipeline;
 using System.Collections.Immutable;
 using JetBrains.Annotations;
+using OpenPhysical.Biometrics.Core.Abstractions.Pipeline;
 
 namespace OpenPhysical.Biometrics.Infrastructure.Pipeline;
 
@@ -29,7 +29,8 @@ public sealed record SimplePipelineContext : IPipelineContext
         PipelineExecutionId executionId,
         DateTimeOffset startedAt,
         ImmutableDictionary<string, object> metadata,
-        ImmutableList<PipelineStepTrace> executionTrace)
+        ImmutableList<PipelineStepTrace> executionTrace
+    )
     {
         ExecutionId = executionId;
         StartedAt = startedAt;
@@ -40,16 +41,20 @@ public sealed record SimplePipelineContext : IPipelineContext
     /// <summary>
     /// Creates a new pipeline context with default values.
     /// </summary>
-    public static SimplePipelineContext Create() => new(
-        PipelineExecutionId.New(),
-        DateTimeOffset.UtcNow,
-        ImmutableDictionary<string, object>.Empty,
-        ImmutableList<PipelineStepTrace>.Empty
-    );
+    public static SimplePipelineContext Create() =>
+        new(
+            PipelineExecutionId.New(),
+            DateTimeOffset.UtcNow,
+            ImmutableDictionary<string, object>.Empty,
+            ImmutableList<PipelineStepTrace>.Empty
+        );
 
     /// <inheritdoc />
-    public IPipelineContext WithMetadata(string key, object value) => 
-        this with { Metadata = Metadata.SetItem(key, value) };
+    public IPipelineContext WithMetadata(string key, object value) =>
+        this with
+        {
+            Metadata = Metadata.SetItem(key, value),
+        };
 
     /// <inheritdoc />
     public IPipelineContext WithMetadata(ImmutableDictionary<string, object> metadata)
@@ -63,8 +68,11 @@ public sealed record SimplePipelineContext : IPipelineContext
     }
 
     /// <inheritdoc />
-    public IPipelineContext WithStepTrace(PipelineStepTrace stepTrace) => 
-        this with { ExecutionTrace = ExecutionTrace.Add(stepTrace) };
+    public IPipelineContext WithStepTrace(PipelineStepTrace stepTrace) =>
+        this with
+        {
+            ExecutionTrace = ExecutionTrace.Add(stepTrace),
+        };
 
     /// <inheritdoc />
     public Maybe<T> GetMetadata<T>(string key)

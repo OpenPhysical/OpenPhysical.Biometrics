@@ -1,15 +1,12 @@
-using OpenPhysical.Biometrics.Core.Abstractions;
-using OpenPhysical.Biometrics.Core.Domain.Detection;
-using OpenPhysical.Biometrics.Core.Domain.Transformations;
+using System.Collections.Immutable;
+using System.Drawing;
 using CSharpFunctionalExtensions;
 using JetBrains.Annotations;
 using Microsoft.Extensions.Logging;
-using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.Formats.Jpeg;
-using SixLabors.ImageSharp.Formats.Png;
-using SixLabors.ImageSharp.Formats.Tiff;
-using SixLabors.ImageSharp.PixelFormats;
-using System.Collections.Immutable;
+using OpenPhysical.Biometrics.Core.Abstractions;
+using OpenPhysical.Biometrics.Core.Domain.Detection;
+using OpenPhysical.Biometrics.Core.Domain.Transformations;
+using OpenPhysical.Biometrics.Imaging;
 
 namespace OpenPhysical.Biometrics.Infrastructure.Services;
 
@@ -23,22 +20,22 @@ public interface IBiometricEncodingService
     /// <summary>
     /// Encodes an image to JPEG 2000 format with optional ROI support
     /// </summary>
-    Result<EncodedImageData> EncodeToJpeg2000(Image<Rgba32> image, Jpeg2000EncodingOptions options);
-    
+    Result<EncodedImageData> EncodeToJpeg2000(RgbImage image, Jpeg2000EncodingOptions options);
+
     /// <summary>
     /// Encodes an image to JPEG format
     /// </summary>
-    Result<EncodedImageData> EncodeToJpeg(Image<Rgba32> image, int quality = 85);
-    
+    Result<EncodedImageData> EncodeToJpeg(RgbImage image, int quality = 85);
+
     /// <summary>
     /// Encodes an image to PNG format
     /// </summary>
-    Result<EncodedImageData> EncodeToPng(Image<Rgba32> image);
-    
+    Result<EncodedImageData> EncodeToPng(RgbImage image);
+
     /// <summary>
     /// Encodes an image to TIFF format
     /// </summary>
-    Result<EncodedImageData> EncodeToTiff(Image<Rgba32> image);
+    Result<EncodedImageData> EncodeToTiff(RgbImage image);
 }
 
 /// <summary>
@@ -49,7 +46,8 @@ public sealed record EncodedImageData(
     ImmutableArray<byte> Data,
     string Format,
     int FileSize,
-    ImageDimensions Dimensions);
+    ImageDimensions Dimensions
+);
 
 /// <summary>
 /// Options for JPEG 2000 encoding
@@ -60,7 +58,8 @@ public sealed record Jpeg2000EncodingOptions(
     FacialRoiSet? RoiSet = null,
     int RoiStartLevel = 3,
     bool EnableRoi = true,
-    bool AlignRoi = false);
+    bool AlignRoi = false
+);
 
 /// <summary>
 /// Implementation of pure encoding service
@@ -71,28 +70,45 @@ public sealed class BiometricEncodingService : IBiometricEncodingService
     private readonly IJpeg2000Encoder _jpeg2000Encoder;
     private readonly ILogger<BiometricEncodingService> _logger;
 
+    /// <summary>Creates the service with its processing dependencies and operational diagnostics.</summary>
+    /// <param name="jpeg2000Encoder">JPEG 2000 encoder used for the selected compression profile.</param>
+    /// <param name="logger">Operational diagnostics for this service.</param>
     public BiometricEncodingService(
         IJpeg2000Encoder jpeg2000Encoder,
-        ILogger<BiometricEncodingService> logger)
+        ILogger<BiometricEncodingService> logger
+    )
     {
         _jpeg2000Encoder = jpeg2000Encoder;
         _logger = logger;
     }
 
-    public Result<EncodedImageData> EncodeToJpeg2000(Image<Rgba32> image, Jpeg2000EncodingOptions options)
+    /// <summary>Encodes caller-owned facial pixels with the selected JPEG 2000 settings.</summary>
+    /// <param name="image">Caller-owned source pixels, borrowed for the encoding call.</param>
+    /// <param name="options">Processing and compression settings, or null to use the profile defaults.</param>
+    /// <returns>The encoded image and its output metadata, or a processing failure.</returns>
+    public Result<EncodedImageData> EncodeToJpeg2000(
+        RgbImage image,
+        Jpeg2000EncodingOptions options
+    )
     {
-        _logger.LogDebug("Encoding image to JPEG 2000: {Width}x{Height}", image.Width, image.Height);
-        
+        _logger.LogDebug(
+            new EventId(633700, "BiometricEncodingService"),
+            "BiometricEncodingService processing status changed."
+        );
+
         var roiSet = options.RoiSet ?? CreateDefaultRoiSet(image);
-        
+
         var baseRate = options.Strategy switch
         {
             FixedRateStrategy fixedRate => fixedRate.Rate,
             TargetSizeStrategy targetSize => CalculateRateForTargetSize(
-                targetSize.TargetBytes, image.Width, image.Height),
-            _ => 1.0f
+                targetSize.TargetBytes,
+                image.Width,
+                image.Height
+            ),
+            _ => 1.0f,
         };
-        
+
         var encodeResult = _jpeg2000Encoder.EncodeWithRoi(
             image,
             roiSet,
@@ -101,85 +117,123 @@ public sealed class BiometricEncodingService : IBiometricEncodingService
             options.EnableRoi,
             options.AlignRoi
         );
-        
+
         if (encodeResult.IsFailure)
-            return Result.Failure<EncodedImageData>($"JPEG 2000 encoding failed: {encodeResult.Error}");
-            
+            return Result.Failure<EncodedImageData>(
+                $"JPEG 2000 encoding failed: {encodeResult.Error}"
+            );
+
         var data = encodeResult.Value.ToImmutableArray();
-        _logger.LogInformation("JPEG 2000 encoding complete: {Size} bytes", data.Length);
-        
-        return Result.Success(new EncodedImageData(
-            data,
-            "JP2",
-            data.Length,
-            new ImageDimensions(image.Width, image.Height)));
+        _logger.LogInformation(
+            new EventId(633701, "BiometricEncodingService"),
+            "BiometricEncodingService processing completed."
+        );
+
+        return Result.Success(
+            new EncodedImageData(
+                data,
+                "JP2",
+                data.Length,
+                new ImageDimensions(image.Width, image.Height)
+            )
+        );
     }
 
-    public Result<EncodedImageData> EncodeToJpeg(Image<Rgba32> image, int quality = 85)
+    /// <summary>Encodes caller-owned facial pixels as JPEG.</summary>
+    /// <param name="image">Caller-owned source pixels, borrowed for the encoding call.</param>
+    /// <param name="quality">JPEG encoder quality from one through 100.</param>
+    /// <returns>The encoded image and its output metadata, or a processing failure.</returns>
+    public Result<EncodedImageData> EncodeToJpeg(RgbImage image, int quality = 85)
     {
         if (quality < 1 || quality > 100)
             return Result.Failure<EncodedImageData>("JPEG quality must be between 1 and 100");
-            
+
         return Result.Try(() =>
         {
-            _logger.LogDebug("Encoding image to JPEG: {Width}x{Height}, quality: {Quality}", 
-                image.Width, image.Height, quality);
-            
+            _logger.LogDebug(
+                new EventId(633702, "BiometricEncodingService"),
+                "BiometricEncodingService processing status changed."
+            );
+
             using var ms = new MemoryStream();
-            image.Save(ms, new JpegEncoder { Quality = quality });
-            
+            image.SaveAsJpeg(ms, quality);
+
             var data = ms.ToArray().ToImmutableArray();
-            _logger.LogInformation("JPEG encoding complete: {Size} bytes", data.Length);
-            
+            _logger.LogInformation(
+                new EventId(633703, "BiometricEncodingService"),
+                "BiometricEncodingService processing completed."
+            );
+
             return new EncodedImageData(
                 data,
                 "JPEG",
                 data.Length,
-                new ImageDimensions(image.Width, image.Height));
+                new ImageDimensions(image.Width, image.Height)
+            );
         });
     }
 
-    public Result<EncodedImageData> EncodeToPng(Image<Rgba32> image)
+    /// <summary>Encodes caller-owned facial pixels as lossless PNG.</summary>
+    /// <param name="image">Caller-owned source pixels, borrowed for the encoding call.</param>
+    /// <returns>The encoded image and its output metadata, or a processing failure.</returns>
+    public Result<EncodedImageData> EncodeToPng(RgbImage image)
     {
         return Result.Try(() =>
         {
-            _logger.LogDebug("Encoding image to PNG: {Width}x{Height}", image.Width, image.Height);
-            
+            _logger.LogDebug(
+                new EventId(633704, "BiometricEncodingService"),
+                "BiometricEncodingService processing status changed."
+            );
+
             using var ms = new MemoryStream();
-            image.Save(ms, new PngEncoder());
-            
+            image.SaveAsPng(ms);
+
             var data = ms.ToArray().ToImmutableArray();
-            _logger.LogInformation("PNG encoding complete: {Size} bytes", data.Length);
-            
+            _logger.LogInformation(
+                new EventId(633705, "BiometricEncodingService"),
+                "BiometricEncodingService processing completed."
+            );
+
             return new EncodedImageData(
                 data,
                 "PNG",
                 data.Length,
-                new ImageDimensions(image.Width, image.Height));
+                new ImageDimensions(image.Width, image.Height)
+            );
         });
     }
 
-    public Result<EncodedImageData> EncodeToTiff(Image<Rgba32> image)
+    /// <summary>Encodes caller-owned facial pixels as baseline RGB TIFF.</summary>
+    /// <param name="image">Caller-owned source pixels, borrowed for the encoding call.</param>
+    /// <returns>The encoded image and its output metadata, or a processing failure.</returns>
+    public Result<EncodedImageData> EncodeToTiff(RgbImage image)
     {
         return Result.Try(() =>
         {
-            _logger.LogDebug("Encoding image to TIFF: {Width}x{Height}", image.Width, image.Height);
-            
+            _logger.LogDebug(
+                new EventId(633706, "BiometricEncodingService"),
+                "BiometricEncodingService processing status changed."
+            );
+
             using var ms = new MemoryStream();
-            image.Save(ms, new TiffEncoder());
-            
+            image.SaveAsTiff(ms);
+
             var data = ms.ToArray().ToImmutableArray();
-            _logger.LogInformation("TIFF encoding complete: {Size} bytes", data.Length);
-            
+            _logger.LogInformation(
+                new EventId(633707, "BiometricEncodingService"),
+                "BiometricEncodingService processing completed."
+            );
+
             return new EncodedImageData(
                 data,
                 "TIFF",
                 data.Length,
-                new ImageDimensions(image.Width, image.Height));
+                new ImageDimensions(image.Width, image.Height)
+            );
         });
     }
 
-    private static FacialRoiSet CreateDefaultRoiSet(Image<Rgba32> image)
+    private static FacialRoiSet CreateDefaultRoiSet(RgbImage image)
     {
         // Create a minimal ROI set for the entire image when no ROI is specified
         var roiBounds = new RoiBoundingBox(0, 0, image.Width, image.Height);

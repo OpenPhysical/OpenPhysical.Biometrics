@@ -10,22 +10,22 @@ public sealed class BiometricFormatAttribute : Attribute
     /// Gets the patron format identifier this handler supports.
     /// </summary>
     public byte PatronFormat { get; }
-    
+
     /// <summary>
     /// Gets the BDB format owner this handler supports.
     /// </summary>
     public ushort BdbFormatOwner { get; }
-    
+
     /// <summary>
     /// Gets the BDB format type this handler supports.
     /// </summary>
     public ushort BdbFormatType { get; }
-    
+
     /// <summary>
     /// Gets the format name for display purposes.
     /// </summary>
     public string FormatName { get; }
-    
+
     /// <summary>
     /// Initializes a new instance of the BiometricFormatAttribute class.
     /// </summary>
@@ -37,7 +37,8 @@ public sealed class BiometricFormatAttribute : Attribute
         byte patronFormat,
         ushort bdbFormatOwner,
         ushort bdbFormatType,
-        string formatName)
+        string formatName
+    )
     {
         PatronFormat = patronFormat;
         BdbFormatOwner = bdbFormatOwner;

@@ -31,7 +31,8 @@ public static class BiometricPipelineSteps
     /// <summary>
     /// Step that assesses the quality of biometric data.
     /// </summary>
-    public interface IQualityAssessmentStep : IPipelineStep<ProcessedBiometricData, ProcessedBiometricData>
+    public interface IQualityAssessmentStep
+        : IPipelineStep<ProcessedBiometricData, ProcessedBiometricData>
     {
         /// <summary>
         /// Gets the quality standards used for assessment.
@@ -47,7 +48,8 @@ public static class BiometricPipelineSteps
     /// <summary>
     /// Step that extracts facial landmarks from detected faces.
     /// </summary>
-    public interface ILandmarkExtractionStep : IPipelineStep<ProcessedBiometricData, ProcessedBiometricData>
+    public interface ILandmarkExtractionStep
+        : IPipelineStep<ProcessedBiometricData, ProcessedBiometricData>
     {
         /// <summary>
         /// Gets the number of landmark points extracted.
@@ -63,7 +65,8 @@ public static class BiometricPipelineSteps
     /// <summary>
     /// Step that transforms images (crop, rotate, resize).
     /// </summary>
-    public interface IImageTransformStep : IPipelineStep<ProcessedBiometricData, ProcessedBiometricData>
+    public interface IImageTransformStep
+        : IPipelineStep<ProcessedBiometricData, ProcessedBiometricData>
     {
         /// <summary>
         /// Gets the target image dimensions.
@@ -122,12 +125,15 @@ public enum QualityStandard
 {
     /// <summary>ISO/IEC 19794-5 facial image quality</summary>
     Iso19794_5,
+
     /// <summary>NIST SP 800-76 PIV biometric specifications</summary>
     NistSp800_76,
+
     /// <summary>ICAO Doc 9303 passport photo quality</summary>
     IcaoDoc9303,
+
     /// <summary>Custom quality standard</summary>
-    Custom
+    Custom,
 }
 
 /// <summary>
@@ -138,10 +144,13 @@ public enum LandmarkModelType
 {
     /// <summary>68-point iBUG facial landmark model</summary>
     iBug68Point,
+
     /// <summary>5-point facial landmark model (eyes, nose, mouth corners)</summary>
     FivePoint,
+
     /// <summary>98-point WFLW facial landmark model</summary>
     Wflw98Point,
+
     /// <summary>Custom landmark model</summary>
-    Custom
+    Custom,
 }

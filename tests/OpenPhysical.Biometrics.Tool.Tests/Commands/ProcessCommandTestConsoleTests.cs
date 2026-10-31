@@ -1,18 +1,18 @@
 namespace OpenPhysical.Biometrics.Tool.Tests.Commands;
 
 using System.IO;
+using AwesomeAssertions;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.FileProviders;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using NUnit.Framework;
-using AwesomeAssertions;
 using OpenPhysical.Biometrics.Infrastructure.Extensions;
 using OpenPhysical.Biometrics.Tool.Commands;
 using Spectre.Console;
 using Spectre.Console.Cli;
-using Spectre.Console.Testing;
 using Spectre.Console.Cli.Extensions.DependencyInjection;
+using Spectre.Console.Testing;
 
 /// <summary>
 /// Fast, reliable tests for ProcessCommand using Spectre.Console.Testing.
@@ -23,6 +23,7 @@ public class ProcessCommandTestConsoleTests
     private string _testImagePath = null!;
     private string _tempDirectory = null!;
 
+    /// <summary>Creates a fresh command application and isolated output directory.</summary>
     [SetUp]
     public void SetUp()
     {
@@ -33,15 +34,24 @@ public class ProcessCommandTestConsoleTests
         // Find test image
         var currentDir = TestContext.CurrentContext.TestDirectory;
         var searchDir = new DirectoryInfo(currentDir);
-        
-        while (searchDir != null && !File.Exists(Path.Combine(searchDir.FullName, "OpenPhysical.Biometrics.sln")))
+
+        while (
+            searchDir != null
+            && !File.Exists(Path.Combine(searchDir.FullName, "OpenPhysical.Biometrics.sln"))
+        )
         {
             searchDir = searchDir.Parent;
         }
-        
-        _testImagePath = Path.Combine(searchDir!.FullName, "tests", "sample_images", "generic_guy.png");
+
+        _testImagePath = Path.Combine(
+            searchDir!.FullName,
+            "tests",
+            "sample_images",
+            "generic_guy.png"
+        );
     }
 
+    /// <summary>Removes generated files and releases the captured console.</summary>
     [TearDown]
     public void TearDown()
     {
@@ -54,11 +64,11 @@ public class ProcessCommandTestConsoleTests
     private ServiceCollection CreateTestServices(IAnsiConsole console)
     {
         var services = new ServiceCollection();
-        
+
         // Create hosting environment
         var hostEnvironment = new TestHostEnvironment();
         services.AddSingleton<IHostEnvironment>(hostEnvironment);
-        
+
         // Configure logging to suppress output during tests
         services.AddLogging(builder =>
         {
@@ -77,7 +87,7 @@ public class ProcessCommandTestConsoleTests
 
         // Register commands
         services.AddScoped<ProcessCommand>();
-        
+
         return services;
     }
 
@@ -85,6 +95,7 @@ public class ProcessCommandTestConsoleTests
     {
         // Create a TestConsole with no ANSI sequences for plain text output
         var console = new TestConsole();
+        AnsiConsole.Console = console;
         console.EmitAnsiSequences = false;
 
         // Create services with the test console
@@ -93,6 +104,7 @@ public class ProcessCommandTestConsoleTests
         var app = new CommandAppTester(new DependencyInjectionRegistrar(services));
         app.Configure(config =>
         {
+            config.ConfigureConsole(console);
             config.AddCommand<ProcessCommand>("process");
         });
 
@@ -108,9 +120,9 @@ public class ProcessCommandTestConsoleTests
         var (app, console) = CreateTestApp();
         var outputPath = Path.Combine(_tempDirectory, "output.jp2");
 
-        var result = await app.RunAsync(new[] { 
-            "process", _testImagePath, "--output", outputPath 
-        });
+        var result = await app.RunAsync(
+            new[] { "process", _testImagePath, "--output", outputPath }
+        );
 
         result.ExitCode.Should().Be(0, "CLI should exit with success code");
         File.Exists(outputPath).Should().BeTrue("Output file should be created");
@@ -130,12 +142,10 @@ public class ProcessCommandTestConsoleTests
         var (app, console) = CreateTestApp();
         var nonExistentPath = Path.Combine(_tempDirectory, "does_not_exist.jpg");
 
-        var result = await app.RunAsync(new[] { 
-            "process", nonExistentPath 
-        });
+        var result = await app.RunAsync(new[] { "process", nonExistentPath });
 
         result.ExitCode.Should().NotBe(0, "CLI should exit with error code");
-        
+
         var output = console.Output;
         output.Should().Contain("not found", "Should indicate file not found");
     }
@@ -149,12 +159,12 @@ public class ProcessCommandTestConsoleTests
         var (app, console) = CreateTestApp();
         var outputPath = Path.Combine(_tempDirectory, "output.jp2");
 
-        var result = await app.RunAsync(new[] { 
-            "process", _testImagePath, "--output", outputPath, "--verbose" 
-        });
+        var result = await app.RunAsync(
+            new[] { "process", _testImagePath, "--output", outputPath, "--verbose" }
+        );
 
         result.ExitCode.Should().Be(0, "Should succeed");
-        
+
         var output = console.Output;
         output.Should().Contain("Processing Results", "Should show processing details");
         output.Should().Contain("completed successfully", "Should show success message");
@@ -169,18 +179,18 @@ public class ProcessCommandTestConsoleTests
         var (app, console) = CreateTestApp();
         var outputPath = Path.Combine(_tempDirectory, "output.jp2");
 
-        var result = await app.RunAsync(new[] { 
-            "process", _testImagePath, "--output", outputPath, "--verbose" 
-        });
+        var result = await app.RunAsync(
+            new[] { "process", _testImagePath, "--output", outputPath, "--verbose" }
+        );
 
         result.ExitCode.Should().Be(0);
-        
+
         var output = console.Output;
-        
+
         // Verify no ANSI escape sequences since EmitAnsiSequences = false
         output.Should().NotContain("\u001b[", "Should not contain ANSI escape sequences");
         output.Should().NotContain("\x1b[", "Should not contain escape sequences");
-        
+
         // Verify meaningful content
         output.Should().NotBeEmpty("Should have output");
         output.Should().Contain("Processing Results", "Should contain processing results");
@@ -195,9 +205,9 @@ public class ProcessCommandTestConsoleTests
         var (app, console) = CreateTestApp();
         var outputPath = Path.Combine(_tempDirectory, "output.jp2");
 
-        var result = await app.RunAsync(new[] { 
-            "process", _testImagePath, "--output", outputPath, "--no-roi" 
-        });
+        var result = await app.RunAsync(
+            new[] { "process", _testImagePath, "--output", outputPath, "--no-roi" }
+        );
 
         result.ExitCode.Should().Be(0, "Should succeed");
         File.Exists(outputPath).Should().BeTrue("Output file should be created");
@@ -214,13 +224,11 @@ public class ProcessCommandTestConsoleTests
     {
         var (app, console) = CreateTestApp();
 
-        var result = await app.RunAsync(new[] { 
-            "process", "--help" 
-        });
+        var result = await app.RunAsync(new[] { "process", "--help" });
 
         result.ExitCode.Should().Be(0, "Help should exit successfully");
-        
-        var output = console.Output;
+
+        var output = result.Output + console.Output;
         output.Should().Contain("USAGE", "Should show usage information");
         output.Should().Contain("process", "Should mention the process command");
     }

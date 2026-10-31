@@ -1,13 +1,11 @@
+using System.Drawing;
 using AwesomeAssertions;
-using OpenPhysical.Biometrics.Core.Domain.Detection;
-using OpenPhysical.Biometrics.Infrastructure.Services;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
 using NUnit.Framework;
-using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.Drawing.Processing;
-using SixLabors.ImageSharp.PixelFormats;
-using SixLabors.ImageSharp.Processing;
+using OpenPhysical.Biometrics.Core.Domain.Detection;
+using OpenPhysical.Biometrics.Imaging;
+using OpenPhysical.Biometrics.Infrastructure.Services;
 
 namespace OpenPhysical.Biometrics.Infrastructure.Tests.Services;
 
@@ -16,7 +14,7 @@ namespace OpenPhysical.Biometrics.Infrastructure.Tests.Services;
 /// Validates the functionality of JPEG2000 encoding with and without Region of Interest (ROI) configurations.
 /// </summary>
 [TestFixture]
-public class Jpeg2000EncoderServiceTests
+internal class Jpeg2000EncoderServiceTests
 {
     /// <summary>
     /// Logger instance used to log operations and events within the
@@ -68,7 +66,7 @@ public class Jpeg2000EncoderServiceTests
     [Test]
     public void EncodeWithRoi_WithValidImage_ShouldReturnSuccess()
     {
-        using var image = new Image<Rgba32>(420, 560);
+        using var image = new RgbImage(420, 560);
         image.Mutate(static ctx => ctx.Fill(Color.White));
 
         var roiSetResult = FacialRoiSet.CreateAppendixC6(420, 560);
@@ -94,7 +92,7 @@ public class Jpeg2000EncoderServiceTests
     [Test]
     public void EncodeWithRoi_WithRoiEnabled_ShouldEncodeSuccessfully()
     {
-        using var image = new Image<Rgba32>(420, 560);
+        using var image = new RgbImage(420, 560);
         image.Mutate(static ctx => ctx.Fill(Color.Gray));
 
         var roiSetResult = FacialRoiSet.CreateAppendixC6(420, 560);
@@ -128,7 +126,7 @@ public class Jpeg2000EncoderServiceTests
     [Test]
     public void EncodeWithRoi_WithRoiDisabled_ShouldEncodeWithoutRoi()
     {
-        using var image = new Image<Rgba32>(420, 560);
+        using var image = new RgbImage(420, 560);
         image.Mutate(ctx => ctx.Fill(Color.Blue));
 
         var roiSetResult = FacialRoiSet.CreateAppendixC6(420, 560);
@@ -157,7 +155,7 @@ public class Jpeg2000EncoderServiceTests
     [TestCase(1.2f)]
     public void EncodeWithRoi_WithDifferentBaseRates_ShouldAdjustFileSize(float baseRate)
     {
-        using var image = new Image<Rgba32>(420, 560);
+        using var image = new RgbImage(420, 560);
         DrawTestPattern(image);
 
         var roiSetResult = FacialRoiSet.CreateAppendixC6(420, 560);
@@ -190,7 +188,7 @@ public class Jpeg2000EncoderServiceTests
         int roiStartLevel
     )
     {
-        using var image = new Image<Rgba32>(420, 560);
+        using var image = new RgbImage(420, 560);
         DrawTestPattern(image);
 
         var roiSetResult = FacialRoiSet.CreateAppendixC6(420, 560);
@@ -216,7 +214,7 @@ public class Jpeg2000EncoderServiceTests
     [TestCase(false)]
     public void EncodeWithRoi_WithDifferentRoiAlignment_ShouldEncodeSuccessfully(bool roiAlign)
     {
-        using var image = new Image<Rgba32>(420, 560);
+        using var image = new RgbImage(420, 560);
         DrawTestPattern(image);
 
         var roiSetResult = FacialRoiSet.CreateAppendixC6(420, 560);
@@ -242,7 +240,7 @@ public class Jpeg2000EncoderServiceTests
     [Test]
     public void EncodeWithRoi_WithCustomRoiRegion_ShouldEncodeSuccessfully()
     {
-        using var image = new Image<Rgba32>(420, 560);
+        using var image = new RgbImage(420, 560);
         DrawTestPattern(image);
 
         var customBox = new RoiBoundingBox(100, 100, 220, 300);
@@ -266,7 +264,7 @@ public class Jpeg2000EncoderServiceTests
     [TestCase(1024, 768)]
     public void EncodeWithRoi_WithVariousImageSizes_ShouldHandleCorrectly(int width, int height)
     {
-        using var image = new Image<Rgba32>(width, height);
+        using var image = new RgbImage(width, height);
         image.Mutate(ctx => ctx.Fill(Color.White));
 
         var roiSetResult = FacialRoiSet.CreateAppendixC6(width, height);
@@ -294,7 +292,7 @@ public class Jpeg2000EncoderServiceTests
     [Test]
     public void EncodeWithRoi_WithComplexImage_ShouldMaintainQuality()
     {
-        using var image = new Image<Rgba32>(420, 560);
+        using var image = new RgbImage(420, 560);
         DrawComplexTestPattern(image);
 
         var roiSetResult = FacialRoiSet.CreateAppendixC6(420, 560);
@@ -331,8 +329,8 @@ public class Jpeg2000EncoderServiceTests
     [Test]
     public void EncodeWithRoi_MultipleCalls_ShouldNotInterfere()
     {
-        using var image1 = new Image<Rgba32>(420, 560);
-        using var image2 = new Image<Rgba32>(420, 560);
+        using var image1 = new RgbImage(420, 560);
+        using var image2 = new RgbImage(420, 560);
         image1.Mutate(ctx => ctx.Fill(Color.Red));
         image2.Mutate(ctx => ctx.Fill(Color.Blue));
 
@@ -354,7 +352,7 @@ public class Jpeg2000EncoderServiceTests
     [Test]
     public void EncodeWithRoi_WithEdgeCaseRoi_ShouldHandleGracefully()
     {
-        using var image = new Image<Rgba32>(420, 560);
+        using var image = new RgbImage(420, 560);
         DrawTestPattern(image);
 
         var edgeBox = new RoiBoundingBox(0, 0, 420, 560);
@@ -372,7 +370,7 @@ public class Jpeg2000EncoderServiceTests
     /// Draws a test pattern on the provided image.
     /// </summary>
     /// <param name="image">The image on which the test pattern will be drawn.</param>
-    private static void DrawTestPattern(Image<Rgba32> image)
+    private static void DrawTestPattern(RgbImage image)
     {
         image.Mutate(ctx =>
         {
@@ -386,7 +384,7 @@ public class Jpeg2000EncoderServiceTests
     /// Draws a complex test pattern on the provided image.
     /// </summary>
     /// <param name="image">The image on which the test pattern will be drawn. Must be initialized prior to calling this method.</param>
-    private static void DrawComplexTestPattern(Image<Rgba32> image)
+    private static void DrawComplexTestPattern(RgbImage image)
     {
         image.Mutate(ctx =>
         {
@@ -394,14 +392,17 @@ public class Jpeg2000EncoderServiceTests
 
             for (var i = 0; i < 10; i++)
             {
-                var color = Color.FromRgb((byte)(i * 25), (byte)(255 - i * 25), 128);
+                var color = Color.FromArgb((byte)(i * 25), (byte)(255 - i * 25), 128);
                 ctx.Fill(color, new Rectangle(i * 40, i * 50, 40, 50));
             }
 
             // Draw diagonal lines for visual complexity
-            var pen = Pens.Solid(Color.Black, 2);
-            ctx.DrawLine(pen, new PointF(0, 0), new PointF(image.Width, image.Height));
-            ctx.DrawLine(pen, new PointF(image.Width, 0), new PointF(0, image.Height));
+            for (var x = 0; x < image.Width; x++)
+            {
+                var y = x * (image.Height - 1) / Math.Max(1, image.Width - 1);
+                image[x, y] = new RgbaPixel(0, 0, 0);
+                image[image.Width - 1 - x, y] = new RgbaPixel(0, 0, 0);
+            }
         });
     }
 }

@@ -386,3 +386,13 @@ demo/
 # FaceOFFx automated testing directory
 .faceoffx-test/
 datasets/
+
+# Local acquisition and credential material
+/*.bin
+/*.p12
+/*_hex.txt
+/fp_raw.txt
+/length_response.txt
+/temp_fp.txt
+/extract_twic.py
+/extract_with_opensc.sh

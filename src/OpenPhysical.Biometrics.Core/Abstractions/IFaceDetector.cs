@@ -1,7 +1,7 @@
-using OpenPhysical.Biometrics.Core.Domain.Detection;
+using System.Drawing;
 using JetBrains.Annotations;
-using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.PixelFormats;
+using OpenPhysical.Biometrics.Core.Domain.Detection;
+using OpenPhysical.Biometrics.Imaging;
 
 namespace OpenPhysical.Biometrics.Core.Abstractions;
 
@@ -14,11 +14,11 @@ public interface IFaceDetector
     /// <summary>
     /// Detects faces in an image
     /// </summary>
-    /// <param name="image">Image as ImageSharp Image</param>
+    /// <param name="image">Owned sRGB pixel buffer</param>
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>List of detected faces</returns>
     Task<Result<IReadOnlyList<DetectedFace>>> DetectFacesAsync(
-        Image<Rgba32> image,
+        RgbImage image,
         CancellationToken cancellationToken = default
     );
 }

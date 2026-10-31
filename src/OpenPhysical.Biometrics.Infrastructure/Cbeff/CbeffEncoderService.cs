@@ -1,12 +1,12 @@
 namespace OpenPhysical.Biometrics.Infrastructure.Cbeff;
 
+using System;
+using System.Text;
+using System.Threading.Tasks;
 using CSharpFunctionalExtensions;
 using OpenPhysical.Biometrics.Core.Cbeff;
 using OpenPhysical.Domains.Biometrics;
 using OpenPhysical.Domains.Cbeff;
-using System;
-using System.Text;
-using System.Threading.Tasks;
 
 /// <summary>
 /// Service implementation for encoding biometric data into CBEFF format.
@@ -20,7 +20,8 @@ public class CbeffEncoderService : ICbeffEncoder
         byte[] biometricData,
         BiometricModality modality,
         BiometricFormat format,
-        CbeffMetadata metadata)
+        CbeffMetadata metadata
+    )
     {
         if (biometricData == null)
             return Result.Failure<CbeffPayload>("Biometric data cannot be null");
@@ -35,7 +36,8 @@ public class CbeffEncoderService : ICbeffEncoder
                 0, // No signature initially
                 modality,
                 format,
-                metadata);
+                metadata
+            );
 
             if (headerResult.IsFailure)
                 return Result.Failure<CbeffPayload>(headerResult.Error);
@@ -44,7 +46,8 @@ public class CbeffEncoderService : ICbeffEncoder
             var payloadResult = CbeffPayload.Create(
                 headerResult.Value,
                 biometricData,
-                Maybe<CbeffSignature>.None);
+                Maybe<CbeffSignature>.None
+            );
 
             return payloadResult;
         }
@@ -62,11 +65,11 @@ public class CbeffEncoderService : ICbeffEncoder
         ushort signatureLength,
         BiometricModality modality,
         BiometricFormat format,
-        CbeffMetadata metadata)
+        CbeffMetadata metadata
+    )
     {
         try
         {
-
             // Prepare creator name (18 bytes, null-padded)
             var creatorBytes = new byte[18];
             var creatorNameBytes = Encoding.ASCII.GetBytes(metadata.CreatorName);
@@ -95,7 +98,8 @@ public class CbeffEncoderService : ICbeffEncoder
                 metadata.BiometricQuality,
                 creatorBytes,
                 metadata.FascN,
-                reservedBytes);
+                reservedBytes
+            );
         }
         catch (Exception ex)
         {
@@ -115,7 +119,7 @@ public class CbeffEncoderService : ICbeffEncoder
             "IRIS" => 0x10,
             "VOICE" => 0x20,
             "SIGNATURE" => 0x40,
-            _ => 0x00
+            _ => 0x00,
         };
     }
 }

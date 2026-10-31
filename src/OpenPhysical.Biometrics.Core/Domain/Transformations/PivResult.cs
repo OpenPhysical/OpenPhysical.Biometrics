@@ -1,5 +1,5 @@
-using OpenPhysical.Biometrics.Core.Domain.Detection;
 using JetBrains.Annotations;
+using OpenPhysical.Biometrics.Core.Domain.Detection;
 
 namespace OpenPhysical.Biometrics.Core.Domain.Transformations;
 
@@ -13,16 +13,16 @@ public enum CropFallbackMode
     /// Strict mode - fail if target head width and positioning cannot be achieved.
     /// </summary>
     Strict,
-    
+
     /// <summary>
     /// Adaptive mode - progressively reduce head width to fit within boundaries.
     /// </summary>
     Adaptive,
-    
+
     /// <summary>
     /// Best effort mode - make best possible crop even if it doesn't meet all PIV requirements.
     /// </summary>
-    BestEffort
+    BestEffort,
 }
 
 /// <summary>
@@ -508,6 +508,6 @@ public sealed record PivProcessingOptions
             FallbackMode = CropFallbackMode.Adaptive,
             MinimumTopMargin = 30,
             MinimumSideMargin = 15,
-            MinFaceConfidence = 0.8f
+            MinFaceConfidence = 0.8f,
         };
 }

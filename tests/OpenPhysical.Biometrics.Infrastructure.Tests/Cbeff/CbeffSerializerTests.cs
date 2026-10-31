@@ -1,7 +1,7 @@
 using System.Collections.Immutable;
-using NUnit.Framework;
 using AwesomeAssertions;
 using CSharpFunctionalExtensions;
+using NUnit.Framework;
 using OpenPhysical.Biometrics.Core.Cbeff;
 using OpenPhysical.Biometrics.Infrastructure.Cbeff;
 using OpenPhysical.Domains.Cbeff;
@@ -9,10 +9,13 @@ using OpenPhysical.Domains.Cbeff;
 namespace OpenPhysical.Biometrics.Infrastructure.Tests.Cbeff;
 
 [TestFixture]
-public class CbeffSerializerTests
+internal class CbeffSerializerTests
 {
     private ICbeffSerializer _serializer = null!;
-    private readonly string _testDataBasePath = Path.Combine(TestContext.CurrentContext.TestDirectory, "TestData");
+    private readonly string _testDataBasePath = Path.Combine(
+        TestContext.CurrentContext.TestDirectory,
+        "TestData"
+    );
 
     [SetUp]
     public void SetUp()
@@ -38,11 +41,16 @@ public class CbeffSerializerTests
     public void Deserialize_WithValidPivCbeffData_ShouldReturnSuccess()
     {
         // Arrange
-        var testFile = Path.Combine(_testDataBasePath, "GoldenPiv", "01_Golden_PIV", "5FC1A4.dat");
+        var testFile = Path.Combine(
+            _testDataBasePath,
+            "GoldenPiv",
+            "01_Golden_PIV",
+            "facial_image.bin"
+        );
         var cbeffData = File.ReadAllBytes(testFile).ToImmutableArray();
 
         // Act
-        var result = _serializer.Deserialize(cbeffData);
+        var result = _serializer.DeserializeAuto(cbeffData);
 
         // Assert
         result.IsSuccess.Should().BeTrue();
@@ -78,11 +86,16 @@ public class CbeffSerializerTests
     public void Deserialize_WithPivCbeffHeader_ShouldParseCorrectly()
     {
         // Arrange
-        var testFile = Path.Combine(_testDataBasePath, "GoldenPiv", "01_Golden_PIV", "5FC1A4.dat");
+        var testFile = Path.Combine(
+            _testDataBasePath,
+            "GoldenPiv",
+            "01_Golden_PIV",
+            "facial_image.bin"
+        );
         var cbeffData = File.ReadAllBytes(testFile).ToImmutableArray();
 
         // Act
-        var result = _serializer.Deserialize(cbeffData);
+        var result = _serializer.DeserializeAuto(cbeffData);
 
         // Assert
         result.IsSuccess.Should().BeTrue();
@@ -103,11 +116,16 @@ public class CbeffSerializerTests
     public void Deserialize_WithPivFacialCbeff_ShouldExtractValidData()
     {
         // Arrange
-        var testFile = Path.Combine(_testDataBasePath, "GoldenPiv", "01_Golden_PIV", "5FC1A4.dat");
+        var testFile = Path.Combine(
+            _testDataBasePath,
+            "GoldenPiv",
+            "01_Golden_PIV",
+            "facial_image.bin"
+        );
         var cbeffData = File.ReadAllBytes(testFile).ToImmutableArray();
 
         // Act
-        var result = _serializer.Deserialize(cbeffData);
+        var result = _serializer.DeserializeAuto(cbeffData);
 
         // Assert
         result.IsSuccess.Should().BeTrue();
@@ -115,7 +133,7 @@ public class CbeffSerializerTests
 
         // Should have facial image data
         payload.BiometricDataBlock.Should().NotBeEmpty();
-        
+
         // Biometric data block contains facial record header followed by image data
         // The actual image format (JPEG/JPEG2000) is determined by the facial record parsing
     }
@@ -125,11 +143,11 @@ public class CbeffSerializerTests
     {
         // Arrange
         var creator = new byte[18]; // Initialize with zeros
-        var fascN = new byte[25];   // Initialize with zeros
+        var fascN = new byte[25]; // Initialize with zeros
         var reserved = new byte[4]; // Initialize with zeros
-        
+
         var biometricData = new byte[] { 0x01, 0x02, 0x03, 0x04 };
-        
+
         var headerResult = CbeffHeader.Create(
             patronHeaderVersion: 0x03,
             sbhSecurityOptions: 0x00,
@@ -149,7 +167,7 @@ public class CbeffSerializerTests
         );
 
         headerResult.IsSuccess.Should().BeTrue();
-        
+
         var payloadResult = CbeffPayload.Create(headerResult.Value, biometricData);
         payloadResult.IsSuccess.Should().BeTrue();
 
@@ -169,7 +187,7 @@ public class CbeffSerializerTests
         var fascN = new byte[25];
         var reserved = new byte[4];
         var biometricData = new byte[] { 0x01, 0x02, 0x03, 0x04 };
-        
+
         var headerResult = CbeffHeader.Create(
             patronHeaderVersion: 0x03,
             sbhSecurityOptions: 0x00,
@@ -197,7 +215,7 @@ public class CbeffSerializerTests
         // Assert
         result.IsSuccess.Should().BeTrue();
         result.Value.Should().NotBeEmpty();
-        
+
         // Should start with BC tag
         result.Value[0].Should().Be(0xBC);
     }
@@ -206,7 +224,12 @@ public class CbeffSerializerTests
     public void RoundTrip_WithPivCbeffData_ShouldPreserveData()
     {
         // Arrange
-        var testFile = Path.Combine(_testDataBasePath, "GoldenPiv", "01_Golden_PIV", "5FC1A4.dat");
+        var testFile = Path.Combine(
+            _testDataBasePath,
+            "GoldenPiv",
+            "01_Golden_PIV",
+            "facial_image.bin"
+        );
         var originalData = File.ReadAllBytes(testFile).ToImmutableArray();
 
         // Act - Deserialize then serialize
@@ -218,7 +241,7 @@ public class CbeffSerializerTests
 
         // Assert - Data should be functionally equivalent
         var newData = serializeResult.Value;
-        
+
         // Re-deserialize to verify structure is preserved
         var reDeserializeResult = _serializer.Deserialize(newData);
         reDeserializeResult.IsSuccess.Should().BeTrue();
@@ -305,7 +328,7 @@ public class CbeffSerializerTests
         var fascN = new byte[25];
         var reserved = new byte[4];
         var biometricData = new byte[] { 0x01, 0x02, 0x03, 0x04 };
-        
+
         var headerResult = CbeffHeader.Create(
             patronHeaderVersion: 0x03,
             sbhSecurityOptions: 0x00,

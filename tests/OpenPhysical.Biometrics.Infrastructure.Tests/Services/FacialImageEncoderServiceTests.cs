@@ -1,11 +1,17 @@
 using AwesomeAssertions;
-using OpenPhysical.Biometrics.Core.Domain.Transformations;
-using OpenPhysical.Biometrics.Infrastructure.Services;
-using OpenPhysical.Biometrics.Tests.Common;
-using NUnit.Framework;
+using CSharpFunctionalExtensions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using CSharpFunctionalExtensions;
+using Microsoft.Extensions.Logging.Abstractions;
+using NSubstitute;
+using NUnit.Framework;
+using OpenPhysical.Biometrics.Core.Abstractions;
+using OpenPhysical.Biometrics.Core.Domain.Common;
+using OpenPhysical.Biometrics.Core.Domain.Detection;
+using OpenPhysical.Biometrics.Core.Domain.Transformations;
+using OpenPhysical.Biometrics.Imaging;
+using OpenPhysical.Biometrics.Infrastructure.Services;
+using OpenPhysical.Biometrics.Tests.Common;
 
 namespace OpenPhysical.Biometrics.Infrastructure.Tests.Services;
 
@@ -13,7 +19,7 @@ namespace OpenPhysical.Biometrics.Infrastructure.Tests.Services;
 /// Tests for the FacialImageEncoderService using functional programming patterns
 /// </summary>
 [TestFixture]
-public class FacialImageEncoderServiceTests : BiometricIntegrationTestBase
+internal class FacialImageEncoderServiceTests : BiometricIntegrationTestBase
 {
     private byte[] _validImageData = null!;
     private byte[] _invalidImageData = null!;
@@ -47,7 +53,7 @@ public class FacialImageEncoderServiceTests : BiometricIntegrationTestBase
         Console.WriteLine($"Loaded test image: {testImagePath} ({_validImageData.Length} bytes)");
 
         _invalidImageData = new byte[] { 1, 2, 3, 4, 5 }; // Invalid image data
-        
+
         // Create encoder service with DI services
         _encoderService = ServiceProvider.GetRequiredService<FacialImageEncoderService>();
     }
@@ -94,7 +100,7 @@ public class FacialImageEncoderServiceTests : BiometricIntegrationTestBase
         var options = ProcessingOptions.PivHigh with
         {
             MinFaceConfidence = 0.85f,
-            MaxRetries = 1
+            MaxRetries = 1,
         };
 
         // Act
@@ -113,15 +119,16 @@ public class FacialImageEncoderServiceTests : BiometricIntegrationTestBase
     {
         // Act
         var result = await _encoderService.ProcessAsync(
-            _validImageData, 
-            ProcessingOptions.PivBalanced, 
-            "jpeg", 
-            85);
+            _validImageData,
+            ProcessingOptions.PivBalanced,
+            "jpeg",
+            85
+        );
 
         // Assert
         result.IsSuccess.Should().BeTrue();
         result.Value.ImageData.Should().NotBeEmpty();
-        
+
         // Verify JPEG signature (should start with FF D8)
         result.Value.ImageData[0].Should().Be(0xFF);
         result.Value.ImageData[1].Should().Be(0xD8);
@@ -135,15 +142,16 @@ public class FacialImageEncoderServiceTests : BiometricIntegrationTestBase
     {
         // Act
         var result = await _encoderService.ProcessAsync(
-            _validImageData, 
-            ProcessingOptions.PivBalanced, 
-            "png", 
-            85);
+            _validImageData,
+            ProcessingOptions.PivBalanced,
+            "png",
+            85
+        );
 
         // Assert
         result.IsSuccess.Should().BeTrue();
         result.Value.ImageData.Should().NotBeEmpty();
-        
+
         // Verify PNG signature
         result.Value.ImageData[0].Should().Be(0x89);
         result.Value.ImageData[1].Should().Be(0x50);
@@ -188,7 +196,10 @@ public class FacialImageEncoderServiceTests : BiometricIntegrationTestBase
     public async Task ProcessAsync_WithArchivalOptions_ReturnsHighQualityResult()
     {
         // Act
-        var result = await _encoderService.ProcessAsync(_validImageData, ProcessingOptions.Archival);
+        var result = await _encoderService.ProcessAsync(
+            _validImageData,
+            ProcessingOptions.Archival
+        );
 
         // Assert
         result.IsSuccess.Should().BeTrue();
@@ -202,14 +213,31 @@ public class FacialImageEncoderServiceTests : BiometricIntegrationTestBase
     [Test]
     public async Task ProcessAsync_WithLowConfidenceOptions_ReturnsFailureWhenNoGoodFace()
     {
-        // Arrange - create options that require very high confidence
-        var strictOptions = ProcessingOptions.PivBalanced with
-        {
-            MinFaceConfidence = 0.99f // Unrealistically high confidence
-        };
-
-        // Act
-        var result = await _encoderService.ProcessAsync(_validImageData, strictOptions);
+        // Use a known detector score so this checks filtering independently of model calibration.
+        var detector = Substitute.For<IFaceDetector>();
+        detector
+            .DetectFacesAsync(Arg.Any<RgbImage>())
+            .Returns(
+                Task.FromResult(
+                    Result.Success<IReadOnlyList<DetectedFace>>(
+                        new[]
+                        {
+                            new DetectedFace(
+                                FaceBox.Create(10, 10, 50, 50).Value,
+                                0.9f,
+                                Maybe<FaceLandmarks5>.None
+                            ),
+                        }
+                    )
+                )
+            );
+        using var service = new FacialImageEncoderService(
+            detector,
+            Substitute.For<IJpeg2000Encoder>(),
+            NullLogger<FacialImageEncoderService>.Instance
+        );
+        var strictOptions = ProcessingOptions.PivBalanced with { MinFaceConfidence = 0.99f };
+        var result = await service.ProcessAsync(_validImageData, strictOptions);
 
         // Assert
         result.IsFailure.Should().BeTrue();
@@ -227,7 +255,7 @@ public class FacialImageEncoderServiceTests : BiometricIntegrationTestBase
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        
+
         var metadata = result.Value.Metadata;
         metadata.OutputDimensions.Width.Should().Be(420);
         metadata.OutputDimensions.Height.Should().Be(560);
@@ -244,15 +272,22 @@ public class FacialImageEncoderServiceTests : BiometricIntegrationTestBase
     public async Task ProcessAsync_DifferentStrategies_ProduceDifferentFileSizes()
     {
         // Arrange
-        var minimalResult = await _encoderService.ProcessAsync(_validImageData, ProcessingOptions.Minimal);
-        var highQualityResult = await _encoderService.ProcessAsync(_validImageData, ProcessingOptions.PivHigh);
+        var minimalResult = await _encoderService.ProcessAsync(
+            _validImageData,
+            ProcessingOptions.Minimal
+        );
+        var highQualityResult = await _encoderService.ProcessAsync(
+            _validImageData,
+            ProcessingOptions.PivHigh
+        );
 
         // Assert
         minimalResult.IsSuccess.Should().BeTrue();
         highQualityResult.IsSuccess.Should().BeTrue();
-        
+
         // Minimal should be smaller than high quality
-        minimalResult.Value.ImageData.Length.Should()
+        minimalResult
+            .Value.ImageData.Length.Should()
             .BeLessThanOrEqualTo(highQualityResult.Value.ImageData.Length);
     }
 }

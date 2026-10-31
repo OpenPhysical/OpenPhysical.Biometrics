@@ -13,31 +13,36 @@ public sealed record ProcessingOptions
     /// Gets the minimum confidence threshold for face detection
     /// </summary>
     /// <value>Confidence value from 0.0 to 1.0. Default from BiometricConfiguration.</value>
-    public float MinFaceConfidence { get; init; } = BiometricConfiguration.Default.FaceDetection.MinConfidence;
+    public float MinFaceConfidence { get; init; } =
+        BiometricConfiguration.Default.FaceDetection.MinConfidence;
 
     /// <summary>
     /// Gets a value indicating whether to require exactly one face in the image
     /// </summary>
     /// <value>True to fail if multiple faces are detected; false to use the highest confidence face. Default from BiometricConfiguration.</value>
-    public bool RequireSingleFace { get; init; } = BiometricConfiguration.Default.FaceDetection.RequireSingleFace;
+    public bool RequireSingleFace { get; init; } =
+        BiometricConfiguration.Default.FaceDetection.RequireSingleFace;
 
     /// <summary>
     /// Gets the maximum number of retry attempts for processing
     /// </summary>
     /// <value>Number of retry attempts. Default from BiometricConfiguration.</value>
-    public int MaxRetries { get; init; } = BiometricConfiguration.Default.Performance.DefaultRetries;
+    public int MaxRetries { get; init; } =
+        BiometricConfiguration.Default.Performance.DefaultRetries;
 
     /// <summary>
     /// Gets the timeout for processing operations
     /// </summary>
     /// <value>Maximum time allowed for processing. Default from BiometricConfiguration.</value>
-    public TimeSpan ProcessingTimeout { get; init; } = BiometricConfiguration.Default.Performance.DefaultTimeout;
+    public TimeSpan ProcessingTimeout { get; init; } =
+        BiometricConfiguration.Default.Performance.DefaultTimeout;
 
     /// <summary>
     /// Gets a value indicating whether to preserve EXIF metadata in the output image
     /// </summary>
     /// <value>True to preserve metadata; false to strip it. Default from BiometricConfiguration.</value>
-    public bool PreserveMetadata { get; init; } = BiometricConfiguration.Default.ImageProcessing.PreserveMetadata;
+    public bool PreserveMetadata { get; init; } =
+        BiometricConfiguration.Default.ImageProcessing.PreserveMetadata;
 
     /// <summary>
     /// Gets the ROI resolution level priority setting
@@ -47,31 +52,36 @@ public sealed record ProcessingOptions
     /// 0 = aggressive ROI priority, 1 = balanced, 2 = conservative, 3 = smoothest transitions.
     /// Default from BiometricConfiguration.
     /// </value>
-    public int RoiStartLevel { get; init; } = BiometricConfiguration.Default.Encoding.Jpeg2000.DefaultRoiStartLevel;
+    public int RoiStartLevel { get; init; } =
+        BiometricConfiguration.Default.Encoding.Jpeg2000.DefaultRoiStartLevel;
 
     /// <summary>
     /// Gets a value indicating whether to enable ROI encoding
     /// </summary>
     /// <value>True to enable ROI encoding for enhanced facial quality. Default from BiometricConfiguration.</value>
-    public bool EnableRoi { get; init; } = BiometricConfiguration.Default.Encoding.Jpeg2000.EnableRoiByDefault;
+    public bool EnableRoi { get; init; } =
+        BiometricConfiguration.Default.Encoding.Jpeg2000.EnableRoiByDefault;
 
     /// <summary>
     /// Gets a value indicating whether to align ROI regions with compression blocks
     /// </summary>
     /// <value>True to align ROI regions; false for smoother quality transitions. Default from BiometricConfiguration.</value>
-    public bool AlignRoi { get; init; } = BiometricConfiguration.Default.Encoding.Jpeg2000.AlignRoiByDefault;
+    public bool AlignRoi { get; init; } =
+        BiometricConfiguration.Default.Encoding.Jpeg2000.AlignRoiByDefault;
 
     /// <summary>
     /// Gets the maximum rotation angle allowed for face alignment
     /// </summary>
     /// <value>Maximum rotation in degrees. Default from BiometricConfiguration.</value>
-    public float MaxRotationDegrees { get; init; } = BiometricConfiguration.Default.FaceDetection.MaxRotationDegrees;
+    public float MaxRotationDegrees { get; init; } =
+        BiometricConfiguration.Default.FaceDetection.MaxRotationDegrees;
 
     /// <summary>
     /// Gets the encoding strategy for JPEG 2000 compression
     /// </summary>
     /// <value>Strategy determining how the image is compressed. Default from BiometricConfiguration.</value>
-    public EncodingStrategy Strategy { get; init; } = EncodingStrategy.FixedRate(BiometricConfiguration.Default.Encoding.Jpeg2000.DefaultRate);
+    public EncodingStrategy Strategy { get; init; } =
+        EncodingStrategy.FixedRate(BiometricConfiguration.Default.Encoding.Jpeg2000.DefaultRate);
 
     /// <summary>
     /// TWIC maximum: Target for TWIC card compatibility
@@ -83,7 +93,9 @@ public sealed record ProcessingOptions
     public static ProcessingOptions TwicMax =>
         BiometricConfiguration.Default.GetDefaultProcessingOptions() with
         {
-            Strategy = EncodingStrategy.TargetSize(BiometricConfiguration.Default.Standards.TwicMax.TargetBytes)
+            Strategy = EncodingStrategy.TargetSize(
+                BiometricConfiguration.Default.Standards.TwicMax.TargetBytes
+            ),
         };
 
     /// <summary>
@@ -96,7 +108,9 @@ public sealed record ProcessingOptions
     public static ProcessingOptions PivMin =>
         BiometricConfiguration.Default.GetDefaultProcessingOptions() with
         {
-            Strategy = EncodingStrategy.TargetSize(BiometricConfiguration.Default.Standards.PivMin.TargetBytes)
+            Strategy = EncodingStrategy.TargetSize(
+                BiometricConfiguration.Default.Standards.PivMin.TargetBytes
+            ),
         };
 
     /// <summary>
@@ -120,7 +134,9 @@ public sealed record ProcessingOptions
     public static ProcessingOptions PivHigh =>
         BiometricConfiguration.Default.GetDefaultProcessingOptions() with
         {
-            Strategy = EncodingStrategy.TargetSize(BiometricConfiguration.Default.Standards.PivHigh.TargetBytes)
+            Strategy = EncodingStrategy.TargetSize(
+                BiometricConfiguration.Default.Standards.PivHigh.TargetBytes
+            ),
         };
 
     /// <summary>
@@ -134,7 +150,9 @@ public sealed record ProcessingOptions
     public static ProcessingOptions PivVeryHigh =>
         BiometricConfiguration.Default.GetDefaultProcessingOptions() with
         {
-            Strategy = EncodingStrategy.TargetSize(BiometricConfiguration.Default.Standards.PivVeryHigh.TargetBytes)
+            Strategy = EncodingStrategy.TargetSize(
+                BiometricConfiguration.Default.Standards.PivVeryHigh.TargetBytes
+            ),
         };
 
     /// <summary>
@@ -151,7 +169,9 @@ public sealed record ProcessingOptions
             MaxRetries = BiometricConfiguration.Default.Performance.ExtendedRetries,
             ProcessingTimeout = BiometricConfiguration.Default.Performance.ExtendedTimeout,
             PreserveMetadata = true,
-            Strategy = EncodingStrategy.FixedRate(BiometricConfiguration.Default.Encoding.Jpeg2000.ArchivalRate)
+            Strategy = EncodingStrategy.FixedRate(
+                BiometricConfiguration.Default.Encoding.Jpeg2000.ArchivalRate
+            ),
         };
 
     /// <summary>
@@ -165,7 +185,9 @@ public sealed record ProcessingOptions
     public static ProcessingOptions Minimal =>
         BiometricConfiguration.Default.GetDefaultProcessingOptions() with
         {
-            Strategy = EncodingStrategy.TargetSize(BiometricConfiguration.Default.Standards.Minimal.TargetBytes)
+            Strategy = EncodingStrategy.TargetSize(
+                BiometricConfiguration.Default.Standards.Minimal.TargetBytes
+            ),
         };
 
     /// <summary>
@@ -180,7 +202,7 @@ public sealed record ProcessingOptions
         {
             MinFaceConfidence = BiometricConfiguration.Default.FaceDetection.RelaxedMinConfidence,
             MaxRetries = BiometricConfiguration.Default.Performance.FastRetries,
-            ProcessingTimeout = BiometricConfiguration.Default.Performance.FastTimeout
+            ProcessingTimeout = BiometricConfiguration.Default.Performance.FastTimeout,
         };
 
     /// <summary>
@@ -199,7 +221,7 @@ public sealed record ProcessingOptions
             EnableRoi = configuration.Encoding.Jpeg2000.EnableRoiByDefault,
             AlignRoi = configuration.Encoding.Jpeg2000.AlignRoiByDefault,
             MaxRotationDegrees = configuration.FaceDetection.MaxRotationDegrees,
-            Strategy = EncodingStrategy.TargetSize(configuration.Standards.PivBalanced.TargetBytes)
+            Strategy = EncodingStrategy.TargetSize(configuration.Standards.PivBalanced.TargetBytes),
         };
     }
 }

@@ -1,5 +1,5 @@
-using JetBrains.Annotations;
 using System.Collections.Immutable;
+using JetBrains.Annotations;
 
 namespace OpenPhysical.Biometrics.Core.Abstractions.Pipeline;
 
@@ -99,9 +99,9 @@ public readonly record struct PipelineStepTrace(
     /// Creates a successful step trace.
     /// </summary>
     public static PipelineStepTrace Success(
-        string stepId, 
-        string stepName, 
-        DateTimeOffset startedAt, 
+        string stepId,
+        string stepName,
+        DateTimeOffset startedAt,
         DateTimeOffset completedAt
     ) => new(stepId, stepName, startedAt, completedAt, true, Maybe<string>.None);
 
@@ -109,9 +109,9 @@ public readonly record struct PipelineStepTrace(
     /// Creates a failed step trace.
     /// </summary>
     public static PipelineStepTrace Failure(
-        string stepId, 
-        string stepName, 
-        DateTimeOffset startedAt, 
+        string stepId,
+        string stepName,
+        DateTimeOffset startedAt,
         DateTimeOffset completedAt,
         string errorMessage
     ) => new(stepId, stepName, startedAt, completedAt, false, Maybe<string>.From(errorMessage));

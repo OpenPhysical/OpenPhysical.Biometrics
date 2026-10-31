@@ -1,33 +1,41 @@
+using System.Drawing;
+using OpenPhysical.Biometrics.Imaging;
+using OpenPhysical.Biometrics.Tool.Drawing;
+
 namespace OpenPhysical.Biometrics.Tool.Tests.Commands;
 
+using System.IO;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.FileProviders;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using OpenPhysical.Biometrics.Infrastructure.Extensions;
-using OpenPhysical.Biometrics.Infrastructure.Cbeff;
-using OpenPhysical.Biometrics.Infrastructure.Standards.Incits385;
+using NUnit.Framework;
 using OpenPhysical.Biometrics.Core.Cbeff;
 using OpenPhysical.Biometrics.Core.Standards.Incits385;
+using OpenPhysical.Biometrics.Infrastructure.Cbeff;
+using OpenPhysical.Biometrics.Infrastructure.Extensions;
+using OpenPhysical.Biometrics.Infrastructure.Standards.Incits385;
 using OpenPhysical.Biometrics.Tool.Commands;
 using Spectre.Console;
 using Spectre.Console.Cli;
-using Spectre.Console.Testing;
 using Spectre.Console.Cli.Extensions.DependencyInjection;
-using NUnit.Framework;
-using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.PixelFormats;
-using SixLabors.ImageSharp.Formats.Jpeg;
-using System.IO;
+using Spectre.Console.Testing;
 
 /// <summary>
 /// Base class for CLI command tests that provides consistent TestConsole setup.
 /// </summary>
 public abstract class CommandTestBase
 {
+    /// <summary>Gets the captured console used to inspect command output.</summary>
     protected TestConsole Console = null!;
+
+    /// <summary>Gets the command application configured for each test.</summary>
     protected CommandAppTester App = null!;
+
+    /// <summary>Gets the isolated directory for generated test files.</summary>
     protected string TempDirectory = null!;
+
+    /// <summary>Gets the committed fixture directory.</summary>
     protected string TestDataDirectory = null!;
 
     /// <summary>
@@ -43,17 +51,20 @@ public abstract class CommandTestBase
         // Find test data directory
         var currentDir = TestContext.CurrentContext.TestDirectory;
         var searchDir = new DirectoryInfo(currentDir);
-        
-        while (searchDir != null && !File.Exists(Path.Combine(searchDir.FullName, "OpenPhysical.Biometrics.sln")))
+
+        while (
+            searchDir != null
+            && !File.Exists(Path.Combine(searchDir.FullName, "OpenPhysical.Biometrics.sln"))
+        )
         {
             searchDir = searchDir.Parent;
         }
-        
+
         if (searchDir == null)
         {
             throw new InvalidOperationException("Could not find solution root");
         }
-        
+
         TestDataDirectory = Path.Combine(
             searchDir.FullName,
             "tests",
@@ -64,12 +75,13 @@ public abstract class CommandTestBase
 
         // Create TestConsole for controlled output
         Console = new TestConsole();
-        Console.EmitAnsiSequences = false; // Plain text output for tests
+        Console.EmitAnsiSequences = false;
+        AnsiConsole.Console = Console; // Plain text output for tests
 
         // Create the command app with dependency injection
         var services = CreateTestServices();
         App = new CommandAppTester(new DependencyInjectionRegistrar(services));
-        
+
         ConfigureCommands(App);
     }
 
@@ -98,7 +110,7 @@ public abstract class CommandTestBase
         {
             EnvironmentName = "Test",
             ApplicationName = "biotool-test",
-            ContentRootPath = AppContext.BaseDirectory
+            ContentRootPath = AppContext.BaseDirectory,
         };
         services.AddSingleton<IHostEnvironment>(hostEnvironment);
 
@@ -114,6 +126,7 @@ public abstract class CommandTestBase
 
         // Register CBEFF services
         services.AddCbeffServices();
+        services.AddCompatibilityCryptographyServices();
         services.AddScoped<ICbeffEncoder, CbeffEncoderService>();
         services.AddScoped<ICbeffDecoder, CbeffDecoderService>();
         services.AddScoped<ICbeffSigner, CbeffSignerService>();
@@ -158,6 +171,7 @@ public abstract class CommandTestBase
     {
         app.Configure(config =>
         {
+            config.ConfigureConsole(Console);
             config.SetApplicationName("biotool");
             config.ValidateExamples();
 
@@ -165,14 +179,17 @@ public abstract class CommandTestBase
             config.AddCommand<ProcessCommand>("process");
 
             // CBEFF commands
-            config.AddBranch("cbeff", cbeff =>
-            {
-                cbeff.AddCommand<InspectCbeffCommand>("inspect");
-                cbeff.AddCommand<ExtractCbeffCommand>("extract");
-                cbeff.AddCommand<CreateCbeffCommand>("create");
-                cbeff.AddCommand<SignCbeffCommand>("sign");
-                cbeff.AddCommand<VerifyCbeffCommand>("verify");
-            });
+            config.AddBranch(
+                "cbeff",
+                cbeff =>
+                {
+                    cbeff.AddCommand<InspectCbeffCommand>("inspect");
+                    cbeff.AddCommand<ExtractCbeffCommand>("extract");
+                    cbeff.AddCommand<CreateCbeffCommand>("create");
+                    cbeff.AddCommand<SignCbeffCommand>("sign");
+                    cbeff.AddCommand<VerifyCbeffCommand>("verify");
+                }
+            );
         });
     }
 
@@ -182,12 +199,24 @@ public abstract class CommandTestBase
     protected string GetTestImagePath()
     {
         var solutionRoot = new DirectoryInfo(TestContext.CurrentContext.TestDirectory);
-        while (solutionRoot != null && !File.Exists(Path.Combine(solutionRoot.FullName, "OpenPhysical.Biometrics.sln")))
+        while (
+            solutionRoot != null
+            && !File.Exists(Path.Combine(solutionRoot.FullName, "OpenPhysical.Biometrics.sln"))
+        )
         {
             solutionRoot = solutionRoot.Parent;
         }
-        
-        return Path.Combine(solutionRoot!.FullName, "tests", "sample_images", "generic_guy.png");
+
+        return Path.Combine(solutionRoot!.FullName, "tests", "sample_images", "generic_guy.jpg");
+    }
+
+    /// <summary>Prepares the explicit geometry consumed by the CBEFF packaging tests.</summary>
+    protected string GetPreparedPortraitPath()
+    {
+        var prepared = Path.Combine(TempDirectory, "prepared-portrait.jpg");
+        using var image = RgbImage.Load(GetTestImagePath());
+        image.Resize(480, 640, fillCrop: true).SaveAsJpeg(prepared, 90);
+        return prepared;
     }
 
     /// <summary>
@@ -196,12 +225,12 @@ public abstract class CommandTestBase
     protected string CreateEmptyImage()
     {
         var imagePath = Path.Combine(TempDirectory, "empty.jpg");
-        
-        using (var image = new Image<Rgba32>(100, 100, new Rgba32(255, 255, 255)))
+
+        using (var image = new RgbImage(100, 100, new RgbaPixel(255, 255, 255)))
         {
-            image.Save(imagePath, new JpegEncoder());
+            image.SaveAsJpeg(imagePath, 85);
         }
-        
+
         return imagePath;
     }
 }

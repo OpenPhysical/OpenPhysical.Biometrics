@@ -1,10 +1,10 @@
 namespace OpenPhysical.Biometrics.Core.Cbeff;
 
+using System.Collections.Immutable;
 using CSharpFunctionalExtensions;
 using OpenPhysical.Biometrics.Core.Certificates;
 using OpenPhysical.Domains.Cbeff;
 using Org.BouncyCastle.X509;
-using System.Collections.Immutable;
 
 /// <summary>
 /// Service for discovering and validating certificates from multiple sources.
@@ -22,7 +22,8 @@ public interface ICertificateDiscoveryService
     Result<CertificateDiscoveryResult> DiscoverCertificates(
         CbeffPayload cbeffPayload,
         Maybe<ChuidStructure> chuidStructure,
-        ITrustedCertificateStoreExtended trustedStore);
+        ITrustedCertificateStoreExtended trustedStore
+    );
 
     /// <summary>
     /// Validates a certificate chain back to a trusted root.
@@ -32,7 +33,8 @@ public interface ICertificateDiscoveryService
     /// <returns>Result containing chain validation status and details</returns>
     Result<CertificateChainValidationResult> ValidateCertificateChain(
         X509Certificate certificate,
-        ITrustedCertificateStoreExtended trustedStore);
+        ITrustedCertificateStoreExtended trustedStore
+    );
 
     /// <summary>
     /// Compares two certificate identities to determine if they represent the same signer.
@@ -59,7 +61,8 @@ public sealed record CertificateDiscoveryResult(
     Maybe<X509Certificate> TrustedStoreCertificate,
     X509Certificate RecommendedCertificate,
     bool SignerIdentityMatch,
-    CertificateValidationStrategy ValidationStrategy);
+    CertificateValidationStrategy ValidationStrategy
+);
 
 /// <summary>
 /// Result of certificate chain validation.
@@ -72,7 +75,8 @@ public sealed record CertificateChainValidationResult(
     bool IsValid,
     Maybe<X509Certificate> TrustedRoot,
     ImmutableArray<X509Certificate> ChainPath,
-    ImmutableArray<string> ValidationErrors);
+    ImmutableArray<string> ValidationErrors
+);
 
 /// <summary>
 /// Strategy used for certificate validation in PIV cross-validation.
@@ -97,5 +101,5 @@ public enum CertificateValidationStrategy
     /// <summary>
     /// Using certificate from trusted store (fallback scenario).
     /// </summary>
-    TrustedStore
+    TrustedStore,
 }

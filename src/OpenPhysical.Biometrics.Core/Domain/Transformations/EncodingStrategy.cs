@@ -1,9 +1,9 @@
-using OpenPhysical.Biometrics.Core.Abstractions;
-using OpenPhysical.Biometrics.Core.Domain.Detection;
+using System.Drawing;
 using JetBrains.Annotations;
 using Microsoft.Extensions.Logging.Abstractions;
-using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.PixelFormats;
+using OpenPhysical.Biometrics.Core.Abstractions;
+using OpenPhysical.Biometrics.Core.Domain.Detection;
+using OpenPhysical.Biometrics.Imaging;
 
 namespace OpenPhysical.Biometrics.Core.Domain.Transformations;
 
@@ -37,7 +37,7 @@ public abstract record EncodingStrategy
     /// <param name="logger">Logger for debug output</param>
     /// <returns>Encoding result with compressed data and metadata</returns>
     public abstract Result<EncodingResult> Execute(
-        Image<Rgba32> image,
+        RgbImage image,
         FacialRoiSet roiSet,
         IJpeg2000Encoder encoder,
         ProcessingOptions options,
@@ -56,7 +56,7 @@ public sealed record FixedRateStrategy(float Rate) : EncodingStrategy
     /// Execute fixed rate encoding
     /// </summary>
     public override Result<EncodingResult> Execute(
-        Image<Rgba32> image,
+        RgbImage image,
         FacialRoiSet roiSet,
         IJpeg2000Encoder encoder,
         ProcessingOptions options,
@@ -117,7 +117,7 @@ public sealed record TargetSizeStrategy(int TargetBytes) : EncodingStrategy
     /// Execute target size encoding using intelligent rate selection
     /// </summary>
     public override Result<EncodingResult> Execute(
-        Image<Rgba32> image,
+        RgbImage image,
         FacialRoiSet roiSet,
         IJpeg2000Encoder encoder,
         ProcessingOptions options,
@@ -214,26 +214,25 @@ public sealed record TargetSizeStrategy(int TargetBytes) : EncodingStrategy
             if (result.HasValue)
             {
                 var (encodedData, size) = result.Value;
-                logger.LogDebug("Rate {Rate} produced {Size} bytes", rate, size);
+                logger.LogDebug(
+                    new EventId(775531, "EncodingStrategy"),
+                    "EncodingStrategy stage completed."
+                );
 
                 if (size <= TargetBytes)
                 {
                     // Found a rate that fits - this is our result since we test high to low
                     logger.LogInformation(
-                        "TargetSizeStrategy succeeded: {Size} bytes using {Rate} bpp (target was {TargetBytes})",
-                        size,
-                        rate,
-                        TargetBytes
+                        new EventId(842545, "EncodingStrategy"),
+                        "EncodingStrategy stage completed."
                     );
                     return Result.Success(new EncodingResult(encodedData, rate, TargetBytes));
                 }
                 else
                 {
                     logger.LogDebug(
-                        "Rate {Rate} exceeds target ({Size} > {TargetBytes}) - continuing to next rate",
-                        rate,
-                        size,
-                        TargetBytes
+                        new EventId(679111, "EncodingStrategy"),
+                        "EncodingStrategy stage completed."
                     );
                 }
             }
@@ -258,7 +257,7 @@ public sealed record TargetSizeStrategy(int TargetBytes) : EncodingStrategy
     /// </summary>
     private static Result<EncodingResult> TryEncodeAndReturn(
         float rate,
-        Image<Rgba32> image,
+        RgbImage image,
         FacialRoiSet roiSet,
         IJpeg2000Encoder encoder,
         ProcessingOptions options,
@@ -270,9 +269,8 @@ public sealed record TargetSizeStrategy(int TargetBytes) : EncodingStrategy
         {
             var (data, size) = result.Value;
             logger.LogInformation(
-                "Single-try encoding succeeded: {Size} bytes using {Rate} bpp",
-                size,
-                rate
+                new EventId(754546, "EncodingStrategy"),
+                "EncodingStrategy stage completed."
             );
             return Result.Success(new EncodingResult(data, rate, Maybe<int>.None));
         }
@@ -293,7 +291,7 @@ public sealed record TargetSizeStrategy(int TargetBytes) : EncodingStrategy
     /// <returns>Encoded data and size if successful</returns>
     private static Maybe<(byte[] Data, int Size)> TryEncodeAtRate(
         float rate,
-        Image<Rgba32> image,
+        RgbImage image,
         FacialRoiSet roiSet,
         IJpeg2000Encoder encoder,
         ProcessingOptions options,
@@ -320,9 +318,8 @@ public sealed record TargetSizeStrategy(int TargetBytes) : EncodingStrategy
         if (result.IsFailure)
         {
             logger.LogDebug(
-                "TryEncodeAtRate: Encoder returned failure for rate {Rate}: {Error}",
-                rate,
-                result.Error
+                new EventId(612619, "EncodingStrategy"),
+                "EncodingStrategy stage completed."
             );
             return Maybe<(byte[], int)>.None;
         }
@@ -334,9 +331,8 @@ public sealed record TargetSizeStrategy(int TargetBytes) : EncodingStrategy
             return Maybe<(byte[], int)>.None;
         }
         logger.LogDebug(
-            "TryEncodeAtRate: Success for rate {Rate}, data length: {Length}",
-            rate,
-            encodedData.Length
+            new EventId(746407, "EncodingStrategy"),
+            "EncodingStrategy stage completed."
         );
         return Maybe<(byte[], int)>.From((encodedData, encodedData.Length));
     }

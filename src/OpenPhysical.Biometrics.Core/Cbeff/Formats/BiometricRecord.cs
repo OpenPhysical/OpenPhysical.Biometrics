@@ -11,12 +11,12 @@ public abstract record BiometricRecord
     /// Gets the format type identifier for this record.
     /// </summary>
     public abstract string FormatType { get; }
-    
+
     /// <summary>
     /// Gets the raw bytes of the biometric data.
     /// </summary>
     public ImmutableArray<byte> RawData { get; }
-    
+
     /// <summary>
     /// Initializes a new instance of the BiometricRecord class.
     /// </summary>

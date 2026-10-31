@@ -1,0 +1,27 @@
+<Project>
+    <Target
+        Name="EnforcePublicApiDocumentation"
+        BeforeTargets="CoreCompile"
+        Condition="'$(DesignTimeBuild)' != 'true'"
+    >
+        <Error
+            Condition="'$(GenerateDocumentationFile)' != 'true'"
+            Text="Public API documentation is mandatory: GenerateDocumentationFile must be true."
+        />
+        <Error
+            Condition="'$(TreatWarningsAsErrors)' != 'true'"
+            Text="Warnings must be treated as errors in this repository."
+        />
+        <Error
+            Condition="'$(RunAnalyzers)' != 'true' or '$(RunAnalyzersDuringBuild)' != 'true'"
+            Text="Documentation analyzers must run during builds."
+        />
+        <PropertyGroup>
+            <DocumentationDiagnosticPattern>(?i)(^|[;, ])(?:CS)?(?:0419|1570|1572|1573|1574|1580|1581|1584|1587|1591|1711|1712|1734|1735)([;, ]|$)|(^|[;, ])SA(?:000[12]|16[0-9]{2})([;, ]|$)</DocumentationDiagnosticPattern>
+        </PropertyGroup>
+        <Error
+            Condition="$([System.Text.RegularExpressions.Regex]::IsMatch('$(NoWarn);$(WarningsNotAsErrors)', '$(DocumentationDiagnosticPattern)'))"
+            Text="Public API documentation diagnostics cannot be suppressed or downgraded."
+        />
+    </Target>
+</Project>

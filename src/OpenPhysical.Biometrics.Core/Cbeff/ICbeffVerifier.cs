@@ -18,7 +18,8 @@ public interface ICbeffVerifier
     /// <returns>Result containing verification status and details</returns>
     Task<Result<CbeffVerificationResult>> VerifyAsync(
         CbeffPayload payload,
-        IStore<X509Certificate> trustedCertificates);
+        IStore<X509Certificate> trustedCertificates
+    );
 
     /// <summary>
     /// Verifies a detached CMS signature for CBEFF data.
@@ -30,7 +31,8 @@ public interface ICbeffVerifier
     Result<CbeffVerificationResult> VerifyDetachedSignature(
         byte[] data,
         byte[] signature,
-        IStore<X509Certificate> trustedCertificates);
+        IStore<X509Certificate> trustedCertificates
+    );
 }
 
 /// <summary>
@@ -46,4 +48,5 @@ public sealed record CbeffVerificationResult(
     Maybe<X509Certificate> SignerCertificate,
     Maybe<DateTime> SigningTime,
     Maybe<Guid> CardUuid,
-    string[] ValidationErrors);
+    string[] ValidationErrors
+);

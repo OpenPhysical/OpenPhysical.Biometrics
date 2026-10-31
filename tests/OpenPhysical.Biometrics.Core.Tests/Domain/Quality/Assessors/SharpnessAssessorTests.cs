@@ -1,13 +1,11 @@
 using System;
+using System.Drawing;
+using AwesomeAssertions;
 using CSharpFunctionalExtensions;
+using NUnit.Framework;
 using OpenPhysical.Biometrics.Core.Domain.Quality;
 using OpenPhysical.Biometrics.Core.Domain.Quality.Assessors;
-using AwesomeAssertions;
-using NUnit.Framework;
-using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.PixelFormats;
-using SixLabors.ImageSharp.Processing;
-using SixLabors.ImageSharp.Drawing.Processing;
+using OpenPhysical.Biometrics.Imaging;
 
 namespace OpenPhysical.Biometrics.Core.Tests.Domain.Quality.Assessors;
 
@@ -25,10 +23,10 @@ public class SharpnessAssessorTests
     {
         // Arrange - create an image with high-frequency content
         using var sharpImage = CreateSharpTestImage();
-        
+
         // Act
         var result = SharpnessAssessor.Assess(sharpImage);
-        
+
         // Assert
         result.IsSuccess.Should().BeTrue();
         var score = result.Value;
@@ -37,7 +35,7 @@ public class SharpnessAssessorTests
         score.RegionalScores.Should().NotBeNull();
         score.RegionalScores.Should().ContainKey("Center");
     }
-    
+
     /// <summary>
     /// Verifies that a blurry image returns a low sharpness score
     /// </summary>
@@ -46,17 +44,17 @@ public class SharpnessAssessorTests
     {
         // Arrange - create a blurry image
         using var blurryImage = CreateBlurryTestImage();
-        
+
         // Act
         var result = SharpnessAssessor.Assess(blurryImage);
-        
+
         // Assert
         result.IsSuccess.Should().BeTrue();
         var score = result.Value;
         score.Overall.Value.Should().BeLessThan(0.5f);
         score.HighFrequencyRatio.Should().BeLessThan(0.2f);
     }
-    
+
     /// <summary>
     /// Verifies that passing a null image returns a failure result with appropriate error message
     /// </summary>
@@ -64,16 +62,16 @@ public class SharpnessAssessorTests
     public void Assess_WithNullImage_ReturnsFailure()
     {
         // Arrange
-        Image<Rgba32>? nullImage = null;
-        
+        RgbImage? nullImage = null;
+
         // Act
         var result = SharpnessAssessor.Assess(nullImage!);
-        
+
         // Assert
         result.IsFailure.Should().BeTrue();
         result.Error.Should().Contain("No image data provided");
     }
-    
+
     /// <summary>
     /// Verifies that an image with zero dimensions returns a failure result
     /// </summary>
@@ -83,18 +81,18 @@ public class SharpnessAssessorTests
         // Arrange
         // Can't actually create a 0x0 image - ImageSharp throws
         // So we'll test with a 1x1 which is still too small for DCT
-        using var tinyImage = new Image<Rgba32>(1, 1);
+        using var tinyImage = new RgbImage(1, 1);
         tinyImage.Mutate(ctx => ctx.Fill(Color.White));
-        
+
         // Act
         var result = SharpnessAssessor.Assess(tinyImage);
-        
+
         // Assert
         result.IsFailure.Should().BeTrue();
         result.Error.Should().Contain("Image too small for DCT-based sharpness analysis");
         result.Error.Should().Contain("1x1px");
     }
-    
+
     /// <summary>
     /// Verifies that an image smaller than the minimum required size returns a failure result
     /// </summary>
@@ -102,19 +100,19 @@ public class SharpnessAssessorTests
     public void Assess_WithTooSmallImage_ReturnsFailure()
     {
         // Arrange - smaller than DCT block size
-        using var tinyImage = new Image<Rgba32>(7, 7);
+        using var tinyImage = new RgbImage(7, 7);
         tinyImage.Mutate(ctx => ctx.Fill(Color.White));
-        
+
         // Act
         var result = SharpnessAssessor.Assess(tinyImage);
-        
+
         // Assert
         result.IsFailure.Should().BeTrue();
         result.Error.Should().Contain("Image too small for DCT-based sharpness analysis");
         result.Error.Should().Contain("7x7px");
         result.Error.Should().Contain("Minimum required: 8x8px");
     }
-    
+
     /// <summary>
     /// Verifies that an image exactly at the minimum required size is processed successfully
     /// </summary>
@@ -122,22 +120,22 @@ public class SharpnessAssessorTests
     public void Assess_WithMinimumSizeImage_ReturnsSuccess()
     {
         // Arrange - exactly DCT block size
-        using var minImage = new Image<Rgba32>(8, 8);
-        minImage.Mutate(ctx => 
+        using var minImage = new RgbImage(8, 8);
+        minImage.Mutate(ctx =>
         {
             // Add some pattern for sharpness
             ctx.Fill(Color.White);
             ctx.Fill(Color.Black, new Rectangle(0, 0, 4, 4));
             ctx.Fill(Color.Black, new Rectangle(4, 4, 4, 4));
         });
-        
+
         // Act
         var result = SharpnessAssessor.Assess(minImage);
-        
+
         // Assert
         result.IsSuccess.Should().BeTrue();
     }
-    
+
     /// <summary>
     /// Verifies that regional sharpness scores are calculated consistently across image regions
     /// </summary>
@@ -146,25 +144,25 @@ public class SharpnessAssessorTests
     {
         // Arrange
         using var testImage = CreatePatternedTestImage();
-        
+
         // Act
         var result = SharpnessAssessor.Assess(testImage);
-        
+
         // Assert
         result.IsSuccess.Should().BeTrue();
         var scores = result.Value.RegionalScores;
-        
+
         // Should have all expected regions
         scores.Should().ContainKeys("Center", "Top", "Bottom", "Left", "Right");
         scores.Count.Should().Be(5);
-        
+
         // All regional scores should be valid
         foreach (var (region, score) in scores)
         {
             score.Should().BeInRange(0f, 1f);
         }
     }
-    
+
     /// <summary>
     /// Verifies that a uniform image without edges returns low sharpness scores
     /// </summary>
@@ -172,19 +170,19 @@ public class SharpnessAssessorTests
     public void Assess_WithUniformImage_ReturnsLowSharpness()
     {
         // Arrange - completely uniform image has no high frequency
-        using var uniformImage = new Image<Rgba32>(100, 100);
+        using var uniformImage = new RgbImage(100, 100);
         uniformImage.Mutate(ctx => ctx.Fill(Color.Gray));
-        
+
         // Act
         var result = SharpnessAssessor.Assess(uniformImage);
-        
+
         // Assert
         result.IsSuccess.Should().BeTrue();
         var score = result.Value;
         score.Overall.Value.Should().BeLessThan(0.1f);
         score.HighFrequencyRatio.Should().BeApproximately(0f, 0.01f);
     }
-    
+
     /// <summary>
     /// Verifies that an image with high contrast edges returns high sharpness scores
     /// </summary>
@@ -193,10 +191,10 @@ public class SharpnessAssessorTests
     {
         // Arrange - create checkerboard pattern
         using var checkerboard = CreateCheckerboardImage(200, 200, 10);
-        
+
         // Act
         var result = SharpnessAssessor.Assess(checkerboard);
-        
+
         // Assert
         result.IsSuccess.Should().BeTrue();
         var score = result.Value;
@@ -204,32 +202,34 @@ public class SharpnessAssessorTests
         score.Overall.Value.Should().BeGreaterThan(0.2f);
         score.HighFrequencyRatio.Should().BeGreaterThan(0.1f);
     }
-    
+
+    /// <summary>Checks that repeated assessment of identical pixels is deterministic.</summary>
     [Test]
     public void Assess_ProducesConsistentResultsForSameInput()
     {
         // Arrange
         using var testImage = CreateSharpTestImage();
-        
+
         // Act
         var result1 = SharpnessAssessor.Assess(testImage);
         var result2 = SharpnessAssessor.Assess(testImage);
-        
+
         // Assert
         result1.IsSuccess.Should().BeTrue();
         result2.IsSuccess.Should().BeTrue();
-        
-        result1.Value.Overall.Value.Should().BeApproximately(
-            result2.Value.Overall.Value, 0.0001f);
-        result1.Value.HighFrequencyRatio.Should().BeApproximately(
-            result2.Value.HighFrequencyRatio, 0.0001f);
+
+        result1.Value.Overall.Value.Should().BeApproximately(result2.Value.Overall.Value, 0.0001f);
+        result1
+            .Value.HighFrequencyRatio.Should()
+            .BeApproximately(result2.Value.HighFrequencyRatio, 0.0001f);
     }
-    
+
+    /// <summary>Checks that colour samples are converted to usable luminance before sharpness analysis.</summary>
     [Test]
     public void Assess_WithGrayscaleConversion_HandlesColorCorrectly()
     {
         // Arrange - create colored image
-        using var colorImage = new Image<Rgba32>(100, 100);
+        using var colorImage = new RgbImage(100, 100);
         colorImage.Mutate(ctx =>
         {
             // Different color regions to test grayscale conversion
@@ -238,19 +238,19 @@ public class SharpnessAssessorTests
             ctx.Fill(Color.Blue, new Rectangle(0, 50, 50, 50));
             ctx.Fill(Color.White, new Rectangle(50, 50, 50, 50));
         });
-        
+
         // Act
         var result = SharpnessAssessor.Assess(colorImage);
-        
+
         // Assert
         result.IsSuccess.Should().BeTrue();
         // Should detect edges between color regions
         result.Value.HighFrequencyRatio.Should().BeGreaterThan(0f);
     }
-    
-    private static Image<Rgba32> CreateSharpTestImage()
+
+    private static RgbImage CreateSharpTestImage()
     {
-        var image = new Image<Rgba32>(200, 200);
+        var image = new RgbImage(200, 200);
         image.Mutate(ctx =>
         {
             ctx.Fill(Color.White);
@@ -265,24 +265,24 @@ public class SharpnessAssessorTests
         });
         return image;
     }
-    
-    private static Image<Rgba32> CreateBlurryTestImage()
+
+    private static RgbImage CreateBlurryTestImage()
     {
         var image = CreateSharpTestImage();
         image.Mutate(ctx => ctx.GaussianBlur(10));
         return image;
     }
-    
-    private static Image<Rgba32> CreatePatternedTestImage()
+
+    private static RgbImage CreatePatternedTestImage()
     {
-        var image = new Image<Rgba32>(200, 200);
+        var image = new RgbImage(200, 200);
         image.Mutate(ctx =>
         {
             ctx.Fill(Color.White);
-            
+
             // Center pattern
             ctx.Fill(Color.Black, new Rectangle(80, 80, 40, 40));
-            
+
             // Corner patterns
             ctx.Fill(Color.Black, new Rectangle(10, 10, 20, 20));
             ctx.Fill(Color.Black, new Rectangle(170, 10, 20, 20));
@@ -291,10 +291,10 @@ public class SharpnessAssessorTests
         });
         return image;
     }
-    
-    private static Image<Rgba32> CreateCheckerboardImage(int width, int height, int squareSize)
+
+    private static RgbImage CreateCheckerboardImage(int width, int height, int squareSize)
     {
-        var image = new Image<Rgba32>(width, height);
+        var image = new RgbImage(width, height);
         image.Mutate(ctx =>
         {
             for (int y = 0; y < height; y += squareSize)
@@ -302,10 +302,15 @@ public class SharpnessAssessorTests
                 for (int x = 0; x < width; x += squareSize)
                 {
                     var isBlack = ((x / squareSize) + (y / squareSize)) % 2 == 0;
-                    ctx.Fill(isBlack ? Color.Black : Color.White, 
-                        new Rectangle(x, y, 
-                            Math.Min(squareSize, width - x), 
-                            Math.Min(squareSize, height - y)));
+                    ctx.Fill(
+                        isBlack ? Color.Black : Color.White,
+                        new Rectangle(
+                            x,
+                            y,
+                            Math.Min(squareSize, width - x),
+                            Math.Min(squareSize, height - y)
+                        )
+                    );
                 }
             }
         });

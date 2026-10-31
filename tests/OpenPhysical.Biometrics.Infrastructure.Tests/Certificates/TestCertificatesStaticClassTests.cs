@@ -8,7 +8,7 @@ using OpenPhysical.Biometrics.Infrastructure.Certificates;
 using Org.BouncyCastle.Math;
 
 [TestFixture]
-public class TestCertificatesStaticClassTests
+internal class TestCertificatesStaticClassTests
 {
     [Test]
     public void TestCertificates_RootCA_ShouldHaveExpectedProperties()
@@ -55,10 +55,10 @@ public class TestCertificatesStaticClassTests
         // Multiple accesses should return the same certificate instances
         var rootCA1 = TestCertificates.RootCA;
         var rootCA2 = TestCertificates.RootCA;
-        
+
         var intermediateCA1 = TestCertificates.IntermediateCA;
         var intermediateCA2 = TestCertificates.IntermediateCA;
-        
+
         var contentSigner1 = TestCertificates.ContentSigner;
         var contentSigner2 = TestCertificates.ContentSigner;
 
@@ -73,10 +73,10 @@ public class TestCertificatesStaticClassTests
         // Multiple accesses should return the same key pair instances
         var rootKeyPair1 = TestCertificates.RootKeyPair;
         var rootKeyPair2 = TestCertificates.RootKeyPair;
-        
+
         var intermediateKeyPair1 = TestCertificates.IntermediateKeyPair;
         var intermediateKeyPair2 = TestCertificates.IntermediateKeyPair;
-        
+
         var contentSignerKeyPair1 = TestCertificates.ContentSignerKeyPair;
         var contentSignerKeyPair2 = TestCertificates.ContentSignerKeyPair;
 
@@ -98,9 +98,9 @@ public class TestCertificatesStaticClassTests
     }
 
     [Test]
-    public void TestCertificates_AllCertificates_ShouldBeCurrentlyValid()
+    public void TestCertificates_AllCertificates_ShouldBeValidWithinTheirFixtureWindow()
     {
-        var now = DateTime.UtcNow;
+        var now = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc);
 
         TestCertificates.RootCA.IsValid(now).Should().BeTrue();
         TestCertificates.IntermediateCA.IsValid(now).Should().BeTrue();

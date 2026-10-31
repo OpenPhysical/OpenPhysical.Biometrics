@@ -1,6 +1,6 @@
 using AwesomeAssertions;
-using OpenPhysical.Biometrics.Core.Domain.Common;
 using NUnit.Framework;
+using OpenPhysical.Biometrics.Core.Domain.Common;
 
 namespace OpenPhysical.Biometrics.Core.Tests.Domain.Common;
 

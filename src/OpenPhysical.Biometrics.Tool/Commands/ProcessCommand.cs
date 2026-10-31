@@ -1,16 +1,16 @@
 using System.ComponentModel;
 using System.Text.Json;
+using CSharpFunctionalExtensions;
+using JetBrains.Annotations;
+using Microsoft.Extensions.Logging;
 using OpenPhysical.Biometrics.Core.Abstractions;
+using OpenPhysical.Biometrics.Core.Domain.Detection;
 using OpenPhysical.Biometrics.Core.Domain.Quality;
 using OpenPhysical.Biometrics.Core.Domain.Transformations;
 using OpenPhysical.Biometrics.Infrastructure.Extensions;
 using OpenPhysical.Biometrics.Infrastructure.Services;
-using JetBrains.Annotations;
-using Microsoft.Extensions.Logging;
 using Spectre.Console;
 using Spectre.Console.Cli;
-using CSharpFunctionalExtensions;
-using OpenPhysical.Biometrics.Core.Domain.Detection;
 
 namespace OpenPhysical.Biometrics.Tool.Commands;
 
@@ -179,7 +179,7 @@ public sealed class ProcessCommand(
         [Description("Quality assessment standard (piv, twic, icao, cac)")]
         [DefaultValue("piv")]
         public string QualityStandard { get; set; } = "piv";
-        
+
         /// <summary>
         /// Apply strict quality requirements (0.85 minimum)
         /// </summary>
@@ -197,7 +197,10 @@ public sealed class ProcessCommand(
         var validationResult = ValidateInputs(settings);
         if (validationResult.IsFailure)
         {
-            _logger.LogError("Command execution failed: {Error}", validationResult.Error);
+            _logger.LogError(
+                new EventId(3600, "ProcessingFailure"),
+                "Image processing reported a failure."
+            );
             AnsiConsole.MarkupLine($"[red]✗ {validationResult.Error}[/]");
             return 1;
         }
@@ -205,7 +208,10 @@ public sealed class ProcessCommand(
         var processingResult = await ProcessImageWithSettings(validationResult.Value);
         if (processingResult.IsFailure)
         {
-            _logger.LogError("Command execution failed: {Error}", processingResult.Error);
+            _logger.LogError(
+                new EventId(3601, "ProcessingFailure"),
+                "Image processing reported a failure."
+            );
             AnsiConsole.MarkupLine($"[red]✗ {processingResult.Error}[/]");
             return 1;
         }
@@ -218,17 +224,28 @@ public sealed class ProcessCommand(
         // Validate input file exists
         if (!File.Exists(settings.InputPath))
         {
-            _logger.LogError("Input file not found: {InputPath}", settings.InputPath);
+            _logger.LogError(
+                new EventId(3602, "ProcessingFailure"),
+                "Image processing reported a failure."
+            );
             return Result.Failure<Settings>($"Input file '{settings.InputPath}' not found.");
         }
 
         // Validate quality gate range
-        if (settings.QualityGate.HasValue && (settings.QualityGate.Value < 0.0f || settings.QualityGate.Value > 1.0f))
+        if (
+            settings.QualityGate.HasValue
+            && (settings.QualityGate.Value < 0.0f || settings.QualityGate.Value > 1.0f)
+        )
         {
-            _logger.LogError("Invalid quality gate value: {QualityGate}. Must be between 0.0 and 1.0.", settings.QualityGate);
-            return Result.Failure<Settings>($"Invalid quality gate value '{settings.QualityGate}'. Must be between 0.0 and 1.0.");
+            _logger.LogError(
+                new EventId(3603, "ProcessingFailure"),
+                "Image processing reported a failure."
+            );
+            return Result.Failure<Settings>(
+                $"Invalid quality gate value '{settings.QualityGate}'. Must be between 0.0 and 1.0."
+            );
         }
-        
+
         // Apply strict mode override
         if (settings.Strict)
         {
@@ -238,17 +255,18 @@ public sealed class ProcessCommand(
                 AnsiConsole.MarkupLine("[yellow]Strict mode enabled: quality gate set to 0.85[/]");
             }
         }
-        
+
         // Validate output format
         var validFormats = new[] { "jp2", "jpeg", "jpg", "png", "tiff", "tif" };
         if (!validFormats.Contains(settings.Format, StringComparer.OrdinalIgnoreCase))
         {
             _logger.LogError(
-                "Invalid output format: {Format}. Must be one of: {ValidFormats}.",
-                settings.Format,
-                string.Join(", ", validFormats)
+                new EventId(3604, "ProcessingFailure"),
+                "Image processing reported a failure."
             );
-            return Result.Failure<Settings>($"Invalid output format '{settings.Format}'. Must be one of: {string.Join(", ", validFormats)}.");
+            return Result.Failure<Settings>(
+                $"Invalid output format '{settings.Format}'. Must be one of: {string.Join(", ", validFormats)}."
+            );
         }
 
         // Validate ROI requirements for non-JP2 formats
@@ -256,10 +274,12 @@ public sealed class ProcessCommand(
         if (!isJp2Format && !settings.NoRoi)
         {
             _logger.LogError(
-                "ROI is not supported for {Format} format. Use --no-roi flag.",
-                settings.Format
+                new EventId(3605, "ProcessingFailure"),
+                "Image processing reported a failure."
             );
-            return Result.Failure<Settings>($"ROI encoding is not supported for {settings.Format.ToUpperInvariant()} format. You must use the --no-roi flag.");
+            return Result.Failure<Settings>(
+                $"ROI encoding is not supported for {settings.Format.ToUpperInvariant()} format. You must use the --no-roi flag."
+            );
         }
 
         return Result.Success(settings);
@@ -268,8 +288,9 @@ public sealed class ProcessCommand(
     private async Task<Result> ProcessImageWithSettings(Settings settings)
     {
         // Determine the output path
-        var outputPath = settings.OutputPath ?? GenerateOutputPath(settings.InputPath, settings.Format);
-        _logger.LogDebug("Output path determined: {OutputPath}", outputPath);
+        var outputPath =
+            settings.OutputPath ?? GenerateOutputPath(settings.InputPath, settings.Format);
+        _logger.LogDebug(new EventId(695575, "ProcessCommand"), "ProcessCommand stage completed.");
 
         // Determine processing options based on parameters
         var processingOptions = DetermineProcessingOptions(settings, _logger);
@@ -282,7 +303,12 @@ public sealed class ProcessCommand(
         if (processResult.IsFailure)
             return Result.Failure(processResult.Error);
 
-        var saveResult = await SaveResult(processResult.Value.ProcessingResult, outputPath, settings, processResult.Value.QualityAssessment);
+        var saveResult = await SaveResult(
+            processResult.Value.ProcessingResult,
+            outputPath,
+            settings,
+            processResult.Value.QualityAssessment
+        );
         if (saveResult.IsFailure)
             return Result.Failure(saveResult.Error);
 
@@ -293,61 +319,85 @@ public sealed class ProcessCommand(
 
     private async Task<Result<byte[]>> LoadImageData(string inputPath)
     {
-        return await Result.Try(async () =>
-        {
-            AnsiConsole.MarkupLine("[grey]Loading image...[/]");
-            var imageData = await File.ReadAllBytesAsync(inputPath);
-            _logger.LogDebug("Loaded image data: {Size} bytes", imageData.Length);
-            return imageData;
-        }, ex => $"Failed to load image: {ex.Message}");
+        return await Result.Try(
+            async () =>
+            {
+                AnsiConsole.MarkupLine("[grey]Loading image...[/]");
+                var imageData = await File.ReadAllBytesAsync(inputPath);
+                _logger.LogDebug(
+                    new EventId(641072, "ProcessCommand"),
+                    "ProcessCommand stage completed."
+                );
+                return imageData;
+            },
+            ex => $"Failed to load image: {ex.Message}"
+        );
     }
 
     private async Task<Result<ProcessingResultWithQuality>> ProcessImage(
-        byte[] imageData, 
+        byte[] imageData,
         ProcessingOptions processingOptions,
-        Settings settings)
+        Settings settings
+    )
     {
         if (settings.Verbose)
         {
             AnsiConsole.MarkupLine($"[blue]Source image: {imageData.Length} bytes[/]");
         }
 
-        return await AnsiConsole.Progress()
+        return await AnsiConsole
+            .Progress()
             .StartAsync(async ctx =>
             {
                 var task = ctx.AddTask("[green]Processing image[/]", maxValue: 100);
-                
+
                 task.Value = 10;
                 task.Description = "[green]Initializing processing[/]";
-                
-                _logger.LogDebug("Starting face processing with options: {Options}", processingOptions);
+
+                _logger.LogDebug(
+                    "Starting face processing with options: {Options}",
+                    processingOptions
+                );
 
                 task.Value = 20;
-                
+
                 // For quality assessment, use the quality extension method
                 if (settings.QualityGate.HasValue || settings.GenerateQualityReport)
                 {
                     task.Description = "[green]Processing with quality assessment[/]";
                     task.Value = 50;
-                    var result = await ProcessWithQualityAssessment(imageData, processingOptions, settings);
+                    var result = await ProcessWithQualityAssessment(
+                        imageData,
+                        processingOptions,
+                        settings
+                    );
                     task.Value = 100;
                     task.Description = "[green]Processing complete[/]";
                     return result;
                 }
-                
+
                 // For standard processing, use the new biometric processing service
-                task.Description = settings.NoResize 
+                task.Description = settings.NoResize
                     ? "[green]Encoding image without transformations[/]"
                     : "[green]Processing for PIV compliance[/]";
                 task.Value = 50;
-                
-                var standardResult = settings.NoResize 
-                    ? await _processingService.ProcessWithEncodingOnlyAsync(imageData, processingOptions, settings.Format, settings.JpegQuality)
-                    : await _processingService.ProcessForPivAsync(imageData, processingOptions, settings.Format);
-                
+
+                var standardResult = settings.NoResize
+                    ? await _processingService.ProcessWithEncodingOnlyAsync(
+                        imageData,
+                        processingOptions,
+                        settings.Format,
+                        settings.JpegQuality
+                    )
+                    : await _processingService.ProcessForPivAsync(
+                        imageData,
+                        processingOptions,
+                        settings.Format
+                    );
+
                 task.Value = 100;
                 task.Description = "[green]Processing complete[/]";
-                
+
                 return standardResult.Map(r => new ProcessingResultWithQuality(r, null));
             });
     }
@@ -355,18 +405,23 @@ public sealed class ProcessCommand(
     private async Task<Result<ProcessingResultWithQuality>> ProcessWithQualityAssessment(
         byte[] imageData,
         ProcessingOptions processingOptions,
-        Settings settings)
+        Settings settings
+    )
     {
-        _logger.LogDebug("Performing quality assessment with gate: {QualityGate}, standard: {Standard}", 
-            settings.QualityGate, settings.QualityStandard);
-        
+        _logger.LogDebug(
+            "Performing quality assessment with gate: {QualityGate}, standard: {Standard}",
+            settings.QualityGate,
+            settings.QualityStandard
+        );
+
         var qualityOptions = QualityAssessmentOptions.ForStandard(settings.QualityStandard) with
         {
             MinQualityThreshold = settings.QualityGate ?? 0.7f,
-            EnforceCompliance = false  // Only enforce threshold, not compliance violations
+            EnforceCompliance = false, // Only enforce threshold, not compliance violations
         };
-        
-        return await imageData.ProcessWithQualityAsync(
+
+        return await imageData
+            .ProcessWithQualityAsync(
                 processingOptions,
                 qualityOptions,
                 settings.Format,
@@ -381,33 +436,48 @@ public sealed class ProcessCommand(
                     if (qualityResult.Quality.Overall.Value >= settings.QualityGate.Value)
                     {
                         AnsiConsole.MarkupLine("[green]Quality assessment passed[/]");
-                        return Result.Success(new ProcessingResultWithQuality(qualityResult.Result, qualityResult.Quality));
+                        return Result.Success(
+                            new ProcessingResultWithQuality(
+                                qualityResult.Result,
+                                qualityResult.Quality
+                            )
+                        );
                     }
                     else
                     {
-                        AnsiConsole.MarkupLine($"[red]Quality assessment failed: score {qualityResult.Quality.Overall.Value:F2} below quality threshold {settings.QualityGate.Value:F2}[/]");
-                        return Result.Failure<ProcessingResultWithQuality>($"Quality score {qualityResult.Quality.Overall.Value:F2} below quality threshold {settings.QualityGate.Value:F2}");
+                        AnsiConsole.MarkupLine(
+                            $"[red]Quality assessment failed: score {qualityResult.Quality.Overall.Value:F2} below quality threshold {settings.QualityGate.Value:F2}[/]"
+                        );
+                        return Result.Failure<ProcessingResultWithQuality>(
+                            $"Quality score {qualityResult.Quality.Overall.Value:F2} below quality threshold {settings.QualityGate.Value:F2}"
+                        );
                     }
                 }
-                
-                return Result.Success(new ProcessingResultWithQuality(qualityResult.Result, qualityResult.Quality));
+
+                return Result.Success(
+                    new ProcessingResultWithQuality(qualityResult.Result, qualityResult.Quality)
+                );
             });
     }
 
     private async Task<Result> SaveResult(
-        ProcessingResultDto processingResult, 
-        string outputPath, 
+        ProcessingResultDto processingResult,
+        string outputPath,
         Settings settings,
-        Iso19794Assessment? qualityAssessment)
+        Iso19794Assessment? qualityAssessment
+    )
     {
-        return await Result.Try(async () =>
-        {
-            // Save the encoded image data
-            await File.WriteAllBytesAsync(outputPath, processingResult.ImageData);
-            
-            // Display results
-            await DisplayResults(processingResult, outputPath, settings, qualityAssessment);
-        }, ex => $"Failed to save result: {ex.Message}");
+        return await Result.Try(
+            async () =>
+            {
+                // Save the encoded image data
+                await File.WriteAllBytesAsync(outputPath, processingResult.ImageData);
+
+                // Display results
+                await DisplayResults(processingResult, outputPath, settings, qualityAssessment);
+            },
+            ex => $"Failed to save result: {ex.Message}"
+        );
     }
 
     /// <summary>
@@ -421,16 +491,18 @@ public sealed class ProcessCommand(
     )
     {
         AnsiConsole.WriteLine();
-        
+
         // Show quality assessment status if quality gate was used
         if (settings.QualityGate.HasValue && qualityAssessment != null)
         {
             if (qualityAssessment.Overall.Value >= settings.QualityGate.Value)
             {
-                AnsiConsole.MarkupLine($"[green]✓ Quality assessment passed (score: {qualityAssessment.Overall.Value:F2})[/]");
+                AnsiConsole.MarkupLine(
+                    $"[green]✓ Quality assessment passed (score: {qualityAssessment.Overall.Value:F2})[/]"
+                );
             }
         }
-        
+
         AnsiConsole.MarkupLine($"[green]Output saved to: {outputPath}[/]");
 
         // Show processing results
@@ -460,73 +532,84 @@ public sealed class ProcessCommand(
         if (qualityAssessment != null)
         {
             AnsiConsole.WriteLine();
-            
+
             // Show quality assessment header
             AnsiConsole.MarkupLine("[bold]Quality assessment[/]");
-            
+
             // In verbose mode, show detailed scores
             if (settings.Verbose)
             {
                 AnsiConsole.MarkupLine($"Overall score: {qualityAssessment.Overall.Value:F2}");
                 AnsiConsole.MarkupLine($"Symmetry: {qualityAssessment.Symmetry.Overall.Value:F2}");
-                AnsiConsole.MarkupLine($"Sharpness: {qualityAssessment.Sharpness.Overall.Value:F2}");
+                AnsiConsole.MarkupLine(
+                    $"Sharpness: {qualityAssessment.Sharpness.Overall.Value:F2}"
+                );
                 AnsiConsole.MarkupLine($"Geometry: {qualityAssessment.Geometry.Overall.Value:F2}");
                 AnsiConsole.WriteLine();
             }
-            
+
             var qualityTable = new Table()
                 .Border(TableBorder.Rounded)
-                .Title($"[bold]Quality Assessment - {(qualityAssessment.IsCompliant ? "[green]COMPLIANT[/]" : "[red]NON-COMPLIANT[/]")}[/]");
+                .Title(
+                    $"[bold]Quality Assessment - {(qualityAssessment.IsCompliant ? "[green]COMPLIANT[/]" : "[red]NON-COMPLIANT[/]")}[/]"
+                );
             qualityTable.AddColumn("Metric");
             qualityTable.AddColumn("Score");
-            
+
             qualityTable.AddRow("Overall Quality", qualityAssessment.Overall.ToString());
             qualityTable.AddRow("├─ Symmetry", qualityAssessment.Symmetry.Overall.ToString());
             qualityTable.AddRow("├─ Sharpness", qualityAssessment.Sharpness.Overall.ToString());
             qualityTable.AddRow("└─ Geometry", qualityAssessment.Geometry.Overall.ToString());
-            
+
             AnsiConsole.Write(qualityTable);
-            
+
             if (qualityAssessment.Violations.Any())
             {
                 AnsiConsole.MarkupLine("[yellow]Quality Violations:[/]");
-                foreach (var violation in qualityAssessment.Violations.OrderByDescending(v => v.Severity))
+                foreach (
+                    var violation in qualityAssessment.Violations.OrderByDescending(v => v.Severity)
+                )
                 {
                     var color = violation.Severity switch
                     {
                         ViolationSeverity.Critical => "red",
                         ViolationSeverity.Moderate => "yellow",
-                        _ => "gray"
+                        _ => "gray",
                     };
-                    AnsiConsole.MarkupLine($"  [{color}]• {violation.Category}: {violation.Description}[/]");
+                    AnsiConsole.MarkupLine(
+                        $"  [{color}]• {violation.Category}: {violation.Description}[/]"
+                    );
                 }
             }
-            
+
             // Save quality report if requested
             if (settings.GenerateQualityReport)
             {
                 var reportPath = Path.ChangeExtension(outputPath, ".quality.json");
-                var reportJson = JsonSerializer.Serialize(new
-                {
-                    qualityAssessment.IsCompliant,
-                    OverallScore = qualityAssessment.Overall.Value,
-                    Scores = new
+                var reportJson = JsonSerializer.Serialize(
+                    new
                     {
-                        Symmetry = qualityAssessment.Symmetry.Overall.Value,
-                        Sharpness = qualityAssessment.Sharpness.Overall.Value,
-                        Geometry = qualityAssessment.Geometry.Overall.Value
+                        qualityAssessment.IsCompliant,
+                        OverallScore = qualityAssessment.Overall.Value,
+                        Scores = new
+                        {
+                            Symmetry = qualityAssessment.Symmetry.Overall.Value,
+                            Sharpness = qualityAssessment.Sharpness.Overall.Value,
+                            Geometry = qualityAssessment.Geometry.Overall.Value,
+                        },
+                        qualityAssessment.Violations,
+                        qualityAssessment.AssessmentTime,
+                        ProcessingResult = new
+                        {
+                            metadata.OutputDimensions,
+                            metadata.FileSize,
+                            metadata.FaceConfidence,
+                            metadata.ProcessingTime,
+                        },
                     },
-                    qualityAssessment.Violations,
-                    qualityAssessment.AssessmentTime,
-                    ProcessingResult = new
-                    {
-                        metadata.OutputDimensions,
-                        metadata.FileSize,
-                        metadata.FaceConfidence,
-                        metadata.ProcessingTime
-                    }
-                }, new JsonSerializerOptions { WriteIndented = true });
-                
+                    new JsonSerializerOptions { WriteIndented = true }
+                );
+
                 await File.WriteAllTextAsync(reportPath, reportJson);
                 AnsiConsole.MarkupLine($"[blue]Quality report saved to: {reportPath}[/]");
             }
@@ -545,10 +628,9 @@ public sealed class ProcessCommand(
                 );
             }
         }
-        
+
         await Task.CompletedTask; // Make method async for consistency
     }
-
 
     /// <summary>
     /// Converts the input extension to the appropriate output format.

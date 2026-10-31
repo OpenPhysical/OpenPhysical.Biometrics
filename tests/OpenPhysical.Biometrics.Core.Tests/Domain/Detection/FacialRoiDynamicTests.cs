@@ -1,6 +1,6 @@
 using AwesomeAssertions;
-using OpenPhysical.Biometrics.Core.Domain.Detection;
 using NUnit.Framework;
+using OpenPhysical.Biometrics.Core.Domain.Detection;
 
 namespace OpenPhysical.Biometrics.Core.Tests.Domain.Detection;
 
@@ -28,13 +28,13 @@ public class FacialRoiDynamicTests
         // Assert
         roiSet.Should().NotBeNull();
         roiSet.InnerRegion.Should().NotBeNull();
-        
+
         // Verify Appendix C.6 formula: (0.1×W-1, 0.1×W-1) to (0.9×W-1, 1.1×W-1)
         var expectedX = Math.Max(0, (int)(0.1f * width - 1));
         var expectedY = Math.Max(0, (int)(0.1f * width - 1)); // Uses width for both
         var expectedMaxX = Math.Min(width - 1, (int)(0.9f * width - 1));
         var expectedMaxY = Math.Min(height - 1, (int)(1.1f * width - 1));
-        
+
         roiSet.InnerRegion.BoundingBox.X.Should().Be(expectedX);
         roiSet.InnerRegion.BoundingBox.Y.Should().Be(expectedY);
         roiSet.InnerRegion.BoundingBox.Width.Should().Be(expectedMaxX - expectedX + 1);
@@ -167,7 +167,7 @@ public class FacialRoiDynamicTests
         standardRoi.IsSuccess.Should().BeTrue();
         dynamicRoi.Should().BeOfType<FacialRoiSet>();
         standardRoi.Value.Should().BeOfType<FacialRoiSet>();
-        
+
         // Both should have similar structure
         dynamicRoi.InnerRegion.Priority.Should().Be(standardRoi.Value.InnerRegion.Priority);
         dynamicRoi.InnerRegion.Name.Should().Be(standardRoi.Value.InnerRegion.Name);

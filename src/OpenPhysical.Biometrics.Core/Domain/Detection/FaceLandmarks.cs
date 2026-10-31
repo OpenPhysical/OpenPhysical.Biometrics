@@ -1,7 +1,8 @@
+using System.Drawing;
+using JetBrains.Annotations;
 using OpenPhysical.Biometrics.Core.Domain.Common;
 using OpenPhysical.Biometrics.Core.Domain.Standards;
-using JetBrains.Annotations;
-using SixLabors.ImageSharp;
+using OpenPhysical.Biometrics.Imaging;
 
 namespace OpenPhysical.Biometrics.Core.Domain.Detection;
 
@@ -143,12 +144,12 @@ public record FaceLandmarks68(IReadOnlyList<Point2D> Points)
     /// This method creates a rectangular ROI based on the face contour landmarks (points 0-16)
     /// to focus quality assessment on the actual face region, excluding background areas that
     /// may contain blur or other artifacts that shouldn't affect face quality scores.
-    /// 
+    ///
     /// The ROI includes:
     /// - Face contour boundary with padding
     /// - Eye, nose, and mouth regions
     /// - Excludes background areas beyond the face boundary
-    /// 
+    ///
     /// This is particularly important for professional photos where the background may be
     /// intentionally blurred while the face remains sharp.
     /// </remarks>
@@ -157,47 +158,49 @@ public record FaceLandmarks68(IReadOnlyList<Point2D> Points)
         if (!IsValid)
         {
             throw new InvalidOperationException(
-                "Cannot calculate face ROI from invalid landmarks (must have exactly 68 points)");
+                "Cannot calculate face ROI from invalid landmarks (must have exactly 68 points)"
+            );
         }
 
         // Get face contour points (jaw line: 0-16)
         var faceContourPoints = Points.Take(17).ToList();
-        
+
         // Find bounding box of face contour
         var minX = faceContourPoints.Min(p => p.X);
         var maxX = faceContourPoints.Max(p => p.X);
         var minY = faceContourPoints.Min(p => p.Y);
         var maxY = faceContourPoints.Max(p => p.Y);
-        
+
         // Include key facial features to ensure full coverage
         // Add forehead area (extrapolate above eyebrows)
         var leftEyebrowTop = Points.Skip(17).Take(5).Min(p => p.Y); // Points 17-21
         var rightEyebrowTop = Points.Skip(22).Take(5).Min(p => p.Y); // Points 22-26
         var foreheadY = Math.Min(leftEyebrowTop, rightEyebrowTop);
-        
+
         // Extend upward to include forehead (eyebrows + 30% of face height)
         var faceHeight = maxY - minY;
         var extendedMinY = foreheadY - (faceHeight * 0.3f);
         minY = Math.Min(minY, extendedMinY);
-        
+
         // Calculate face dimensions with padding
         var faceWidth = maxX - minX;
         var totalFaceHeight = maxY - minY;
-        
+
         var paddingX = faceWidth * paddingPercent;
         var paddingY = totalFaceHeight * paddingPercent;
-        
+
         // Apply padding while ensuring we don't go negative
         var roiX = Math.Max(0, minX - paddingX);
         var roiY = Math.Max(0, minY - paddingY);
         var roiWidth = faceWidth + (2 * paddingX);
         var roiHeight = totalFaceHeight + (2 * paddingY);
-        
+
         return new Rectangle(
             (int)Math.Floor(roiX),
             (int)Math.Floor(roiY),
             (int)Math.Ceiling(roiWidth),
-            (int)Math.Ceiling(roiHeight));
+            (int)Math.Ceiling(roiHeight)
+        );
     }
 
     /// <summary>
@@ -212,46 +215,46 @@ public record FaceLandmarks68(IReadOnlyList<Point2D> Points)
                 "Cannot calculate face ellipse from invalid landmarks (must have exactly 68 points)"
             );
         }
-        
+
         // Use jaw line points (0-16) plus eyebrow points (17-26) to estimate face boundary
         var boundaryPoints = Points.Take(27).ToList();
-        
+
         // Calculate center as the centroid of all boundary points
         var centerX = boundaryPoints.Average(p => p.X);
         var centerY = boundaryPoints.Average(p => p.Y);
         var center = new Point2D(centerX, centerY);
-        
+
         // Calculate covariance matrix for PCA to find principal axes
         var cov00 = boundaryPoints.Average(p => (p.X - centerX) * (p.X - centerX));
         var cov01 = boundaryPoints.Average(p => (p.X - centerX) * (p.Y - centerY));
         var cov11 = boundaryPoints.Average(p => (p.Y - centerY) * (p.Y - centerY));
-        
+
         // Eigenvalues of 2x2 covariance matrix
         var trace = cov00 + cov11;
         var det = cov00 * cov11 - cov01 * cov01;
         var discriminant = MathF.Sqrt(MathF.Max(0, trace * trace - 4 * det));
-        
+
         var lambda1 = (trace + discriminant) / 2;
         var lambda2 = (trace - discriminant) / 2;
-        
+
         // Width and height based on standard deviations along principal axes
         // Use 2.5 standard deviations to capture most of the face
         var width = 2.5f * 2 * MathF.Sqrt(lambda1);
         var height = 2.5f * 2 * MathF.Sqrt(lambda2);
-        
+
         // Angle of rotation from eigenvector
         var angle = MathF.Atan2(2 * cov01, cov00 - cov11) / 2;
-        
+
         // Adjust center slightly upward to include forehead
         var foreheadOffset = height * 0.15f;
         center = new Point2D(center.X, center.Y - foreheadOffset);
-        
+
         // Increase height to include forehead
         height *= 1.2f;
-        
+
         return (center, width, height, angle);
     }
-    
+
     /// <summary>
     /// Calculates the PIV compliance lines (AA, BB, CC) from the 68-point landmarks.
     /// </summary>

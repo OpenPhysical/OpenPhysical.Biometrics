@@ -1,8 +1,9 @@
+using System.Drawing;
 using CoreJ2K;
-using CoreJ2K.ImageSharp;
+using CoreJ2K.Skia;
+using CoreJ2K.Util;
 using JetBrains.Annotations;
-using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.PixelFormats;
+using OpenPhysical.Biometrics.Imaging;
 
 namespace OpenPhysical.Biometrics.Infrastructure.Services;
 
@@ -23,39 +24,21 @@ public class Jpeg2000EncoderService : IJpeg2000Encoder
     public Jpeg2000EncoderService(ILogger<Jpeg2000EncoderService> logger)
     {
         _logger = logger;
-        _logger.LogDebug("Jpeg2000EncoderService constructor called");
+        _logger.LogDebug(
+            new EventId(37900, "Jpeg2000EncoderService"),
+            "Jpeg2000EncoderService constructor called"
+        );
     }
 
-    private void EnsureImageSharpRegistered()
+    private static void EnsureSkiaRegistered()
     {
-        _logger.LogDebug(
-            "EnsureImageSharpRegistered called, _isRegistered: {IsRegistered}",
-            _isRegistered
-        );
-
-        if (_isRegistered)
-        {
-            return;
-        }
         lock (RegisterLock)
         {
             if (_isRegistered)
-            {
                 return;
-            }
-            try
-            {
-                _logger.LogDebug("Registering ImageSharpImageCreator");
-                ImageSharpImageCreator.Register();
-                _isRegistered = true;
-                _logger.LogInformation("ImageSharpImageCreator registered successfully");
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to register ImageSharpImageCreator");
-                // Try to continue anyway - it might already be registered
-                _isRegistered = true;
-            }
+            // Publish successful registration only after the adapter is available.
+            ImageFactory.Register(new SKBitmapImageCreator());
+            _isRegistered = true;
         }
     }
 
@@ -64,7 +47,7 @@ public class Jpeg2000EncoderService : IJpeg2000Encoder
     /// Uses JPEG 2000 maxshift ROI encoding with configurable quality balance.
     /// </summary>
     public Result<byte[]> EncodeWithRoi(
-        Image<Rgba32> image,
+        RgbImage image,
         FacialRoiSet roiSet,
         float baseRate = 1.0f,
         int roiStartLevel = 1,
@@ -73,22 +56,20 @@ public class Jpeg2000EncoderService : IJpeg2000Encoder
     )
     {
         _logger.LogDebug(
-            "EncodeWithRoi started - Image: {Width}x{Height}, BaseRate: {BaseRate}, RoiStartLevel: {RoiStartLevel}, EnableRoi: {EnableRoi}, RoiAlign: {RoiAlign}",
-            image.Width,
-            image.Height,
-            baseRate,
-            roiStartLevel,
-            enableRoi,
-            roiAlign
+            new EventId(37905, "Jpeg2000EncoderService"),
+            "Jpeg2000EncoderService processing started."
         );
 
         try
         {
-            // Ensure ImageSharp support is registered
-            EnsureImageSharpRegistered();
+            // Ensure the Skia image adapter is registered
+            EnsureSkiaRegistered();
 
             // Get default encoder parameter list from CoreJ2K
-            _logger.LogDebug("Getting default encoder parameters from J2kImage");
+            _logger.LogDebug(
+                new EventId(37906, "Jpeg2000EncoderService"),
+                "Getting default encoder parameters from J2kImage"
+            );
             var parameters = J2kImage.GetDefaultEncoderParameterList();
 
             // Build ROI specification only if ROI is enabled
@@ -101,60 +82,78 @@ public class Jpeg2000EncoderService : IJpeg2000Encoder
                     + $"{innerRegion.BoundingBox.Width} {innerRegion.BoundingBox.Height}";
 
                 parameters["Rroi"] = roiSpec;
-                _logger.LogDebug("Appendix C.6 Inner Region ROI specification: {RoiSpec}", roiSpec);
+                _logger.LogDebug(
+                    new EventId(37907, "Jpeg2000EncoderService"),
+                    "Jpeg2000EncoderService processing status changed."
+                );
 
                 // Control ROI resolution level priority
                 // Higher values include more resolution levels in ROI priority, reducing quality difference
                 // 0 = only base level (aggressive ROI priority), 1-2 = more balanced quality
                 parameters["Rstart_level"] = roiStartLevel.ToString();
-                _logger.LogDebug("ROI start level: {RoiStartLevel}", roiStartLevel);
+                _logger.LogDebug(
+                    new EventId(37908, "Jpeg2000EncoderService"),
+                    "Jpeg2000EncoderService processing started."
+                );
 
                 // Use block alignment for more balanced quality distribution
                 // With small tiles, alignment gives precise ROI control
                 parameters["Ralign"] = roiAlign ? "on" : "off";
-                _logger.LogDebug("ROI alignment: {RoiAlign}", roiAlign ? "enabled" : "disabled");
+                _logger.LogDebug(
+                    new EventId(37909, "Jpeg2000EncoderService"),
+                    "Jpeg2000EncoderService processing status changed."
+                );
             }
             else
             {
-                _logger.LogDebug("ROI disabled");
+                _logger.LogDebug(new EventId(37910, "Jpeg2000EncoderService"), "ROI disabled");
             }
 
             // Set base compression rate - higher values improve overall quality
             // This affects both ROI and background areas proportionally
             parameters["rate"] = baseRate.ToString("F1");
-            _logger.LogDebug("Base rate: {BaseRate} bits/pixel", baseRate);
+            _logger.LogDebug(
+                new EventId(37911, "Jpeg2000EncoderService"),
+                "Jpeg2000EncoderService processing status changed."
+            );
 
             // Use single tile covering entire PIV image for optimal compression efficiency
             // Single tile eliminates tile boundary artifacts and maximizes compression
             parameters["Stiles"] = $"{image.Width} {image.Height}";
             _logger.LogDebug(
-                "Tile size: {Width}x{Height} (single tile)",
-                image.Width,
-                image.Height
+                new EventId(37912, "Jpeg2000EncoderService"),
+                "Jpeg2000EncoderService processing status changed."
             );
 
             // Encode with ROI parameters
-            _logger.LogDebug("Starting J2kImage encoding");
-            var encodedData = J2kImage.ToBytes(image, parameters);
             _logger.LogDebug(
-                "J2kImage encoding completed, output size: {Size} bytes",
-                encodedData.Length
+                new EventId(37913, "Jpeg2000EncoderService"),
+                "Starting J2kImage encoding"
+            );
+            using var bitmap = image.ToSkiaBitmap();
+            var encodedData = J2kImage.ToBytes(bitmap, parameters);
+            _logger.LogDebug(
+                new EventId(37914, "Jpeg2000EncoderService"),
+                "Jpeg2000EncoderService processing completed."
             );
 
             _logger.LogInformation(
-                "EncodeWithRoi completed successfully, encoded {Bytes} bytes",
-                encodedData.Length
+                new EventId(37915, "Jpeg2000EncoderService"),
+                "Jpeg2000EncoderService processing completed."
             );
             return Result.Success(encodedData);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "JPEG 2000 ROI encoding failed");
+            _logger.LogError(
+                new EventId(37916, "Jpeg2000EncoderService"),
+                "JPEG 2000 ROI encoding failed"
+            );
             return Result.Failure<byte[]>($"JPEG 2000 ROI encoding failed: {ex.Message}");
         }
         finally
         {
-            _logger.LogDebug("EncodeWithRoi ended");
+            _logger.LogDebug(new EventId(37917, "Jpeg2000EncoderService"), "EncodeWithRoi ended");
         }
     }
 }

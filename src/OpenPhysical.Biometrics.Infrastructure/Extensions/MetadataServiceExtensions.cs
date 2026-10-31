@@ -16,12 +16,13 @@ public static class MetadataServiceExtensions
     {
         // Register extractors
         services.AddSingleton<IJpegMetadataExtractor, JpegMetadataExtractor>();
-        services.AddSingleton<IImageMetadataExtractor>(provider => 
-            provider.GetRequiredService<IJpegMetadataExtractor>());
-        
+        services.AddSingleton<IImageMetadataExtractor>(provider =>
+            provider.GetRequiredService<IJpegMetadataExtractor>()
+        );
+
         // Register transformer
         services.AddSingleton<IMetadataTransformer, MetadataTransformer>();
-        
+
         return services;
     }
 }

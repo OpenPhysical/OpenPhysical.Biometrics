@@ -1,8 +1,8 @@
 namespace OpenPhysical.Biometrics.Core.Cbeff;
 
+using System.Collections.Immutable;
 using CSharpFunctionalExtensions;
 using OpenPhysical.Domains.Cbeff;
-using System.Collections.Immutable;
 
 /// <summary>
 /// Defines the interface for CBEFF (Common Biometric Exchange Formats Framework) serialization.
