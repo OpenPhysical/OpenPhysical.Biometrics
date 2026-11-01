@@ -1,4 +1,6 @@
 using System.Drawing;
+using AwesomeAssertions;
+using AwesomeAssertions.Execution;
 using NUnit.Framework;
 
 namespace OpenPhysical.Biometrics.Imaging.Tests;
@@ -13,14 +15,17 @@ public sealed class RgbImageTests
     [TestCase((ushort)0)]
     [TestCase((ushort)1)]
     public void TiffRequiresExplicitStraightAlpha(ushort? extraSample) =>
-        Assert.Throws<NotSupportedException>(() => RgbImage.Load(RgbaTiff(extraSample)));
+        FluentActions
+            .Invoking(() => RgbImage.Load(RgbaTiff(extraSample)))
+            .Should()
+            .ThrowExactly<NotSupportedException>();
 
     /// <summary>Preserves straight RGBA samples when TIFF explicitly identifies unassociated alpha.</summary>
     [Test]
     public void TiffStraightAlphaPreservesSamples()
     {
         using var image = RgbImage.Load(RgbaTiff(2));
-        Assert.That(image[0, 0], Is.EqualTo(new RgbaPixel(60, 30, 15, 128)));
+        image[0, 0].Should().Be(new RgbaPixel(60, 30, 15, 128));
     }
 
     /// <summary>Copies input pixels and keeps cloned images independent.</summary>
@@ -32,12 +37,12 @@ public sealed class RgbImageTests
         using var clone = image.Clone();
         Array.Clear(input);
         image[0, 0] = new(0, 255, 0);
-        Assert.Multiple(() =>
+        using (new AssertionScope())
         {
-            Assert.That(clone[0, 0].R, Is.EqualTo(255));
-            Assert.That(image[0, 0].G, Is.EqualTo(255));
-            Assert.That(clone.CopyRgbBytes(), Is.EqualTo(new byte[] { 255, 0, 0, 0, 0, 255 }));
-        });
+            clone[0, 0].R.Should().Be(255);
+            image[0, 0].G.Should().Be(255);
+            clone.CopyRgbBytes().Should().Equal(new byte[] { 255, 0, 0, 0, 0, 255 });
+        }
     }
 
     /// <summary>Clears retained managed spans and releases native pixel storage on disposal.</summary>
@@ -48,9 +53,12 @@ public sealed class RgbImageTests
         var row = image.GetRowSpan(0);
         image.Dispose();
         image.Dispose();
-        Assert.That(row[0].R, Is.Zero);
-        Assert.That(row[0].A, Is.Zero);
-        Assert.Throws<ObjectDisposedException>(() => image.Clone());
+        row[0].R.Should().Be(0);
+        row[0].A.Should().Be(0);
+        FluentActions
+            .Invoking(() => image.Clone())
+            .Should()
+            .ThrowExactly<ObjectDisposedException>();
     }
 
     /// <summary>Preserves RGB pixels in both lossless formats used by the compatibility API.</summary>
@@ -66,11 +74,11 @@ public sealed class RgbImageTests
         else
             image.SaveAsPng(stream);
         using var decoded = RgbImage.Load(stream.ToArray());
-        Assert.Multiple(() =>
+        using (new AssertionScope())
         {
-            Assert.That((decoded.Width, decoded.Height), Is.EqualTo((3, 2)));
-            Assert.That(decoded.CopyRgbBytes(), Is.EqualTo(image.CopyRgbBytes()));
-        });
+            (decoded.Width, decoded.Height).Should().Be((3, 2));
+            decoded.CopyRgbBytes().Should().Equal(image.CopyRgbBytes());
+        }
     }
 
     /// <summary>Produces a real JPEG stream that the decoder can read.</summary>
@@ -82,12 +90,12 @@ public sealed class RgbImageTests
         image.SaveAsJpeg(stream, 90);
         var bytes = stream.ToArray();
         using var decoded = RgbImage.Load(bytes);
-        Assert.Multiple(() =>
+        using (new AssertionScope())
         {
-            Assert.That(bytes[..2], Is.EqualTo(new byte[] { 0xFF, 0xD8 }));
-            Assert.That((decoded.Width, decoded.Height), Is.EqualTo((16, 16)));
-            Assert.That(decoded[8, 8].R, Is.GreaterThan(240));
-        });
+            bytes[..2].Should().Equal(new byte[] { 0xFF, 0xD8 });
+            (decoded.Width, decoded.Height).Should().Be((16, 16));
+            decoded[8, 8].R.Should().BeGreaterThan(240);
+        }
     }
 
     /// <summary>Preserves sample values when cropping and flipping pixel positions.</summary>
@@ -97,8 +105,8 @@ public sealed class RgbImageTests
         using var image = Pattern();
         var expected = image[2, 1];
         image.Crop(new Rectangle(1, 0, 2, 2)).FlipHorizontal();
-        Assert.That((image.Width, image.Height), Is.EqualTo((2, 2)));
-        Assert.That(image[0, 1], Is.EqualTo(expected));
+        (image.Width, image.Height).Should().Be((2, 2));
+        image[0, 1].Should().Be(expected);
     }
 
     /// <summary>Expands a quarter-turn canvas to the exact transposed dimensions.</summary>
@@ -107,7 +115,7 @@ public sealed class RgbImageTests
     {
         using var image = Pattern();
         image.Rotate(90);
-        Assert.That((image.Width, image.Height), Is.EqualTo((2, 3)));
+        (image.Width, image.Height).Should().Be((2, 3));
     }
 
     /// <summary>Exercises native resize, centred padding, and compositing.</summary>
@@ -116,13 +124,13 @@ public sealed class RgbImageTests
     {
         using var image = new RgbImage(8, 4, Color.Red);
         image.Resize(4, 4, fillCrop: true).Pad(8, 8).BackgroundColor(Color.White);
-        Assert.Multiple(() =>
+        using (new AssertionScope())
         {
-            Assert.That((image.Width, image.Height), Is.EqualTo((8, 8)));
-            Assert.That(image[0, 0].G, Is.EqualTo(255));
-            Assert.That(image[4, 4].R, Is.EqualTo(255));
-            Assert.That(image[4, 4].G, Is.Zero);
-        });
+            (image.Width, image.Height).Should().Be((8, 8));
+            image[0, 0].G.Should().Be(255);
+            image[4, 4].R.Should().Be(255);
+            image[4, 4].G.Should().Be(0);
+        }
     }
 
     /// <summary>Rejects invalid geometry before allocating an image.</summary>
@@ -132,17 +140,29 @@ public sealed class RgbImageTests
     [TestCase(-1, 10)]
     [TestCase(int.MaxValue, int.MaxValue)]
     public void InvalidGeometryIsRejectedBeforeAllocation(int width, int height) =>
-        Assert.Throws<ArgumentOutOfRangeException>(() => new RgbImage(width, height));
+        FluentActions
+            .Invoking(() => new RgbImage(width, height))
+            .Should()
+            .ThrowExactly<ArgumentOutOfRangeException>();
 
     /// <summary>Rejects truncated image data and malformed TIFF directory offsets.</summary>
     [Test]
     public void MalformedEncodedInputsAreRejected()
     {
-        Assert.Throws<ArgumentException>(() => RgbImage.Load(ReadOnlySpan<byte>.Empty));
-        Assert.Throws<ArgumentException>(() => RgbImage.Load(new byte[] { 1, 2, 3 }));
-        Assert.Throws<ArgumentException>(() =>
-            RgbImage.Load(new byte[] { 0x49, 0x49, 0x2A, 0, 0xFF, 0xFF, 0xFF, 0x7F })
-        );
+        FluentActions
+            .Invoking(() => RgbImage.Load(ReadOnlySpan<byte>.Empty))
+            .Should()
+            .ThrowExactly<ArgumentException>();
+        FluentActions
+            .Invoking(() => RgbImage.Load(new byte[] { 1, 2, 3 }))
+            .Should()
+            .ThrowExactly<ArgumentException>();
+        FluentActions
+            .Invoking(() =>
+                RgbImage.Load(new byte[] { 0x49, 0x49, 0x2A, 0, 0xFF, 0xFF, 0xFF, 0x7F })
+            )
+            .Should()
+            .ThrowExactly<ArgumentException>();
     }
 
     /// <summary>Checks baseline resolution fields directly in the TIFF directory.</summary>
@@ -167,20 +187,17 @@ public sealed class RgbImageTests
                 )
             )
             .ToArray();
-        Assert.That(entries.Select(entry => entry.Tag), Is.Ordered);
-        Assert.That(
-            entries.Select(entry => entry.Tag),
-            Is.SupersetOf(new ushort[] { 282, 283, 296 })
-        );
+        entries.Select(entry => entry.Tag).Should().BeInAscendingOrder();
+        entries.Select(entry => entry.Tag).Should().Contain(new ushort[] { 282, 283, 296 });
         foreach (var tag in new ushort[] { 282, 283 })
         {
             var entry = entries.Single(entry => entry.Tag == tag);
-            Assert.That((entry.Type, entry.Count), Is.EqualTo(((ushort)5, 1u)));
+            (entry.Type, entry.Count).Should().Be(((ushort)5, 1u));
             stream.Position = entry.Value;
-            Assert.That((reader.ReadUInt32(), reader.ReadUInt32()), Is.EqualTo((72u, 1u)));
+            (reader.ReadUInt32(), reader.ReadUInt32()).Should().Be((72u, 1u));
         }
         var unit = entries.Single(entry => entry.Tag == 296);
-        Assert.That((unit.Type, unit.Count, unit.Value), Is.EqualTo(((ushort)3, 1u, 2u)));
+        (unit.Type, unit.Count, unit.Value).Should().Be(((ushort)3, 1u, 2u));
     }
 
     private static byte[] RgbaTiff(ushort? extraSample)

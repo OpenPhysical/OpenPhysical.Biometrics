@@ -2,6 +2,8 @@
 namespace OpenPhysical.Biometrics.Fingerprints.Tests;
 
 using System.Collections.Immutable;
+using AwesomeAssertions;
+using AwesomeAssertions.Execution;
 using NUnit.Framework;
 using OpenPhysical.Biometrics.Formats.Fingerprints;
 using MatchingMinutia = OpenPhysical.Biometrics.NBIS.FingerprintMinutia;
@@ -21,10 +23,7 @@ internal sealed class FingerprintRecordAdapterTests
     {
         var record = Record(new FingerprintMinutia(1, 20, 168, angle, 50));
         var template = record.ToMatchingTemplate(FingerPosition.RightIndex, 0);
-        Assert.That(
-            template.Minutiae.Single(),
-            Is.EqualTo(new MatchingMinutia(20, 600, expected, 50, 1))
-        );
+        template.Minutiae.Single().Should().Be(new MatchingMinutia(20, 600, expected, 50, 1));
     }
 
     [TestCase(0)]
@@ -34,17 +33,16 @@ internal sealed class FingerprintRecordAdapterTests
     {
         var record = Record(new FingerprintMinutia(type, 0, 0, 0, 0), new(type, 799, 767, 90, 100));
         var template = record.ToMatchingTemplate(FingerPosition.RightIndex, 0);
-        Assert.That(
-            template.Minutiae,
-            Is.EqualTo(
+        template
+            .Minutiae.Should()
+            .Equal(
                 new[]
                 {
                     new MatchingMinutia(0, 768, 180, 0, type),
                     new MatchingMinutia(799, 1, 0, 100, type),
                 }
-            )
-        );
-        Assert.That(record.Views[0].Minutiae[0].Y, Is.Zero);
+            );
+        record.Views[0].Minutiae[0].Y.Should().Be(0);
     }
 
     [TestCase(196, 197)]
@@ -58,9 +56,10 @@ internal sealed class FingerprintRecordAdapterTests
             XResolution = (ushort)horizontal,
             YResolution = (ushort)vertical,
         };
-        Assert.Throws<NotSupportedException>(() =>
-            record.ToMatchingTemplate(FingerPosition.RightIndex, 0)
-        );
+        FluentActions
+            .Invoking(() => record.ToMatchingTemplate(FingerPosition.RightIndex, 0))
+            .Should()
+            .ThrowExactly<NotSupportedException>();
     }
 
     [Test]
@@ -71,17 +70,19 @@ internal sealed class FingerprintRecordAdapterTests
             .Select(index => new FingerprintMinutia(0, (ushort)index, 10, 0, 0))
             .ToArray();
         var accepted = Record(points[..150]).ToMatchingTemplate(FingerPosition.RightIndex, 0);
-        Assert.That(accepted.Minutiae.Select(point => point.Quality), Is.All.Zero);
-        Assert.Throws<NotSupportedException>(() =>
-            Record(points).ToMatchingTemplate(FingerPosition.RightIndex, 0)
-        );
+        accepted.Minutiae.Select(point => point.Quality).Should().OnlyContain(x => x == 0);
+        FluentActions
+            .Invoking(() => Record(points).ToMatchingTemplate(FingerPosition.RightIndex, 0))
+            .Should()
+            .ThrowExactly<NotSupportedException>();
         points[0] = points[0] with { Quality = 50 };
-        Assert.Throws<NotSupportedException>(() =>
-            Record(points).ToMatchingTemplate(FingerPosition.RightIndex, 0)
-        );
+        FluentActions
+            .Invoking(() => Record(points).ToMatchingTemplate(FingerPosition.RightIndex, 0))
+            .Should()
+            .ThrowExactly<NotSupportedException>();
         var ranked = Record(points.Select(point => point with { Quality = 50 }).ToArray())
             .ToMatchingTemplate(FingerPosition.RightIndex, 0);
-        Assert.That(ranked.Minutiae, Has.Length.EqualTo(151));
+        ranked.Minutiae.Should().HaveCount(151);
     }
 
     [TestCase(101)]
@@ -90,9 +91,10 @@ internal sealed class FingerprintRecordAdapterTests
     {
         var record = Record(new FingerprintMinutia(1, 20, 168, 0, 75));
         record = record with { Views = [record.Views[0] with { Quality = quality }] };
-        Assert.Throws<ArgumentException>(() =>
-            record.ToMatchingTemplate(FingerPosition.RightIndex, 0)
-        );
+        FluentActions
+            .Invoking(() => record.ToMatchingTemplate(FingerPosition.RightIndex, 0))
+            .Should()
+            .ThrowExactly<ArgumentException>();
     }
 
     [TestCase(254)]
@@ -100,16 +102,17 @@ internal sealed class FingerprintRecordAdapterTests
     public void UnavailableViewIsSeparateFromInvalidQuality(byte quality)
     {
         var record = Record() with { Views = [new(2, 0, 0, quality, [], [])] };
-        Assert.Throws<InvalidOperationException>(() =>
-            record.ToMatchingTemplate(FingerPosition.RightIndex, 0)
-        );
+        FluentActions
+            .Invoking(() => record.ToMatchingTemplate(FingerPosition.RightIndex, 0))
+            .Should()
+            .ThrowExactly<InvalidOperationException>();
     }
 
     [Test]
     public void GeneralRecordsAllowUnreportedViewQualityAndEmptyTemplates()
     {
         var record = Record() with { Views = [new(2, 0, 0, 0, [], [])] };
-        Assert.That(record.ToMatchingTemplate(FingerPosition.RightIndex, 0).Minutiae, Is.Empty);
+        record.ToMatchingTemplate(FingerPosition.RightIndex, 0).Minutiae.Should().BeEmpty();
     }
 
     [Test]
@@ -122,23 +125,24 @@ internal sealed class FingerprintRecordAdapterTests
         };
         var parsed = Incits378Codec.Parse(Incits378Codec.Write(record)).Value!;
         var selected = parsed.ToMatchingTemplate(FingerPosition.LeftIndex, 1);
-        Assert.That(
-            selected.Minutiae.Single(),
-            Is.EqualTo(new MatchingMinutia(30, 568, 178, 0, 2))
-        );
-        Assert.Throws<ArgumentException>(() =>
-            parsed.ToMatchingTemplate(FingerPosition.LeftIndex, 0)
-        );
-        Assert.Throws<ArgumentOutOfRangeException>(() =>
-            parsed.ToMatchingTemplate(FingerPosition.RightIndex, 16)
-        );
-        Assert.Throws<ArgumentOutOfRangeException>(() =>
-            parsed.ToMatchingTemplate((FingerPosition)0, 0)
-        );
+        selected.Minutiae.Single().Should().Be(new MatchingMinutia(30, 568, 178, 0, 2));
+        FluentActions
+            .Invoking(() => parsed.ToMatchingTemplate(FingerPosition.LeftIndex, 0))
+            .Should()
+            .ThrowExactly<ArgumentException>();
+        FluentActions
+            .Invoking(() => parsed.ToMatchingTemplate(FingerPosition.RightIndex, 16))
+            .Should()
+            .ThrowExactly<ArgumentOutOfRangeException>();
+        FluentActions
+            .Invoking(() => parsed.ToMatchingTemplate((FingerPosition)0, 0))
+            .Should()
+            .ThrowExactly<ArgumentOutOfRangeException>();
         var duplicated = parsed with { Views = [parsed.Views[1], parsed.Views[1]] };
-        Assert.Throws<ArgumentException>(() =>
-            duplicated.ToMatchingTemplate(FingerPosition.LeftIndex, 1)
-        );
+        FluentActions
+            .Invoking(() => duplicated.ToMatchingTemplate(FingerPosition.LeftIndex, 1))
+            .Should()
+            .ThrowExactly<ArgumentException>();
     }
 
     [Test]
@@ -153,17 +157,19 @@ internal sealed class FingerprintRecordAdapterTests
             new(1, 20, 10, 0, 101),
         ];
         foreach (var point in invalid)
-            Assert.Throws<ArgumentException>(() =>
-                Record(point).ToMatchingTemplate(FingerPosition.RightIndex, 0)
-            );
+            FluentActions
+                .Invoking(() => Record(point).ToMatchingTemplate(FingerPosition.RightIndex, 0))
+                .Should()
+                .ThrowExactly<ArgumentException>();
         var oversized = Record(
             Enumerable
                 .Range(0, 256)
                 .Select(index => new FingerprintMinutia(1, (ushort)index, 10, 0, 50))
                 .ToArray()
         );
-        Assert.Throws<ArgumentException>(() =>
-            oversized.ToMatchingTemplate(FingerPosition.RightIndex, 0)
-        );
+        FluentActions
+            .Invoking(() => oversized.ToMatchingTemplate(FingerPosition.RightIndex, 0))
+            .Should()
+            .ThrowExactly<ArgumentException>();
     }
 }

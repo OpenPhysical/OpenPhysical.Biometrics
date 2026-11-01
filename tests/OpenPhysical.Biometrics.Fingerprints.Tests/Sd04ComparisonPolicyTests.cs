@@ -2,6 +2,8 @@
 namespace OpenPhysical.Biometrics.Fingerprints.Tests;
 
 using System.Collections.Immutable;
+using AwesomeAssertions;
+using AwesomeAssertions.Execution;
 using NUnit.Framework;
 using OpenPhysical.Biometrics.Formats.Fingerprints;
 using OpenPhysical.Biometrics.NBIS;
@@ -67,19 +69,19 @@ internal sealed class Sd04ComparisonPolicyTests
             fixturePolicy
         );
         var decisions = scores.Select(fixturePolicy.Evaluate).Append(selectedReference).ToArray();
-        Assert.That(decisions.All(result => result.Accepted == accepted), Is.True);
-        Assert.That(
-            decisions.All(result => result.PolicyIdentifier == fixturePolicy.Identifier),
-            Is.True
-        );
-        Assert.Multiple(() =>
+        decisions.All(result => result.Accepted == accepted).Should().BeTrue();
+        decisions
+            .All(result => result.PolicyIdentifier == fixturePolicy.Identifier)
+            .Should()
+            .BeTrue();
+        using (new AssertionScope())
         {
-            Assert.That(probeImage.Pixels.ToArray(), Is.EqualTo(probePixels));
-            Assert.That(galleryImage.Pixels.ToArray(), Is.EqualTo(galleryPixels));
-            Assert.That(probeTemplate.Minutiae, Is.EqualTo(probePoints));
-            Assert.That(galleryTemplate.Minutiae, Is.EqualTo(galleryPoints));
-            Assert.That(Incits378Codec.Write(reference), Is.EqualTo(referenceBytes));
-        });
+            probeImage.Pixels.ToArray().Should().Equal(probePixels);
+            galleryImage.Pixels.ToArray().Should().Equal(galleryPixels);
+            probeTemplate.Minutiae.Should().Equal(probePoints);
+            galleryTemplate.Minutiae.Should().Equal(galleryPoints);
+            Incits378Codec.Write(reference).Should().Equal(referenceBytes);
+        }
     }
 
     [Test]
@@ -115,9 +117,9 @@ internal sealed class Sd04ComparisonPolicyTests
             [new(3, 0, 0, 60, standard, [])]
         );
         var converted = record.ToMatchingTemplate(FingerPosition.RightMiddle, 0);
-        Assert.That(converted.Minutiae, Is.EqualTo(subset.Minutiae));
+        converted.Minutiae.Should().Equal(subset.Minutiae);
         var gallery = engine.Extract(Image("s0005_03").Load());
-        Assert.That(engine.Match(converted, gallery), Is.EqualTo(engine.Match(subset, gallery)));
+        engine.Match(converted, gallery).Should().Be(engine.Match(subset, gallery));
     }
 
     [TestCase(39, false)]
@@ -126,13 +128,16 @@ internal sealed class Sd04ComparisonPolicyTests
     public void FixturePolicyAppliesItsInclusiveBoundary(int score, bool accepted)
     {
         var result = fixturePolicy.Evaluate(score);
-        Assert.That(result.RawScore, Is.EqualTo(score));
-        Assert.That(result.Accepted, Is.EqualTo(accepted));
+        result.RawScore.Should().Be(score);
+        result.Accepted.Should().Be(accepted);
     }
 
     [Test]
     public void PolicyRejectsInvalidNegativeScores() =>
-        Assert.Throws<ArgumentOutOfRangeException>(() => fixturePolicy.Evaluate(-1));
+        FluentActions
+            .Invoking(() => fixturePolicy.Evaluate(-1))
+            .Should()
+            .ThrowExactly<ArgumentOutOfRangeException>();
 
     private Sd04Image Image(string identifier) =>
         fixtures

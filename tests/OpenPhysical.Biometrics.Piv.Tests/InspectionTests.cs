@@ -3,6 +3,8 @@ namespace OpenPhysical.Biometrics.Piv.Tests;
 
 using System.Collections.Immutable;
 using System.Text.Json;
+using AwesomeAssertions;
+using AwesomeAssertions.Execution;
 using NUnit.Framework;
 using OpenPhysical.Biometrics.Formats;
 using OpenPhysical.Biometrics.Formats.Cbeff;
@@ -16,26 +18,22 @@ internal sealed class InspectionTests
     public void WrappedInspectionUsesOriginalOffsetsAndSharesTheFingerprintCodec()
     {
         var report = BiometricInspector.Inspect(Wrapped(), Now);
-        Assert.Multiple(() =>
+        using (new AssertionScope())
         {
-            Assert.That(report.Kind, Is.EqualTo(BiometricRecordKind.Cbeff));
-            Assert.That(report.Structure.Diagnostics, Is.Empty);
-            Assert.That(report.ProfileDiagnostics, Is.Empty);
-            Assert.That(
-                report.FingerViews.Select(view => view.FingerPosition),
-                Is.EqualTo(new byte[] { 2, 7 })
-            );
-            Assert.That(
-                report
-                    .Structure.Fields.Single(field =>
-                        field.Name == "BiometricData.FormatIdentifier"
-                    )
-                    .Offset,
-                Is.EqualTo(88)
-            );
-            Assert.That(report.Structure.Fields.All(field => field.Value is null), Is.True);
-            Assert.That(report.HasSignatureBlock, Is.True);
-        });
+            report.Kind.Should().Be(BiometricRecordKind.Cbeff);
+            report.Structure.Diagnostics.Should().BeEmpty();
+            report.ProfileDiagnostics.Should().BeEmpty();
+            report
+                .FingerViews.Select(view => view.FingerPosition)
+                .Should()
+                .Equal(new byte[] { 2, 7 });
+            report
+                .Structure.Fields.Single(field => field.Name == "BiometricData.FormatIdentifier")
+                .Offset.Should()
+                .Be(88);
+            report.Structure.Fields.All(field => field.Value is null).Should().BeTrue();
+            report.HasSignatureBlock.Should().BeTrue();
+        }
     }
 
     [Test]
@@ -46,11 +44,11 @@ internal sealed class InspectionTests
             Now,
             new InspectionOptions(IncludeSensitiveValues: true)
         );
-        Assert.That(report.Structure.Fields.Any(field => field.Value is not null), Is.True);
+        report.Structure.Fields.Any(field => field.Value is not null).Should().BeTrue();
         var restored = JsonSerializer.Deserialize<BiometricInspectionReport>(
             JsonSerializer.Serialize(report)
         );
-        Assert.That(restored!.FingerViews, Is.EqualTo(report.FingerViews));
+        restored!.FingerViews.Should().Equal(report.FingerViews);
     }
 
     [Test]
@@ -60,11 +58,11 @@ internal sealed class InspectionTests
         for (var length = 0; length < bytes.Length; length++)
         {
             var report = BiometricInspector.Inspect(bytes.AsSpan(0, length), Now);
-            Assert.That(report.Structure.Diagnostics, Is.Not.Empty, $"prefix {length}");
-            Assert.That(
-                report.Structure.Diagnostics.All(diagnostic => diagnostic.Offset >= 0),
-                Is.True
-            );
+            report.Structure.Diagnostics.Should().NotBeEmpty($"prefix {length}");
+            report
+                .Structure.Diagnostics.All(diagnostic => diagnostic.Offset >= 0)
+                .Should()
+                .BeTrue();
         }
     }
 
@@ -73,10 +71,10 @@ internal sealed class InspectionTests
     {
         var outer = Wrap(Wrapped());
         var report = BiometricInspector.Inspect(CbeffCodec.Write(outer), Now);
-        Assert.That(
-            report.Structure.Diagnostics.Select(error => error.Code),
-            Does.Contain("BiometricFormat")
-        );
+        report
+            .Structure.Diagnostics.Select(error => error.Code)
+            .Should()
+            .Contain("BiometricFormat");
     }
 
     [Test]
@@ -84,11 +82,8 @@ internal sealed class InspectionTests
     {
         var bytes = Incits378Codec.Write(Fingerprint() with { XResolution = 196 });
         var report = BiometricInspector.Inspect(bytes, Now);
-        Assert.That(report.Structure.Diagnostics, Is.Empty);
-        Assert.That(
-            report.ProfileDiagnostics.Select(error => error.Code),
-            Does.Contain("Resolution")
-        );
+        report.Structure.Diagnostics.Should().BeEmpty();
+        report.ProfileDiagnostics.Select(error => error.Code).Should().Contain("Resolution");
     }
 
     [Test]
@@ -108,18 +103,16 @@ internal sealed class InspectionTests
                     .Select(parameter => parameter.ParameterType)
                     .Append(method.ReturnType)
             );
-        Assert.That(
-            contracts.Any(type =>
+        contracts
+            .Any(type =>
                 type.ToString().Contains("CSharpFunctionalExtensions", StringComparison.Ordinal)
-            ),
-            Is.False
-        );
-        Assert.That(
-            contracts.Any(type =>
-                type.ToString().Contains("BouncyCastle", StringComparison.Ordinal)
-            ),
-            Is.False
-        );
+            )
+            .Should()
+            .BeFalse();
+        contracts
+            .Any(type => type.ToString().Contains("BouncyCastle", StringComparison.Ordinal))
+            .Should()
+            .BeFalse();
     }
 
     private static FingerprintRecord Fingerprint() =>

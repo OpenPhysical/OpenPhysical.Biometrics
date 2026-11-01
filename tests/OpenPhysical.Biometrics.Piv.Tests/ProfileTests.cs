@@ -2,6 +2,8 @@
 namespace OpenPhysical.Biometrics.Piv.Tests;
 
 using System.Collections.Immutable;
+using AwesomeAssertions;
+using AwesomeAssertions.Execution;
 using NUnit.Framework;
 using OpenPhysical.Biometrics.Formats.Cbeff;
 using OpenPhysical.Biometrics.Formats.Faces;
@@ -25,7 +27,7 @@ internal sealed class ProfileTests
     public void FingerprintHeaderChecksRegisteredEquipmentAndExplicitResolution()
     {
         var valid = Fingerprints();
-        Assert.That(PivBiometricProfile.Validate(valid), Is.Empty);
+        PivBiometricProfile.Validate(valid).Should().BeEmpty();
         (FingerprintRecord Record, string Code)[] cases =
         [
             (valid with { ProductOwner = 0 }, "ProductIdentifier"),
@@ -40,10 +42,11 @@ internal sealed class ProfileTests
             (valid with { Views = [View(2), View(2)] }, "DistinctFingers"),
         ];
         foreach (var item in cases)
-            Assert.That(
-                PivBiometricProfile.Validate(item.Record).Select(finding => finding.Code),
-                Does.Contain(item.Code)
-            );
+            PivBiometricProfile
+                .Validate(item.Record)
+                .Select(finding => finding.Code)
+                .Should()
+                .Contain(item.Code);
     }
 
     [Test]
@@ -77,14 +80,15 @@ internal sealed class ProfileTests
             ),
         ];
         foreach (var item in cases)
-            Assert.That(
-                PivBiometricProfile.Validate(item.View).Select(finding => finding.Code),
-                Does.Contain(item.Code)
-            );
-        Assert.That(
-            PivBiometricProfile.Validate(valid with { Quality = 255, Minutiae = [] }),
-            Is.Empty
-        );
+            PivBiometricProfile
+                .Validate(item.View)
+                .Select(finding => finding.Code)
+                .Should()
+                .Contain(item.Code);
+        PivBiometricProfile
+            .Validate(valid with { Quality = 255, Minutiae = [] })
+            .Should()
+            .BeEmpty();
     }
 
     [TestCase(true)]
@@ -92,7 +96,7 @@ internal sealed class ProfileTests
     public void PivFacialMetadataRequiresFrontalPoseEncoding(bool angle)
     {
         var valid = Face();
-        Assert.That(PivBiometricProfile.Validate(valid), Is.Empty);
+        PivBiometricProfile.Validate(valid).Should().BeEmpty();
         var image = valid.Images[0];
         var altered = image with
         {
@@ -106,10 +110,11 @@ internal sealed class ProfileTests
                     PoseUncertainty = 1,
                 },
         };
-        Assert.That(
-            PivBiometricProfile.Validate(new FaceRecord([altered])).Select(finding => finding.Code),
-            Does.Contain(angle ? "FrontalPose" : "PoseUncertainty")
-        );
+        PivBiometricProfile
+            .Validate(new FaceRecord([altered]))
+            .Select(finding => finding.Code)
+            .Should()
+            .Contain(angle ? "FrontalPose" : "PoseUncertainty");
     }
 
     [Test]
@@ -170,12 +175,11 @@ internal sealed class ProfileTests
             (image with { ImageData = [] }, "ImageDataRequired"),
         ];
         foreach (var item in cases)
-            Assert.That(
-                PivBiometricProfile
-                    .Validate(new FaceRecord([item.Image]))
-                    .Select(finding => finding.Code),
-                Does.Contain(item.Code)
-            );
+            PivBiometricProfile
+                .Validate(new FaceRecord([item.Image]))
+                .Select(finding => finding.Code)
+                .Should()
+                .Contain(item.Code);
     }
 
     private static CbeffRecord Wrapped(
@@ -216,23 +220,19 @@ internal sealed class ProfileTests
             record,
             new DateTimeOffset(2026, 1, 3, 0, 0, 0, TimeSpan.Zero)
         );
-        Assert.That(
-            findings.Select(finding => finding.Code),
-            Does.Contain("SignedPivSecurityOptions")
-        );
+        findings.Select(finding => finding.Code).Should().Contain("SignedPivSecurityOptions");
     }
 
     [Test]
     public void ValidityStartsAtOrAfterAcquisition()
     {
         var at = new DateTimeOffset(2026, 1, 3, 0, 0, 0, TimeSpan.Zero);
-        Assert.That(PivBiometricProfile.Validate(Wrapped(Fingerprints()), at), Is.Empty);
-        Assert.That(
-            PivBiometricProfile
-                .Validate(Wrapped(Fingerprints(), earlyValidity: true), at)
-                .Select(finding => finding.Code),
-            Does.Contain("ValidityStartsBeforeAcquisition")
-        );
+        PivBiometricProfile.Validate(Wrapped(Fingerprints()), at).Should().BeEmpty();
+        PivBiometricProfile
+            .Validate(Wrapped(Fingerprints(), earlyValidity: true), at)
+            .Select(finding => finding.Code)
+            .Should()
+            .Contain("ValidityStartsBeforeAcquisition");
     }
 
     [TestCase(true)]
@@ -246,24 +246,22 @@ internal sealed class ProfileTests
             creator[17] = 0;
         }
         var at = new DateTimeOffset(2026, 1, 3, 0, 0, 0, TimeSpan.Zero);
-        Assert.That(
-            PivBiometricProfile
-                .Validate(Wrapped(Fingerprints(), creator: creator), at)
-                .Select(finding => finding.Code),
-            Does.Contain("CreatorEncoding")
-        );
+        PivBiometricProfile
+            .Validate(Wrapped(Fingerprints(), creator: creator), at)
+            .Select(finding => finding.Code)
+            .Should()
+            .Contain("CreatorEncoding");
     }
 
     [Test]
     public void AvailableFingerprintHeaderQualityUsesTheOriginalNfiqScale()
     {
         var at = new DateTimeOffset(2026, 1, 3, 0, 0, 0, TimeSpan.Zero);
-        Assert.That(
-            PivBiometricProfile
-                .Validate(Wrapped(Fingerprints(), quality: 13), at)
-                .Select(finding => finding.Code),
-            Does.Contain("FingerprintHeaderQuality")
-        );
+        PivBiometricProfile
+            .Validate(Wrapped(Fingerprints(), quality: 13), at)
+            .Select(finding => finding.Code)
+            .Should()
+            .Contain("FingerprintHeaderQuality");
     }
 
     [Test]
@@ -273,9 +271,10 @@ internal sealed class ProfileTests
         {
             Views = [View(2) with { Quality = 255, Minutiae = [] }, View(7)],
         };
-        Assert.That(
-            PivBiometricProfile.Validate(record).Select(finding => finding.Code),
-            Does.Contain("AvailableFingerOrder")
-        );
+        PivBiometricProfile
+            .Validate(record)
+            .Select(finding => finding.Code)
+            .Should()
+            .Contain("AvailableFingerOrder");
     }
 }

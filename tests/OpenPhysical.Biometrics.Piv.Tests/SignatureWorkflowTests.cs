@@ -4,6 +4,8 @@
 namespace OpenPhysical.Biometrics.Piv.Tests;
 
 using System.Collections.Immutable;
+using AwesomeAssertions;
+using AwesomeAssertions.Execution;
 using NUnit.Framework;
 using OpenPhysical.Biometrics.Formats.Cbeff;
 
@@ -23,19 +25,19 @@ internal sealed class SignatureWorkflowTests
             provider,
             provider
         );
-        Assert.Multiple(() =>
+        using (new AssertionScope())
         {
-            Assert.That(result.IsSuccess, Is.True);
-            Assert.That(provider.Requests, Has.Count.EqualTo(2));
-            Assert.That(result.Record!.Header.SignatureLength, Is.EqualTo(4));
-            Assert.That(
-                CbeffCodec.GetSignedData(result.Record),
-                Is.EqualTo(provider.Requests[^1].SignedContent.ToArray())
-            );
-            Assert.That(result.Verification!.IdentityBinding, Is.EqualTo(ValidationStatus.Passed));
-            Assert.That(record.Header.SignatureLength, Is.Zero);
-            Assert.That(record.Signature.IsEmpty, Is.True);
-        });
+            result.IsSuccess.Should().BeTrue();
+            provider.Requests.Should().HaveCount(2);
+            result.Record!.Header.SignatureLength.Should().Be(4);
+            CbeffCodec
+                .GetSignedData(result.Record)
+                .Should()
+                .Equal(provider.Requests[^1].SignedContent.ToArray());
+            result.Verification!.IdentityBinding.Should().Be(ValidationStatus.Passed);
+            record.Header.SignatureLength.Should().Be(0);
+            record.Signature.IsEmpty.Should().BeTrue();
+        }
     }
 
     [Test]
@@ -49,13 +51,10 @@ internal sealed class SignatureWorkflowTests
             provider,
             provider
         );
-        Assert.That(result.Failure, Is.EqualTo(SignatureFailure.LengthDidNotConverge));
-        Assert.That(
-            provider.Requests,
-            Has.Count.EqualTo(BiometricSignatureWorkflow.MaximumSigningAttempts)
-        );
-        Assert.That(provider.Verifications, Is.Zero);
-        Assert.That(result.Record, Is.Null);
+        result.Failure.Should().Be(SignatureFailure.LengthDidNotConverge);
+        provider.Requests.Should().HaveCount(BiometricSignatureWorkflow.MaximumSigningAttempts);
+        provider.Verifications.Should().Be(0);
+        result.Record.Should().BeNull();
     }
 
     [TestCase(ValidationStatus.Failed)]
@@ -69,11 +68,8 @@ internal sealed class SignatureWorkflowTests
             provider,
             provider
         );
-        Assert.That(result.Failure, Is.EqualTo(SignatureFailure.VerificationFailed));
-        Assert.That(
-            result.Verification!.IdentityBinding,
-            Is.EqualTo(ValidationStatus.NotEvaluated)
-        );
+        result.Failure.Should().Be(SignatureFailure.VerificationFailed);
+        result.Verification!.IdentityBinding.Should().Be(ValidationStatus.NotEvaluated);
     }
 
     [TestCase(ValidationStatus.Failed)]
@@ -87,8 +83,8 @@ internal sealed class SignatureWorkflowTests
             provider,
             provider
         );
-        Assert.That(result.IsSuccess, Is.True);
-        Assert.That(result.Verification!.SignatureFindings.Trust, Is.EqualTo(trustStatus));
+        result.IsSuccess.Should().BeTrue();
+        result.Verification!.SignatureFindings.Trust.Should().Be(trustStatus);
     }
 
     [Test]
@@ -101,28 +97,34 @@ internal sealed class SignatureWorkflowTests
             provider,
             provider
         );
-        Assert.That(result.Failure, Is.EqualTo(SignatureFailure.IdentityMismatch));
-        Assert.That(result.Record, Is.Null);
+        result.Failure.Should().Be(SignatureFailure.IdentityMismatch);
+        result.Record.Should().BeNull();
     }
 
     [Test]
-    public void ProviderExceptionsAndCancellationRemainVisibleToTheCaller()
+    public async Task ProviderExceptionsAndCancellationRemainVisibleToTheCaller()
     {
         var provider = new RecordingProvider { ThrowOnSign = true };
-        Assert.ThrowsAsync<IOException>(async () =>
-            await BiometricSignatureWorkflow.SignAsync(Record(), Identity(), provider, provider)
-        );
+        await FluentActions
+            .Invoking(async () =>
+                await BiometricSignatureWorkflow.SignAsync(Record(), Identity(), provider, provider)
+            )
+            .Should()
+            .ThrowExactlyAsync<IOException>();
         using var cancellation = new CancellationTokenSource();
         cancellation.Cancel();
-        Assert.ThrowsAsync<OperationCanceledException>(async () =>
-            await BiometricSignatureWorkflow.SignAsync(
-                Record(),
-                Identity(),
-                provider,
-                provider,
-                cancellation.Token
+        await FluentActions
+            .Invoking(async () =>
+                await BiometricSignatureWorkflow.SignAsync(
+                    Record(),
+                    Identity(),
+                    provider,
+                    provider,
+                    cancellation.Token
+                )
             )
-        );
+            .Should()
+            .ThrowExactlyAsync<OperationCanceledException>();
     }
 
     [Test]
@@ -134,52 +136,56 @@ internal sealed class SignatureWorkflowTests
         var request = new BiometricSignatureRequest(bytes, identity);
         identityBytes[0] = 9;
         bytes[0] = 9;
-        Assert.Multiple(() =>
+        using (new AssertionScope())
         {
-            Assert.That(identity.FascN[0], Is.Zero);
-            Assert.That(request.SignedContent[0], Is.EqualTo(3));
-            Assert.That(request.Requirements.ContentTypeOid, Is.EqualTo("2.16.840.1.101.3.6.2"));
-            Assert.That(
-                request.Requirements.SignerDnAttributeOid,
-                Is.EqualTo("2.16.840.1.101.3.6.5")
-            );
-            Assert.That(request.Requirements.EntryUuidAttributeOid, Is.EqualTo("1.3.6.1.1.16.4"));
-        });
+            identity.FascN[0].Should().Be(0);
+            request.SignedContent[0].Should().Be(3);
+            request.Requirements.ContentTypeOid.Should().Be("2.16.840.1.101.3.6.2");
+            request.Requirements.SignerDnAttributeOid.Should().Be("2.16.840.1.101.3.6.5");
+            request.Requirements.EntryUuidAttributeOid.Should().Be("1.3.6.1.1.16.4");
+        }
     }
 
     [Test]
     public void SignedContentRequiresTheCompleteCanonicalHeader()
     {
-        Assert.Throws<ArgumentException>(() =>
-            new BiometricSignatureRequest(new byte[CbeffHeader.Size - 1], Identity())
-        );
+        FluentActions
+            .Invoking(() =>
+                new BiometricSignatureRequest(new byte[CbeffHeader.Size - 1], Identity())
+            )
+            .Should()
+            .ThrowExactly<ArgumentException>();
         var request = new BiometricSignatureRequest(new byte[CbeffHeader.Size], Identity());
-        Assert.That(request.SignedContent.Length, Is.EqualTo(CbeffHeader.Size));
+        request.SignedContent.Length.Should().Be(CbeffHeader.Size);
     }
 
     [Test]
     public void AttachmentRejectsLengthChangesAfterSigning()
     {
-        Assert.Throws<ArgumentException>(() =>
-            BiometricSignatureWorkflow.Attach(Record(), new byte[4])
-        );
+        FluentActions
+            .Invoking(() => BiometricSignatureWorkflow.Attach(Record(), new byte[4]))
+            .Should()
+            .ThrowExactly<ArgumentException>();
     }
 
     [Test]
-    public void SigningRejectsHeaderIdentityMismatchBeforeCallingProvider()
+    public async Task SigningRejectsHeaderIdentityMismatchBeforeCallingProvider()
     {
         var fascN = new byte[25];
         fascN[0] = 9;
         var provider = new RecordingProvider();
-        Assert.ThrowsAsync<ArgumentException>(async () =>
-            await BiometricSignatureWorkflow.SignAsync(
-                Record(),
-                new BiometricIdentity(fascN, CardUuid),
-                provider,
-                provider
+        await FluentActions
+            .Invoking(async () =>
+                await BiometricSignatureWorkflow.SignAsync(
+                    Record(),
+                    new BiometricIdentity(fascN, CardUuid),
+                    provider,
+                    provider
+                )
             )
-        );
-        Assert.That(provider.Requests, Is.Empty);
+            .Should()
+            .ThrowExactlyAsync<ArgumentException>();
+        provider.Requests.Should().BeEmpty();
     }
 
     private static BiometricIdentity Identity() => new(new byte[25], CardUuid);
@@ -239,7 +245,7 @@ internal sealed class SignatureWorkflowTests
         )
         {
             Verifications++;
-            Assert.That(request.SignedContent, Is.EqualTo(Requests[^1].SignedContent));
+            request.SignedContent.Should().Equal(Requests[^1].SignedContent);
             var identity = WrongIdentity
                 ? new BiometricIdentity(
                     new byte[25],

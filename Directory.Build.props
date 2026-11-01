@@ -44,6 +44,8 @@
     <ItemGroup Condition="'$(IsTestProject)' == 'true'">
         <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.8.0" />
         <PackageReference Include="NSubstitute" Version="5.1.0" />
+        <PackageReference Include="AwesomeAssertions" Version="9.6.0" />
+        <PackageReference Include="CSharpFunctionalExtensions.AwesomeAssertions" Version="9.4.0" />
         <PackageReference Include="coverlet.collector" Version="6.0.0">
             <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
             <PrivateAssets>all</PrivateAssets>

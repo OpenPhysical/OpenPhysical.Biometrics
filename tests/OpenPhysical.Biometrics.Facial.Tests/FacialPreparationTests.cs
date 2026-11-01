@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 namespace OpenPhysical.Biometrics.Facial.Tests;
 
+using AwesomeAssertions;
+using AwesomeAssertions.Execution;
 using NUnit.Framework;
 using OpenPhysical.Biometrics.Formats.Faces;
 
@@ -21,18 +23,18 @@ internal sealed class FacialPreparationTests
         new Random(3207).NextBytes(pixels);
         var original = pixels.ToArray();
         var result = new FacialRecordPreparer().Prepare(pixels, 480, 640, Metadata);
-        Assert.That(result.Status, Is.EqualTo(FacialPreparationStatus.Prepared));
+        result.Status.Should().Be(FacialPreparationStatus.Prepared);
         var bytes = Incits385Codec.Write(result.Record!);
         var parsed = Incits385Codec.Parse(bytes);
-        Assert.Multiple(() =>
+        using (new AssertionScope())
         {
-            Assert.That(parsed.IsSuccess, Is.True);
-            Assert.That(parsed.Value!.Images[0].ImageInformation.Width, Is.EqualTo(480));
-            Assert.That(parsed.Value.Images[0].ImageInformation.Height, Is.EqualTo(640));
-            Assert.That(parsed.Value.Images[0].ImageInformation.ImageDataType, Is.EqualTo(1));
-            Assert.That(pixels, Is.EqualTo(original));
-            Assert.That(result.ProfileDiagnostics, Is.Empty);
-        });
+            parsed.IsSuccess.Should().BeTrue();
+            parsed.Value!.Images[0].ImageInformation.Width.Should().Be(480);
+            parsed.Value.Images[0].ImageInformation.Height.Should().Be(640);
+            parsed.Value.Images[0].ImageInformation.ImageDataType.Should().Be(1);
+            pixels.Should().Equal(original);
+            result.ProfileDiagnostics.Should().BeEmpty();
+        }
     }
 
     [Test]
@@ -47,8 +49,8 @@ internal sealed class FacialPreparationTests
                 FullFrontalConfirmed = false,
             }
         );
-        Assert.That(result.Status, Is.EqualTo(FacialPreparationStatus.AcquisitionReviewRequired));
-        Assert.That(result.Record, Is.Null);
+        result.Status.Should().Be(FacialPreparationStatus.AcquisitionReviewRequired);
+        result.Record.Should().BeNull();
     }
 
     [Test]
@@ -60,17 +62,21 @@ internal sealed class FacialPreparationTests
             560,
             Metadata
         );
-        Assert.That(result.Status, Is.EqualTo(FacialPreparationStatus.ProfileRejected));
-        Assert.That(result.Record, Is.Null);
+        result.Status.Should().Be(FacialPreparationStatus.ProfileRejected);
+        result.Record.Should().BeNull();
     }
 
     [Test]
     public void InvalidDimensionsAndBuffersFailBeforeEncoding()
     {
         var service = new FacialRecordPreparer();
-        Assert.Throws<ArgumentOutOfRangeException>(() =>
-            service.Prepare([], int.MaxValue, 640, Metadata)
-        );
-        Assert.Throws<ArgumentException>(() => service.Prepare(new byte[3], 480, 640, Metadata));
+        FluentActions
+            .Invoking(() => service.Prepare([], int.MaxValue, 640, Metadata))
+            .Should()
+            .ThrowExactly<ArgumentOutOfRangeException>();
+        FluentActions
+            .Invoking(() => service.Prepare(new byte[3], 480, 640, Metadata))
+            .Should()
+            .ThrowExactly<ArgumentException>();
     }
 }

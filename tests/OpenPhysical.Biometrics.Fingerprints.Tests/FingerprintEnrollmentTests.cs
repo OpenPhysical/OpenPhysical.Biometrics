@@ -2,6 +2,8 @@
 namespace OpenPhysical.Biometrics.Fingerprints.Tests;
 
 using System.Collections.Immutable;
+using AwesomeAssertions;
+using AwesomeAssertions.Execution;
 using NUnit.Framework;
 using OpenPhysical.Biometrics.Formats.Fingerprints;
 using OpenPhysical.Biometrics.NBIS;
@@ -17,10 +19,7 @@ internal sealed class FingerprintEnrollmentTests
     [TestCase(4, 40)]
     [TestCase(5, 20)]
     public void QualityUsesOriginalNfiq1Mapping(int nfiq, int expected) =>
-        Assert.That(
-            new FingerprintQualityAssessment(nfiq, "test").PivQuality,
-            Is.EqualTo(expected)
-        );
+        new FingerprintQualityAssessment(nfiq, "test").PivQuality.Should().Be((byte)expected);
 
     [Test]
     public void CaptureOwnsItsPixels()
@@ -28,7 +27,7 @@ internal sealed class FingerprintEnrollmentTests
         var pixels = new byte[128 * 128];
         var capture = Capture(FingerPosition.RightIndex, pixels);
         pixels[0] = 255;
-        Assert.That(capture.Image.Pixels[0], Is.Zero);
+        capture.Image.Pixels[0].Should().Be(0);
     }
 
     [TestCase(Nfiq1AssessmentStatus.EmptyImage, FingerprintQualityStatus.EmptyImage)]
@@ -40,13 +39,13 @@ internal sealed class FingerprintEnrollmentTests
     {
         var provider = new Nfiq1FingerprintQualityProvider(new PoorImageEngine(status));
         var assessment = provider.Assess(Capture(FingerPosition.RightIndex));
-        Assert.Multiple(() =>
+        using (new AssertionScope())
         {
-            Assert.That(assessment.Nfiq1, Is.EqualTo(5));
-            Assert.That(assessment.PivQuality, Is.EqualTo(20));
-            Assert.That(assessment.Confidence, Is.EqualTo(1));
-            Assert.That(assessment.Status, Is.EqualTo(expected));
-        });
+            assessment.Nfiq1.Should().Be(5);
+            assessment.PivQuality.Should().Be(20);
+            assessment.Confidence.Should().Be(1);
+            assessment.Status.Should().Be(expected);
+        }
     }
 
     [Test]
@@ -55,13 +54,16 @@ internal sealed class FingerprintEnrollmentTests
         var service = new PivFingerprintEnrollmentService(new TestEngine(), new TestQuality());
         var first = service.Prepare(Capture(FingerPosition.RightIndex));
         var second = service.Prepare(Capture(FingerPosition.LeftIndex));
-        Assert.Throws<ArgumentException>(() =>
-            service.CreateRecord(
-                first,
-                second,
-                new(1, 2, 3, 128, 128, equipmentAppendixFCertified: false)
+        FluentActions
+            .Invoking(() =>
+                service.CreateRecord(
+                    first,
+                    second,
+                    new(1, 2, 3, 128, 128, equipmentAppendixFCertified: false)
+                )
             )
-        );
+            .Should()
+            .ThrowExactly<ArgumentException>();
     }
 
     [Test]
@@ -78,18 +80,18 @@ internal sealed class FingerprintEnrollmentTests
         );
         var encoded = Incits378Codec.Write(record);
         var decoded = Incits378Codec.Parse(encoded).Value!;
-        Assert.Multiple(() =>
+        using (new AssertionScope())
         {
-            Assert.That(decoded.Views, Has.Length.EqualTo(2));
-            Assert.That(decoded.Views[0].Minutiae, Has.Length.EqualTo(128));
-            Assert.That(decoded.Views[0].Minutiae[0].Quality, Is.EqualTo(100));
-            Assert.That(decoded.Views[0].Minutiae[0].Y, Is.EqualTo(27));
-            Assert.That(decoded.Views[0].Minutiae[0].Angle, Is.EqualTo(90));
-            Assert.That(decoded.Views[0].Quality, Is.EqualTo(80));
-            Assert.That(decoded.Views[0].ViewNumber, Is.Zero);
-            Assert.That(decoded.CaptureEquipment, Is.EqualTo(0x8003));
-            Assert.That(engine.Extractions, Is.EqualTo(2));
-        });
+            decoded.Views.Should().HaveCount(2);
+            decoded.Views[0].Minutiae.Should().HaveCount(128);
+            decoded.Views[0].Minutiae[0].Quality.Should().Be(100);
+            decoded.Views[0].Minutiae[0].Y.Should().Be(27);
+            decoded.Views[0].Minutiae[0].Angle.Should().Be(90);
+            decoded.Views[0].Quality.Should().Be(80);
+            decoded.Views[0].ViewNumber.Should().Be(0);
+            decoded.CaptureEquipment.Should().Be(0x8003);
+            engine.Extractions.Should().Be(2);
+        }
     }
 
     [Test]
@@ -109,15 +111,13 @@ internal sealed class FingerprintEnrollmentTests
             128,
             equipmentAppendixFCertified: true
         );
-        Assert.Throws<ArgumentException>(() =>
-            service.CreateRecord(unavailable, available, metadata)
-        );
+        FluentActions
+            .Invoking(() => service.CreateRecord(unavailable, available, metadata))
+            .Should()
+            .ThrowExactly<ArgumentException>();
         var ordered = service.CreateRecord(available, unavailable, metadata);
-        Assert.That(
-            ordered.Views.Select(view => view.FingerPosition),
-            Is.EqualTo(new byte[] { 7, 2 })
-        );
-        Assert.That(ordered.Views.Select(view => view.Quality), Is.EqualTo(new byte[] { 80, 255 }));
+        ordered.Views.Select(view => view.FingerPosition).Should().Equal(new byte[] { 7, 2 });
+        ordered.Views.Select(view => view.Quality).Should().Equal(new byte[] { 80, 255 });
     }
 
     [Test]
@@ -135,17 +135,17 @@ internal sealed class FingerprintEnrollmentTests
             ),
             new(1, 2, 3, 128, 128, equipmentAppendixFCertified: true)
         );
-        Assert.Multiple(() =>
+        using (new AssertionScope())
         {
-            Assert.That(
-                record.Views.Select(view => view.Quality),
-                Is.EqualTo(new byte[] { 255, 254 })
-            );
-            Assert.That(record.Views.All(view => view.Minutiae.IsEmpty), Is.True);
-            Assert.Throws<InvalidOperationException>(() =>
-                FingerprintRecordAdapter.ToMatchingTemplate(record, FingerPosition.LeftIndex, 0)
-            );
-        });
+            record.Views.Select(view => view.Quality).Should().Equal(new byte[] { 255, 254 });
+            record.Views.All(view => view.Minutiae.IsEmpty).Should().BeTrue();
+            FluentActions
+                .Invoking(() =>
+                    FingerprintRecordAdapter.ToMatchingTemplate(record, FingerPosition.LeftIndex, 0)
+                )
+                .Should()
+                .ThrowExactly<InvalidOperationException>();
+        }
     }
 
     [Test]
@@ -165,18 +165,18 @@ internal sealed class FingerprintEnrollmentTests
             candidates,
             preferLeftHand: true
         );
-        Assert.That(
-            ranked.Select(candidate => candidate.Finger),
-            Is.EqualTo(
+        ranked
+            .Select(candidate => candidate.Finger)
+            .Should()
+            .Equal(
                 new[]
                 {
                     FingerPosition.LeftIndex,
                     FingerPosition.RightIndex,
                     FingerPosition.LeftThumb,
                 }
-            )
-        );
-        Assert.That(engine.Extractions, Is.EqualTo(3));
+            );
+        engine.Extractions.Should().Be(3);
     }
 
     [Test]
@@ -197,19 +197,19 @@ internal sealed class FingerprintEnrollmentTests
             0,
             new("site-policy-v3", 43)
         );
-        Assert.That(
-            comparison,
-            Is.EqualTo(new FingerprintComparisonResult(42, false, "site-policy-v3"))
-        );
-        Assert.Throws<ArgumentException>(() =>
-            new FingerprintComparisonService(engine).Compare(
-                probe,
-                record,
-                FingerPosition.LeftIndex,
-                0,
-                new("site-policy-v3", 43)
+        comparison.Should().Be(new FingerprintComparisonResult(42, false, "site-policy-v3"));
+        FluentActions
+            .Invoking(() =>
+                new FingerprintComparisonService(engine).Compare(
+                    probe,
+                    record,
+                    FingerPosition.LeftIndex,
+                    0,
+                    new("site-policy-v3", 43)
+                )
             )
-        );
+            .Should()
+            .ThrowExactly<ArgumentException>();
     }
 
     [Test]
@@ -230,20 +230,26 @@ internal sealed class FingerprintEnrollmentTests
             FingerPosition.RightIndex,
             0
         );
-        Assert.That(template.Minutiae[0], Is.EqualTo(new MatchingMinutia(12, 105, 178, 70, 1)));
-        Assert.Throws<ArgumentException>(() =>
-            FingerprintRecordAdapter.ToMatchingTemplate(record, FingerPosition.RightIndex, 1)
-        );
-        Assert.Throws<NotSupportedException>(() =>
-            FingerprintRecordAdapter.ToMatchingTemplate(
-                record with
-                {
-                    XResolution = 196,
-                },
-                FingerPosition.RightIndex,
-                0
+        template.Minutiae[0].Should().Be(new MatchingMinutia(12, 105, 178, 70, 1));
+        FluentActions
+            .Invoking(() =>
+                FingerprintRecordAdapter.ToMatchingTemplate(record, FingerPosition.RightIndex, 1)
             )
-        );
+            .Should()
+            .ThrowExactly<ArgumentException>();
+        FluentActions
+            .Invoking(() =>
+                FingerprintRecordAdapter.ToMatchingTemplate(
+                    record with
+                    {
+                        XResolution = 196,
+                    },
+                    FingerPosition.RightIndex,
+                    0
+                )
+            )
+            .Should()
+            .ThrowExactly<NotSupportedException>();
     }
 
     private static FingerprintCapture Capture(FingerPosition finger, byte[]? pixels = null) =>

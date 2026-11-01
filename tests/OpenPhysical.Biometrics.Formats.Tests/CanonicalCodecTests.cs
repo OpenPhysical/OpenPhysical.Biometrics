@@ -1,5 +1,7 @@
 using System.Buffers.Binary;
 using System.Collections.Immutable;
+using AwesomeAssertions;
+using AwesomeAssertions.Execution;
 using NUnit.Framework;
 using OpenPhysical.Biometrics.Formats.Cbeff;
 using OpenPhysical.Biometrics.Formats.Faces;
@@ -24,20 +26,21 @@ public sealed class CanonicalCodecTests
     {
         var bytes = FingerprintBytes();
         var parsed = Incits378Codec.Parse(bytes);
-        Assert.That(parsed.IsSuccess, Is.True);
+        parsed.IsSuccess.Should().BeTrue();
         var record = parsed.Value!;
-        Assert.Multiple(() =>
+        using (new AssertionScope())
         {
-            Assert.That(record.XResolution, Is.EqualTo(197));
-            Assert.That(record.Views.Single().FingerPosition, Is.EqualTo(2));
-            Assert.That(
-                record.Views.Single().Minutiae.Single(),
-                Is.EqualTo(new FingerprintMinutia(1, 10, 20, 45, 100))
-            );
-            Assert.That(Incits378Codec.Write(record), Is.EqualTo(bytes));
-        });
+            record.XResolution.Should().Be(197);
+            record.Views.Single().FingerPosition.Should().Be(2);
+            record
+                .Views.Single()
+                .Minutiae.Single()
+                .Should()
+                .Be(new FingerprintMinutia(1, 10, 20, 45, 100));
+            Incits378Codec.Write(record).Should().Equal(bytes);
+        }
         Array.Clear(bytes);
-        Assert.That(record.Views[0].Minutiae[0].X, Is.EqualTo(10));
+        record.Views[0].Minutiae[0].X.Should().Be(10);
     }
 
     /// <summary>Preserves unknown extended blocks and derives their inclusive lengths.</summary>
@@ -48,17 +51,11 @@ public sealed class CanonicalCodecTests
         var view = original.Views[0] with { ExtendedBlocks = [new(0x4321, [0xAA, 0x55])] };
         var bytes = Incits378Codec.Write(original with { Views = [view] });
         var parsed = Incits378Codec.Parse(bytes);
-        Assert.That(parsed.IsSuccess, Is.True);
-        Assert.That(
-            parsed.Value!.Views[0].ExtendedBlocks[0].Data,
-            Is.EqualTo(new byte[] { 0xAA, 0x55 })
-        );
-        Assert.That(Incits378Codec.Write(parsed.Value), Is.EqualTo(bytes));
+        parsed.IsSuccess.Should().BeTrue();
+        parsed.Value!.Views[0].ExtendedBlocks[0].Data.Should().Equal(new byte[] { 0xAA, 0x55 });
+        Incits378Codec.Write(parsed.Value).Should().Equal(bytes);
         BinaryPrimitives.WriteUInt16BigEndian(bytes.AsSpan(bytes.Length - 4), 3);
-        Assert.That(
-            Incits378Codec.Parse(bytes).Diagnostics[0].Code,
-            Is.EqualTo("ExtendedBlockLength")
-        );
+        Incits378Codec.Parse(bytes).Diagnostics[0].Code.Should().Be("ExtendedBlockLength");
     }
 
     /// <summary>Preserves the opposite core and delta angle-presence flags.</summary>
@@ -87,10 +84,10 @@ public sealed class CanonicalCodecTests
         var view = original.Views[0] with { ExtendedBlocks = [new(2, data)] };
         var bytes = Incits378Codec.Write(original with { Views = [view] });
         var parsed = Incits378Codec.Parse(bytes);
-        Assert.That(parsed.IsSuccess, Is.True);
-        Assert.That(parsed.Value!.Views[0].ExtendedBlocks[0].Data, Is.EqualTo(data));
+        parsed.IsSuccess.Should().BeTrue();
+        parsed.Value!.Views[0].ExtendedBlocks[0].Data.Should().Equal(data);
         bytes[^1] = 180;
-        Assert.That(Incits378Codec.Parse(bytes).Diagnostics[0].Code, Is.EqualTo("CoreDeltaAngle"));
+        Incits378Codec.Parse(bytes).Diagnostics[0].Code.Should().Be("CoreDeltaAngle");
     }
 
     /// <summary>Exercises the six-byte record-length encoding beyond the short-length boundary.</summary>
@@ -102,15 +99,12 @@ public sealed class CanonicalCodecTests
         var first = original.Views[0] with { ExtendedBlocks = [block] };
         var second = first with { FingerPosition = 7 };
         var bytes = Incits378Codec.Write(original with { Views = [first, second] });
-        Assert.Multiple(() =>
+        using (new AssertionScope())
         {
-            Assert.That(BinaryPrimitives.ReadUInt16BigEndian(bytes.AsSpan(8)), Is.Zero);
-            Assert.That(
-                BinaryPrimitives.ReadUInt32BigEndian(bytes.AsSpan(10)),
-                Is.EqualTo(bytes.Length)
-            );
-            Assert.That(Incits378Codec.Parse(bytes).IsSuccess, Is.True);
-        });
+            BinaryPrimitives.ReadUInt16BigEndian(bytes.AsSpan(8)).Should().Be(0);
+            BinaryPrimitives.ReadUInt32BigEndian(bytes.AsSpan(10)).Should().Be((uint)bytes.Length);
+            Incits378Codec.Parse(bytes).IsSuccess.Should().BeTrue();
+        }
     }
 
     /// <summary>Rejects reserved bits and values that would otherwise change minutia interpretation.</summary>
@@ -125,7 +119,7 @@ public sealed class CanonicalCodecTests
     {
         var bytes = FingerprintBytes();
         bytes[offset] = value;
-        Assert.That(Incits378Codec.Parse(bytes).IsSuccess, Is.False);
+        Incits378Codec.Parse(bytes).IsSuccess.Should().BeFalse();
     }
 
     /// <summary>Preserves explicit unavailable-finger statuses with empty minutiae collections.</summary>
@@ -142,8 +136,8 @@ public sealed class CanonicalCodecTests
             }
         );
         var parsed = Incits378Codec.Parse(bytes).Value!;
-        Assert.That(parsed.Views[0].Quality, Is.EqualTo(quality));
-        Assert.That(parsed.Views[0].Minutiae, Is.Empty);
+        parsed.Views[0].Quality.Should().Be(quality);
+        parsed.Views[0].Minutiae.Should().BeEmpty();
     }
 
     /// <summary>Maintains the full facial quality field and all facial image blocks.</summary>
@@ -153,14 +147,14 @@ public sealed class CanonicalCodecTests
         var original = FacialRecord();
         var bytes = Incits385Codec.Write(original);
         var parsed = Incits385Codec.Parse(bytes);
-        Assert.That(parsed.IsSuccess, Is.True);
-        Assert.Multiple(() =>
+        parsed.IsSuccess.Should().BeTrue();
+        using (new AssertionScope())
         {
-            Assert.That(parsed.Value!.Images.Length, Is.EqualTo(2));
-            Assert.That(parsed.Value.Images[0].ImageInformation.Quality, Is.EqualTo(0xFFFF));
-            Assert.That(parsed.Value.Images[1].ImageData, Is.EqualTo(new byte[] { 1, 2, 3 }));
-            Assert.That(Incits385Codec.Write(parsed.Value), Is.EqualTo(bytes));
-        });
+            parsed.Value!.Images.Length.Should().Be(2);
+            parsed.Value.Images[0].ImageInformation.Quality.Should().Be(0xFFFF);
+            parsed.Value.Images[1].ImageData.Should().Equal(new byte[] { 1, 2, 3 });
+            Incits385Codec.Write(parsed.Value).Should().Equal(bytes);
+        }
     }
 
     /// <summary>Prevents a facial block from borrowing the next image's metadata.</summary>
@@ -170,8 +164,8 @@ public sealed class CanonicalCodecTests
         var bytes = Incits385Codec.Write(FacialRecord());
         BinaryPrimitives.WriteUInt16BigEndian(bytes.AsSpan(18), 10);
         var result = Incits385Codec.Parse(bytes);
-        Assert.That(result.IsSuccess, Is.False);
-        Assert.That(result.Diagnostics[0].Code, Is.EqualTo("Truncated"));
+        result.IsSuccess.Should().BeFalse();
+        result.Diagnostics[0].Code.Should().Be("Truncated");
     }
 
     /// <summary>Checks exact CBEFF header preservation and detached signed-content boundaries.</summary>
@@ -181,21 +175,21 @@ public sealed class CanonicalCodecTests
         var record = CbeffRecord();
         var bytes = CbeffCodec.Write(record);
         var parsed = CbeffCodec.Parse(bytes);
-        Assert.That(parsed.IsSuccess, Is.True);
-        Assert.Multiple(() =>
+        parsed.IsSuccess.Should().BeTrue();
+        using (new AssertionScope())
         {
-            Assert.That(bytes.Length, Is.EqualTo(93));
-            Assert.That(parsed.Value!.Header.RawBytes, Is.EqualTo(record.Header.RawBytes));
-            Assert.That(CbeffCodec.GetSignedData(parsed.Value), Is.EqualTo(bytes[..91]));
-            Assert.That(CbeffCodec.Write(parsed.Value), Is.EqualTo(bytes));
-            Assert.That(bytes[12], Is.EqualTo(20));
-            Assert.That(bytes[13], Is.EqualTo(26));
-        });
+            bytes.Length.Should().Be(93);
+            parsed.Value!.Header.RawBytes.Should().Equal(record.Header.RawBytes);
+            CbeffCodec.GetSignedData(parsed.Value).Should().Equal(bytes[..91]);
+            CbeffCodec.Write(parsed.Value).Should().Equal(bytes);
+            bytes[12].Should().Be(20);
+            bytes[13].Should().Be(26);
+        }
         var headerCopy = record.Header.ToArray();
         headerCopy[0] = 0;
-        Assert.That(record.Header.PatronHeaderVersion, Is.EqualTo(3));
-        Assert.That(record.Header.WithSignatureLength(42).SignatureLength, Is.EqualTo(42));
-        Assert.That(record.Header.SignatureLength, Is.EqualTo(2));
+        record.Header.PatronHeaderVersion.Should().Be(3);
+        record.Header.WithSignatureLength(42).SignatureLength.Should().Be(42);
+        record.Header.SignatureLength.Should().Be(2);
     }
 
     /// <summary>Rejects malformed calendar timestamps and length mismatches.</summary>
@@ -205,10 +199,10 @@ public sealed class CanonicalCodecTests
         var bytes = CbeffCodec.Write(CbeffRecord());
         bytes[14] = 13;
         var dateResult = CbeffCodec.Parse(bytes);
-        Assert.That(dateResult.Diagnostics[0].Code, Is.EqualTo("CbeffTimestamp"));
+        dateResult.Diagnostics[0].Code.Should().Be("CbeffTimestamp");
         bytes = CbeffCodec.Write(CbeffRecord());
         bytes[7]++;
-        Assert.That(CbeffCodec.Parse(bytes).Diagnostics[0].Offset, Is.EqualTo(2));
+        CbeffCodec.Parse(bytes).Diagnostics[0].Offset.Should().Be(2);
     }
 
     /// <summary>Keeps inspection contents private until an explicit sensitive-value request.</summary>
@@ -218,12 +212,12 @@ public sealed class CanonicalCodecTests
         var bytes = FingerprintBytes();
         var ordinary = Incits378Codec.Parse(bytes);
         var sensitive = Incits378Codec.Parse(bytes, new(IncludeSensitiveValues: true));
-        Assert.That(ordinary.Inspection.Fields.All(field => field.Value is null), Is.True);
-        Assert.That(sensitive.Inspection.Fields.Any(field => field.Value == "400A"), Is.True);
+        ordinary.Inspection.Fields.All(field => field.Value is null).Should().BeTrue();
+        sensitive.Inspection.Fields.Any(field => field.Value == "400A").Should().BeTrue();
         var point = ordinary.Inspection.Fields.Single(field =>
             field.Name.EndsWith("TypeAndX", StringComparison.Ordinal)
         );
-        Assert.That((point.Offset, point.Length), Is.EqualTo((30, 2)));
+        (point.Offset, point.Length).Should().Be((30, 2));
     }
 
     /// <summary>Reports malformed fingerprint version and extension framing.</summary>
@@ -238,8 +232,8 @@ public sealed class CanonicalCodecTests
         else
             bytes[^1] = 255;
         var parsed = Incits378Codec.Parse(bytes);
-        Assert.That(parsed.IsSuccess, Is.False);
-        Assert.That(parsed.Diagnostics, Is.Not.Empty);
+        parsed.IsSuccess.Should().BeFalse();
+        parsed.Diagnostics.Should().NotBeEmpty();
     }
 
     /// <summary>Returns format diagnostics for every truncated prefix.</summary>
@@ -250,11 +244,11 @@ public sealed class CanonicalCodecTests
         var face = Incits385Codec.Write(FacialRecord());
         var cbeff = CbeffCodec.Write(CbeffRecord());
         for (var i = 0; i < fingerprint.Length; i++)
-            Assert.That(Incits378Codec.Parse(fingerprint.AsSpan(0, i)).IsSuccess, Is.False);
+            Incits378Codec.Parse(fingerprint.AsSpan(0, i)).IsSuccess.Should().BeFalse();
         for (var i = 0; i < face.Length; i++)
-            Assert.That(Incits385Codec.Parse(face.AsSpan(0, i)).IsSuccess, Is.False);
+            Incits385Codec.Parse(face.AsSpan(0, i)).IsSuccess.Should().BeFalse();
         for (var i = 0; i < cbeff.Length; i++)
-            Assert.That(CbeffCodec.Parse(cbeff.AsSpan(0, i)).IsSuccess, Is.False);
+            CbeffCodec.Parse(cbeff.AsSpan(0, i)).IsSuccess.Should().BeFalse();
     }
 
     private static FaceRecord FacialRecord()
@@ -277,9 +271,9 @@ public sealed class CanonicalCodecTests
         var bytes = CbeffCodec.Write(CbeffRecord());
         BinaryPrimitives.WriteUInt32BigEndian(bytes.AsSpan(2, 4), declaredLength);
         var result = CbeffCodec.Parse(bytes);
-        Assert.That(result.IsSuccess, Is.False);
-        Assert.That(result.Diagnostics[0].Code, Is.EqualTo("CbeffLength"));
-        Assert.That(result.Diagnostics[0].Offset, Is.EqualTo(2));
+        result.IsSuccess.Should().BeFalse();
+        result.Diagnostics[0].Code.Should().Be("CbeffLength");
+        result.Diagnostics[0].Offset.Should().Be(2);
     }
 
     private static CbeffRecord CbeffRecord()
