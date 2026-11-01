@@ -13,9 +13,11 @@ internal static class BaselineTiff
     internal static void Encode(RgbImage image, Stream stream)
     {
         ArgumentNullException.ThrowIfNull(stream);
-        const ushort entries = 11;
+        const ushort entries = 14;
         const int bitsOffset = 8 + 2 + entries * 12 + 4;
-        const int pixelOffset = bitsOffset + 6;
+        const int xResolutionOffset = bitsOffset + 6;
+        const int yResolutionOffset = xResolutionOffset + 8;
+        const int pixelOffset = yResolutionOffset + 8;
         using var writer = new BinaryWriter(stream, System.Text.Encoding.ASCII, leaveOpen: true);
         writer.Write(new byte[] { (byte)'I', (byte)'I', 42, 0 });
         writer.Write(8u);
@@ -30,11 +32,19 @@ internal static class BaselineTiff
         Entry(writer, 277, 3, 1, 3);
         Entry(writer, 278, 4, 1, (uint)image.Height);
         Entry(writer, 279, 4, 1, checked((uint)(image.Width * image.Height * 3)));
+        Entry(writer, 282, 5, 1, xResolutionOffset);
+        Entry(writer, 283, 5, 1, yResolutionOffset);
         Entry(writer, 284, 3, 1, 1);
+        Entry(writer, 296, 3, 1, 2);
         writer.Write(0u);
         writer.Write((ushort)8);
         writer.Write((ushort)8);
         writer.Write((ushort)8);
+        // Pixel-only images use a documented 72 ppi display resolution.
+        writer.Write(72u);
+        writer.Write(1u);
+        writer.Write(72u);
+        writer.Write(1u);
         for (var y = 0; y < image.Height; y++)
             foreach (var pixel in image.GetRowSpan(y))
             {

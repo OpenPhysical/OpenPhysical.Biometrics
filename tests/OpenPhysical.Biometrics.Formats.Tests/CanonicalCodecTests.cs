@@ -42,7 +42,7 @@ public sealed class CanonicalCodecTests
 
     /// <summary>Preserves unknown extended blocks and derives their inclusive lengths.</summary>
     [Test]
-    public void UnknownExtendedBlocksRoundTripWithoutInterpretation()
+    public void UnknownExtendedBlocksPreserveTheirOriginalBytes()
     {
         var original = Incits378Codec.Parse(FingerprintBytes()).Value!;
         var view = original.Views[0] with { ExtendedBlocks = [new(0x4321, [0xAA, 0x55])] };
@@ -128,7 +128,7 @@ public sealed class CanonicalCodecTests
         Assert.That(Incits378Codec.Parse(bytes).IsSuccess, Is.False);
     }
 
-    /// <summary>Allows explicit unavailable finger statuses without inventing minutiae.</summary>
+    /// <summary>Preserves explicit unavailable-finger statuses with empty minutiae collections.</summary>
     /// <param name="quality">The PIV status identifying a temporary or permanent capture unavailability.</param>
     [TestCase(254)]
     [TestCase(255)]
@@ -227,7 +227,7 @@ public sealed class CanonicalCodecTests
     }
 
     /// <summary>Reports malformed fingerprint version and extension framing.</summary>
-    /// <param name="version">Whether to corrupt the version rather than the extension length.</param>
+    /// <param name="version">True corrupts the version; false corrupts the extension length.</param>
     [TestCase(true)]
     [TestCase(false)]
     public void FingerprintFramingRejectsUnsupportedVersionAndTruncatedExtensions(bool version)
@@ -242,7 +242,7 @@ public sealed class CanonicalCodecTests
         Assert.That(parsed.Diagnostics, Is.Not.Empty);
     }
 
-    /// <summary>Rejects every truncated prefix without leaking indexing or allocation exceptions.</summary>
+    /// <summary>Returns format diagnostics for every truncated prefix.</summary>
     [Test]
     public void EveryTruncatedPrefixReturnsDiagnostics()
     {
@@ -266,6 +266,20 @@ public sealed class CanonicalCodecTests
             [1, 2, 3]
         );
         return new([face, face]);
+    }
+
+    /// <summary>Rejects oversized unsigned lengths before any buffer slice.</summary>
+    /// <param name="declaredLength">A biometric block length exceeding the supplied buffer.</param>
+    [TestCase(0x80000000u)]
+    [TestCase(uint.MaxValue)]
+    public void CbeffRejectsUnsignedLengthsBeyondTheInput(uint declaredLength)
+    {
+        var bytes = CbeffCodec.Write(CbeffRecord());
+        BinaryPrimitives.WriteUInt32BigEndian(bytes.AsSpan(2, 4), declaredLength);
+        var result = CbeffCodec.Parse(bytes);
+        Assert.That(result.IsSuccess, Is.False);
+        Assert.That(result.Diagnostics[0].Code, Is.EqualTo("CbeffLength"));
+        Assert.That(result.Diagnostics[0].Offset, Is.EqualTo(2));
     }
 
     private static CbeffRecord CbeffRecord()

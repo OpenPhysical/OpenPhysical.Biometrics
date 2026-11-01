@@ -40,7 +40,7 @@ public sealed class RgbImageTests
         });
     }
 
-    /// <summary>Clears retained managed spans on disposal without leaving native pixel pointers.</summary>
+    /// <summary>Clears retained managed spans and releases native pixel storage on disposal.</summary>
     [Test]
     public void DisposalClearsManagedRowsAndRejectsFurtherOperations()
     {
@@ -54,7 +54,7 @@ public sealed class RgbImageTests
     }
 
     /// <summary>Preserves RGB pixels in both lossless formats used by the compatibility API.</summary>
-    /// <param name="tiff">Selects baseline TIFF instead of PNG.</param>
+    /// <param name="tiff">True selects baseline TIFF; false selects PNG.</param>
     [TestCase(false)]
     [TestCase(true)]
     public void LosslessEncodingRoundTripsPixelSamples(bool tiff)
@@ -90,7 +90,7 @@ public sealed class RgbImageTests
         });
     }
 
-    /// <summary>Crops and flips exact pixel positions without changing their sample values.</summary>
+    /// <summary>Preserves sample values when cropping and flipping pixel positions.</summary>
     [Test]
     public void CropAndReflectionPreservePixelCoordinates()
     {
@@ -143,6 +143,44 @@ public sealed class RgbImageTests
         Assert.Throws<ArgumentException>(() =>
             RgbImage.Load(new byte[] { 0x49, 0x49, 0x2A, 0, 0xFF, 0xFF, 0xFF, 0x7F })
         );
+    }
+
+    /// <summary>Checks baseline resolution fields directly in the TIFF directory.</summary>
+    [Test]
+    public void TiffWritesResolutionAndSortedBaselineTags()
+    {
+        using var image = Pattern();
+        using var stream = new MemoryStream();
+        image.SaveAsTiff(stream);
+        stream.Position = 4;
+        using var reader = new BinaryReader(stream);
+        stream.Position = reader.ReadUInt32();
+        var count = reader.ReadUInt16();
+        var entries = Enumerable
+            .Range(0, count)
+            .Select(_ =>
+                (
+                    Tag: reader.ReadUInt16(),
+                    Type: reader.ReadUInt16(),
+                    Count: reader.ReadUInt32(),
+                    Value: reader.ReadUInt32()
+                )
+            )
+            .ToArray();
+        Assert.That(entries.Select(entry => entry.Tag), Is.Ordered);
+        Assert.That(
+            entries.Select(entry => entry.Tag),
+            Is.SupersetOf(new ushort[] { 282, 283, 296 })
+        );
+        foreach (var tag in new ushort[] { 282, 283 })
+        {
+            var entry = entries.Single(entry => entry.Tag == tag);
+            Assert.That((entry.Type, entry.Count), Is.EqualTo(((ushort)5, 1u)));
+            stream.Position = entry.Value;
+            Assert.That((reader.ReadUInt32(), reader.ReadUInt32()), Is.EqualTo((72u, 1u)));
+        }
+        var unit = entries.Single(entry => entry.Tag == 296);
+        Assert.That((unit.Type, unit.Count, unit.Value), Is.EqualTo(((ushort)3, 1u, 2u)));
     }
 
     private static byte[] RgbaTiff(ushort? extraSample)

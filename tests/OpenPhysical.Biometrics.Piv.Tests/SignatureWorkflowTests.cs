@@ -60,9 +60,7 @@ internal sealed class SignatureWorkflowTests
 
     [TestCase(ValidationStatus.Failed)]
     [TestCase(ValidationStatus.NotEvaluated)]
-    public async Task UnverifiedContentNeverAcquiresAnIdentityBinding(
-        ValidationStatus signatureStatus
-    )
+    public async Task IdentityBindingRequiresVerifiedContent(ValidationStatus signatureStatus)
     {
         var provider = new RecordingProvider { SignatureStatus = signatureStatus };
         var result = await BiometricSignatureWorkflow.SignAsync(
@@ -78,10 +76,11 @@ internal sealed class SignatureWorkflowTests
         );
     }
 
-    [Test]
-    public async Task TrustFindingsStaySeparateFromSignatureIntegrity()
+    [TestCase(ValidationStatus.Failed)]
+    [TestCase(ValidationStatus.NotEvaluated)]
+    public async Task TrustFindingsStaySeparateFromSignatureIntegrity(ValidationStatus trustStatus)
     {
-        var provider = new RecordingProvider { TrustStatus = ValidationStatus.Failed };
+        var provider = new RecordingProvider { TrustStatus = trustStatus };
         var result = await BiometricSignatureWorkflow.SignAsync(
             Record(),
             Identity(),
@@ -89,10 +88,7 @@ internal sealed class SignatureWorkflowTests
             provider
         );
         Assert.That(result.IsSuccess, Is.True);
-        Assert.That(
-            result.Verification!.SignatureFindings.Trust,
-            Is.EqualTo(ValidationStatus.Failed)
-        );
+        Assert.That(result.Verification!.SignatureFindings.Trust, Is.EqualTo(trustStatus));
     }
 
     [Test]
@@ -149,6 +145,16 @@ internal sealed class SignatureWorkflowTests
             );
             Assert.That(request.Requirements.EntryUuidAttributeOid, Is.EqualTo("1.3.6.1.1.16.4"));
         });
+    }
+
+    [Test]
+    public void SignedContentRequiresTheCompleteCanonicalHeader()
+    {
+        Assert.Throws<ArgumentException>(() =>
+            new BiometricSignatureRequest(new byte[CbeffHeader.Size - 1], Identity())
+        );
+        var request = new BiometricSignatureRequest(new byte[CbeffHeader.Size], Identity());
+        Assert.That(request.SignedContent.Length, Is.EqualTo(CbeffHeader.Size));
     }
 
     [Test]

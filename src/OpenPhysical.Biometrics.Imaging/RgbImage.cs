@@ -268,7 +268,7 @@ public sealed class RgbImage : IDisposable
         if (width < Width || height < Height)
             throw new ArgumentOutOfRangeException(
                 nameof(width),
-                "Padding dimensions cannot crop the image."
+                "Padding dimensions must contain the original image."
             );
         var x = (width - Width) / 2;
         var y = (height - Height) / 2;
@@ -382,7 +382,7 @@ public sealed class RgbImage : IDisposable
         ValidateDimensions(width, height);
         if (data.Length != checked(width * height * 3))
             throw new ArgumentException(
-                "RGB data length does not match the supplied dimensions.",
+                "RGB data length differs from the size required by the supplied dimensions.",
                 nameof(data)
             );
         var result = new RgbImage(width, height);
@@ -523,7 +523,8 @@ public sealed class RgbImage : IDisposable
     public void SaveAsJpeg(Stream stream, int quality = 85) =>
         Encode(stream, SKEncodedImageFormat.Jpeg, quality);
 
-    /// <summary>Writes an uncompressed RGB baseline TIFF to a caller-owned stream.</summary>
+    /// <summary>Writes an uncompressed RGB baseline TIFF with a 72 ppi display resolution.</summary>
+    /// <remarks>The resolution tags describe the default display size of this pixel buffer.</remarks>
     /// <param name="stream">Writable destination stream.</param>
     public void SaveAsTiff(Stream stream)
     {
@@ -719,7 +720,7 @@ public sealed class RgbImage : IDisposable
         using var image = SKImage.FromBitmap(bitmap);
         using var encoded =
             image.Encode(format, quality)
-            ?? throw new InvalidOperationException("The image could not be encoded.");
+            ?? throw new InvalidOperationException("Image encoding failed.");
         encoded.SaveTo(stream);
     }
 }

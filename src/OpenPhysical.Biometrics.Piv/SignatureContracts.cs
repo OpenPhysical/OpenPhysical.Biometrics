@@ -4,11 +4,12 @@
 namespace OpenPhysical.Biometrics.Piv;
 
 using System.Collections.Immutable;
+using OpenPhysical.Biometrics.Formats.Cbeff;
 
 /// <summary>Records the outcome of one independently evaluated check.</summary>
 public enum ValidationStatus
 {
-    /// <summary>The responsible service has not evaluated this check.</summary>
+    /// <summary>The check awaits evaluation by the responsible service.</summary>
     NotEvaluated,
 
     /// <summary>The check passed.</summary>
@@ -111,9 +112,9 @@ public sealed class BiometricSignatureRequest
     public BiometricSignatureRequest(ReadOnlySpan<byte> signedContent, BiometricIdentity identity)
     {
         ArgumentNullException.ThrowIfNull(identity);
-        if (signedContent.Length < 88)
+        if (signedContent.Length < CbeffHeader.Size)
             throw new ArgumentException(
-                "Signed content includes the 88-byte CBEFF header.",
+                $"Signed content includes the {CbeffHeader.Size}-byte CBEFF header.",
                 nameof(signedContent)
             );
         SignedContent = ImmutableArray.Create(signedContent.ToArray());
