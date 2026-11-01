@@ -1,7 +1,9 @@
 # Third-party notices
 
-The original MIT notice is retained in LICENSE-MIT-ORIGINAL. Existing facial and
-imaging components retain their source attribution and dependency license terms.
+The original FaceONNx files do not remain in the current tree. The repository's
+LICENSE explains the scope of the MIT-licensed historical FaceONNx revisions.
+Current facial and imaging components retain their source attribution and
+dependency license terms.
 
 OpenPhysical.Biometrics.NBIS and the NFIQ packages carry their own source,
 algorithm, model, and dependency notices. NuGet dependency metadata identifies
@@ -20,4 +22,9 @@ The dependency packages carry their native libraries and third-party notices.
 
 ## Retained facial models
 
-The facial-model package includes Google's MediaPipe weights in the ONNX conversion published by Yakhyokhuja Valikhujaev. The models and adapted detector/crop postprocessing retain Apache-2.0 terms. See `src/OpenPhysical.Biometrics.Onnx/Resources/provenance.json` and `LICENSE-MediaPipe-Apache-2.0.txt` for exact artifacts and notices. First-party combination permission is recorded in `LICENSE-MEDIAPIPE-EXCEPTION`.
+The facial-model package includes Google's MediaPipe weights in the ONNX
+conversion published by Yakhyokhuja Valikhujaev. The models and adapted
+detector/crop postprocessing retain Apache-2.0 terms. See
+`src/OpenPhysical.Biometrics.Onnx/Resources/provenance.json` and
+`LICENSE-MediaPipe-Apache-2.0.txt` for exact artifacts and notices. The
+first-party combination permission is part of the repository's `LICENSE`.

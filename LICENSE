@@ -336,3 +336,31 @@ proprietary programs.  If your program is a subroutine library, you may
 consider it more useful to permit linking proprietary applications with the
 library.  If this is what you want to do, use the GNU Lesser General
 Public License instead of this License.
+
+
+OpenPhysical MediaPipe Combination Exception, version 1
+
+As an additional permission for the first-party OpenPhysical.Biometrics code
+whose copyright holders authorize this exception, you may combine that code
+with the Apache License, Version 2.0 components identified below and distribute
+the resulting combination under GNU GPL version 2, provided that you also
+comply with the Apache License, Version 2.0 for those components.
+
+Covered components: Google's MediaPipe BlazeFace and Face Mesh / Face Landmarker
+models; yakhyo/mediapipe-face-mesh-onnx; and adaptations of their inference,
+preprocessing, and postprocessing code used by OpenPhysical.Biometrics.
+
+All other requirements of the GNU GPL version 2 remain in effect. This exception
+does not change the license of the Apache-covered components or grant permission
+on behalf of unrelated copyright holders. The option to use a later GNU GPL
+version and the availability of separate commercial licensing remain unchanged.
+
+
+FaceONNx history
+
+This repository was created from the FaceONNx repository history. The original
+FaceONNx files were removed in commit 75f84f411b064b8a0b7dc24196229ea158165212
+before the current OpenPhysical implementation was added. No FaceONNx source or
+other material remains in the current tree. The MIT license in historical
+FaceONNx revisions applies only to the original FaceONNx material in those
+revisions; it does not apply to the current OpenPhysical.Biometrics code.

@@ -44,9 +44,8 @@ for name in PROJECTS + list(MODEL_PROJECT):
         assert "SixLabors" not in metadata and "ImageSharp" not in metadata, package
         assert "THIRD_PARTY_NOTICES.md" in names, package
         assert any(path.endswith("LICENSE-MediaPipe-Apache-2.0.txt") for path in names), package
-        assert "LICENSE-PACKAGE" in names and "LICENSE-MEDIAPIPE-EXCEPTION" in names, package
+        assert "LICENSE" in names, package
         assert not any("FaceDetector.onnx" in path or "landmarks_68_pfld" in path or "FaceONNX" in path for path in names), package
-        assert "LICENSE" in names and "LICENSE-MIT-ORIGINAL" in names, package
         assert not any(path.lower().endswith((".p12", ".pfx", ".key")) for path in names), package
         if name == "OpenPhysical.Biometrics.Facial.Models":
             provenance = json.loads(archive.read("models/provenance.json"))

@@ -15,7 +15,7 @@
         <Company>OpenPhysical</Company>
         <Product>OpenPhysical Biometrics</Product>
         <Copyright>Copyright © 2024 OpenPhysical Contributors</Copyright>
-        <PackageLicenseFile>LICENSE-PACKAGE</PackageLicenseFile>
+        <PackageLicenseFile>LICENSE</PackageLicenseFile>
         <PackageProjectUrl>https://github.com/OpenPhysical/OpenPhysical.Biometrics</PackageProjectUrl>
         <RepositoryUrl>https://github.com/OpenPhysical/OpenPhysical.Biometrics</RepositoryUrl>
         <RepositoryType>git</RepositoryType>
@@ -87,18 +87,7 @@
             PackagePath="/LICENSE-MediaPipe-Apache-2.0.txt"
             Condition="'$(MSBuildProjectName)' != 'OpenPhysical.Biometrics.Onnx'"
         />
-        <None Include="$(MSBuildThisFileDirectory)LICENSE-PACKAGE" Pack="true" PackagePath="/" />
-        <None
-            Include="$(MSBuildThisFileDirectory)LICENSE-MEDIAPIPE-EXCEPTION"
-            Pack="true"
-            PackagePath="/"
-        />
         <None Include="$(MSBuildThisFileDirectory)LICENSE" Pack="true" PackagePath="/" />
-        <None
-            Include="$(MSBuildThisFileDirectory)LICENSE-MIT-ORIGINAL"
-            Pack="true"
-            PackagePath="/"
-        />
         <None
             Include="$(MSBuildThisFileDirectory)COMMERCIAL-LICENSING.md"
             Pack="true"

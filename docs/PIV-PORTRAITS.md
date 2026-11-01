@@ -76,7 +76,7 @@ Application defaults are 480×640, a target eye line at 40% from the top, and a 
 
 `PortraitPreparer` is a synchronous, disposable service registered by `AddPortraitPreparation()`. It loads the pinned models lazily and serializes inference with disposal. Results own immutable pixel buffers and mesh points. `PortraitEncoding` supplies PNG previews and JPEG 2000 encoding; `FacialRecordPreparer` shares that encoder.
 
-The model source is yakhyo/mediapipe-face-mesh-onnx commit `3bdf1e0d100a4c709766c051a0c9e9cdab1fed62`, with Google's original MediaPipe weights. Package provenance records SHA-256 hashes, and runtime loading checks them. Apache-2.0 notices accompany the model package; first-party code carries the additional MediaPipe combination permission in `LICENSE-MEDIAPIPE-EXCEPTION`.
+The model source is yakhyo/mediapipe-face-mesh-onnx commit `3bdf1e0d100a4c709766c051a0c9e9cdab1fed62`, with Google's original MediaPipe weights. Package provenance records SHA-256 hashes, and runtime loading checks them. Apache-2.0 notices accompany the model package; first-party code carries the additional MediaPipe combination permission in `LICENSE`.
 
 Use `Microsoft.ML.OnnxRuntime` CPU inference. Unsupported native-runtime deployments fail explicitly when initializing the model. Facial sessions initialize on the first portrait-preparation call.
 
