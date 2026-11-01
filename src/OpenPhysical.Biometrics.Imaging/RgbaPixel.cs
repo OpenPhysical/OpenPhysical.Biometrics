@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
 namespace OpenPhysical.Biometrics.Imaging;
 
 /// <summary>Stores an sRGB pixel with straight, unassociated alpha.</summary>

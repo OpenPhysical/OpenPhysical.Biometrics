@@ -8,6 +8,7 @@
         <Description>Owned pixel buffers and portable Skia image transformations for biometric processing.</Description>
     </PropertyGroup>
     <ItemGroup>
+        <PackageReference Include="CSharpFunctionalExtensions" Version="3.7.0" />
         <PackageReference Include="SkiaSharp" Version="3.119.4" />
         <PackageReference Include="SkiaSharp.NativeAssets.Linux.NoDependencies" Version="3.119.4" />
         <InternalsVisibleTo Include="OpenPhysical.Biometrics.Facial" />
