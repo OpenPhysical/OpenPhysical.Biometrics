@@ -1,6 +1,9 @@
-using System.Collections.Immutable;
+// SPDX-License-Identifier: GPL-2.0-or-later
+// Copyright (c) 2026 Mistial Developer
 
 namespace OpenPhysical.Biometrics.Formats.Cbeff;
+
+using System.Collections.Immutable;
 
 /// <summary>Contains an immutable PIV CBEFF header, biometric block, and detached security block.</summary>
 /// <param name="Header">The exact header used for signed-content construction.</param>

@@ -347,7 +347,9 @@ internal sealed class PortraitTests
             acquisition
         );
         record.Status.Should().Be(FacialPreparationStatus.Prepared);
-        var bytes = OpenPhysical.Biometrics.Formats.Faces.Incits385Codec.Write(record.Record!);
+        var bytes = OpenPhysical
+            .Biometrics.Formats.Faces.Incits385Codec.Write(record.Record!)
+            .Value;
         var parsed = OpenPhysical.Biometrics.Formats.Faces.Incits385Codec.Parse(bytes);
         parsed.IsSuccess.Should().BeTrue();
         (record.Record!.Images[0].ImageData.Length * 15L)

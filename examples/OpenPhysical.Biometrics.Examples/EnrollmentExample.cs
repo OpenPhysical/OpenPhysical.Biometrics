@@ -2,6 +2,7 @@
 namespace OpenPhysical.Biometrics.Examples;
 
 using System.Collections.Immutable;
+using CSharpFunctionalExtensions;
 using OpenPhysical.Biometrics.Fingerprints;
 using OpenPhysical.Biometrics.Formats.Cbeff;
 using OpenPhysical.Biometrics.Formats.Fingerprints;
@@ -11,7 +12,7 @@ using OpenPhysical.Biometrics.Piv;
 // image. Keep those facts attached while assessing several acquisition attempts.
 internal static class EnrollmentExample
 {
-    internal static CbeffRecord Prepare(
+    internal static Result<CbeffRecord> Prepare(
         IEnumerable<FingerprintCapture> captures,
         PivFingerprintEnrollmentService enrollment,
         PivFingerprintRecordMetadata equipment,
@@ -26,9 +27,16 @@ internal static class EnrollmentExample
     {
         // Prepare performs extraction and quality assessment. Materialize it once
         // so grouping, review, and issuance reuse the same expensive results.
-        var candidates = captures.Select(enrollment.Prepare).ToImmutableArray();
-        var ranked = PivFingerprintEnrollmentService.RankCandidates(candidates, preferLeftHand);
-        var selections = ranked.ToDictionary(candidate => candidate.Finger);
+        var prepared = captures.Select(enrollment.Prepare).ToImmutableArray();
+        if (prepared.Any(candidate => candidate.IsFailure))
+            return Result.Failure<CbeffRecord>("A capture could not be prepared.");
+        var ranked = PivFingerprintEnrollmentService.RankCandidates(
+            prepared.Select(candidate => candidate.Value),
+            preferLeftHand
+        );
+        if (ranked.IsFailure)
+            return Result.Failure<CbeffRecord>(ranked.Error.Message);
+        var selections = ranked.Value.ToDictionary(candidate => candidate.Finger);
 
         // Selection remains explicit after the operator reviews candidate quality
         // and any reacquisition recommendation. Each selected finger has one view.
@@ -37,10 +45,13 @@ internal static class EnrollmentExample
             selections[secondaryFinger],
             equipment
         );
-        var findings = PivBiometricProfile.Validate(record);
-        if (!findings.IsEmpty)
-            throw new InvalidOperationException("The selected enrollment needs profile review.");
-        var encoded = Incits378Codec.Write(record);
+        if (record.IsFailure)
+            return Result.Failure<CbeffRecord>(record.Error.Message);
+        if (!PivBiometricProfile.Validate(record.Value).IsEmpty)
+            return Result.Failure<CbeffRecord>("The selected enrollment needs profile review.");
+        var encoded = Incits378Codec.Write(record.Value);
+        if (encoded.IsFailure)
+            return Result.Failure<CbeffRecord>(encoded.Error.Message);
 
         // The PIV patron header identifies a processed fingerprint record. The
         // signing workflow resolves the final detached-block length afterwards.
@@ -49,19 +60,12 @@ internal static class EnrollmentExample
             selections[primaryFinger].Capture,
             selections[secondaryFinger].Capture,
         }
-            .OfType<FingerprintCapture>()
-            .Select(capture => capture.CapturedAt)
+            .Where(capture => capture.HasValue)
+            .Select(capture => capture.Value.CapturedAt)
             .DefaultIfEmpty(createdAt)
             .Min();
-        var headerQuality =
-            record.Views.Any(view => view.Quality <= 100)
-                ? checked(
-                    (sbyte)record.Views.Where(view => view.Quality <= 100).Max(view => view.Quality)
-                )
-            : record.Views.Any(view => view.Quality == 255) ? (sbyte)-1
-            : (sbyte)-2;
         var header = CbeffHeader.Create(
-            (uint)encoded.Length,
+            (uint)encoded.Value.Length,
             0,
             0x001B,
             0x0201,
@@ -70,21 +74,27 @@ internal static class EnrollmentExample
             expiresAt,
             8,
             0x80,
-            headerQuality,
+            HeaderQuality(record.Value),
             creator,
             identity.FascN.AsSpan(),
             securityOptions: 0x0D
         );
-        return new CbeffRecord(header, ImmutableArray.Create(encoded), []);
+        return header.IsFailure
+            ? Result.Failure<CbeffRecord>(header.Error.Message)
+            : new CbeffRecord(header.Value, ImmutableArray.Create(encoded.Value), []);
     }
 
-    internal static FingerprintEnrollmentFinger RecordUnavailable(
+    internal static Result<FingerprintEnrollmentFinger, FingerprintError> RecordUnavailable(
         FingerPosition finger,
         FingerprintAvailability availability
-    )
-    {
+    ) =>
         // The acquisition station records why a finger is unusable. The record
         // writer preserves its temporary or permanent status in the selected view.
-        return FingerprintEnrollmentFinger.Unavailable(finger, availability);
-    }
+        FingerprintEnrollmentFinger.Unavailable(finger, availability);
+
+    private static sbyte HeaderQuality(FingerprintRecord record) =>
+        record.Views.Any(view => view.Quality <= 100)
+            ? (sbyte)record.Views.Where(view => view.Quality <= 100).Max(view => view.Quality)
+        : record.Views.Any(view => view.Quality == 255) ? (sbyte)-1
+        : (sbyte)-2;
 }

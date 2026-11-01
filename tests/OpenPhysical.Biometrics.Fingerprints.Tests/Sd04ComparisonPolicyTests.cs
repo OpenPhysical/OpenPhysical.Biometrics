@@ -4,6 +4,8 @@ namespace OpenPhysical.Biometrics.Fingerprints.Tests;
 using System.Collections.Immutable;
 using AwesomeAssertions;
 using AwesomeAssertions.Execution;
+using CSharpFunctionalExtensions;
+using CSharpFunctionalExtensions.AwesomeAssertions;
 using NUnit.Framework;
 using OpenPhysical.Biometrics.Formats.Fingerprints;
 using OpenPhysical.Biometrics.NBIS;
@@ -13,23 +15,33 @@ using OpenPhysical.Biometrics.NBIS.Fixtures;
 internal sealed class Sd04ComparisonPolicyTests
 {
     private readonly IFingerprintEngine engine = new NbisFingerprintEngine();
-    private readonly FingerprintMatchingPolicy fixturePolicy = new(
-        "sd04-assortment-regression-v1",
-        40
+    private readonly FingerprintMatchingPolicy fixturePolicy = FingerprintMatchingPolicy
+        .Create("sd04-assortment-regression-v1", 40)
+        .Value;
+    private readonly Lazy<Sd04Fixtures> lazyFixtures = new(() =>
+        new(Path.Combine(TestContext.CurrentContext.TestDirectory, "Fixtures", "sd04"))
     );
-    private FingerprintRecord reference = null!;
-    private Sd04Fixtures fixtures = null!;
+    private readonly Lazy<FingerprintRecord> lazyReference;
 
-    [OneTimeSetUp]
-    public void PrepareTwoFingerReferenceFromRealCaptures()
+    public Sd04ComparisonPolicyTests() =>
+        lazyReference = new(PrepareTwoFingerReferenceFromRealCaptures);
+
+    private Sd04Fixtures fixtures => lazyFixtures.Value;
+
+    private FingerprintRecord reference => lazyReference.Value;
+
+    private FingerprintRecord PrepareTwoFingerReferenceFromRealCaptures()
     {
-        fixtures = new(Path.Combine(TestContext.CurrentContext.TestDirectory, "Fixtures", "sd04"));
         var enrollment = new PivFingerprintEnrollmentService(engine, new FixtureQuality());
-        reference = enrollment.CreateRecord(
-            enrollment.Prepare(Capture(Image("f0005_03"), FingerPosition.RightMiddle)),
-            enrollment.Prepare(Capture(Image("f0003_10"), FingerPosition.LeftLittle)),
-            new(1, 2, 3, 512, 512, equipmentAppendixFCertified: true)
-        );
+        return enrollment
+            .CreateRecord(
+                enrollment.Prepare(Capture(Image("f0005_03"), FingerPosition.RightMiddle)).Value,
+                enrollment.Prepare(Capture(Image("f0003_10"), FingerPosition.LeftLittle)).Value,
+                PivFingerprintRecordMetadata
+                    .Create(1, 2, 3, 512, 512, equipmentAppendixFCertified: true)
+                    .Value
+            )
+            .Value;
     }
 
     [TestCase("s0005_03", true)]
@@ -49,26 +61,13 @@ internal sealed class Sd04ComparisonPolicyTests
         var galleryImage = Image("f0005_03").Load();
         var probePixels = probeImage.Pixels.ToArray();
         var galleryPixels = galleryImage.Pixels.ToArray();
-        var referenceBytes = Incits378Codec.Write(reference);
+        var referenceBytes = Incits378Codec.Write(reference).Value;
         var probeTemplate = engine.Extract(probeImage);
         var galleryTemplate = engine.Extract(galleryImage);
         var probePoints = probeTemplate.Minutiae.ToArray();
         var galleryPoints = galleryTemplate.Minutiae.ToArray();
-        var scores = new[]
-        {
-            engine.Match(probeImage, galleryImage),
-            engine.Match(probeImage, galleryTemplate),
-            engine.Match(probeTemplate, galleryImage),
-            engine.Match(probeTemplate, galleryTemplate),
-        };
-        var selectedReference = new FingerprintComparisonService(engine).Compare(
-            Capture(Image(imageId), FingerPosition.RightMiddle),
-            reference,
-            FingerPosition.RightMiddle,
-            0,
-            fixturePolicy
-        );
-        var decisions = scores.Select(fixturePolicy.Evaluate).Append(selectedReference).ToArray();
+        var scores = AllScores(probeImage, galleryImage, probeTemplate, galleryTemplate);
+        var decisions = Decisions(imageId, scores);
         decisions.All(result => result.Accepted == accepted).Should().BeTrue();
         decisions
             .All(result => result.PolicyIdentifier == fixturePolicy.Identifier)
@@ -80,7 +79,7 @@ internal sealed class Sd04ComparisonPolicyTests
             galleryImage.Pixels.ToArray().Should().Equal(galleryPixels);
             probeTemplate.Minutiae.Should().Equal(probePoints);
             galleryTemplate.Minutiae.Should().Equal(galleryPoints);
-            Incits378Codec.Write(reference).Should().Equal(referenceBytes);
+            Incits378Codec.Write(reference).Value.Should().Equal(referenceBytes);
         }
     }
 
@@ -116,7 +115,7 @@ internal sealed class Sd04ComparisonPolicyTests
             197,
             [new(3, 0, 0, 60, standard, [])]
         );
-        var converted = record.ToMatchingTemplate(FingerPosition.RightMiddle, 0);
+        var converted = record.ToMatchingTemplate(FingerPosition.RightMiddle, 0).Value;
         converted.Minutiae.Should().Equal(subset.Minutiae);
         var gallery = engine.Extract(Image("s0005_03").Load());
         engine.Match(converted, gallery).Should().Be(engine.Match(subset, gallery));
@@ -127,17 +126,49 @@ internal sealed class Sd04ComparisonPolicyTests
     [TestCase(41, true)]
     public void FixturePolicyAppliesItsInclusiveBoundary(int score, bool accepted)
     {
-        var result = fixturePolicy.Evaluate(score);
+        var result = fixturePolicy.Evaluate(score).Value;
         result.RawScore.Should().Be(score);
         result.Accepted.Should().Be(accepted);
     }
 
     [Test]
     public void PolicyRejectsInvalidNegativeScores() =>
-        FluentActions
-            .Invoking(() => fixturePolicy.Evaluate(-1))
+        fixturePolicy
+            .Evaluate(-1)
             .Should()
-            .ThrowExactly<ArgumentOutOfRangeException>();
+            .Fail()
+            .Which.Code.Should()
+            .Be(FingerprintErrorCodes.InvalidScore);
+
+    private FingerprintComparisonResult[] Decisions(string imageId, int[] scores)
+    {
+        var selectedReference = new FingerprintComparisonService(engine)
+            .Compare(
+                Capture(Image(imageId), FingerPosition.RightMiddle),
+                reference,
+                FingerPosition.RightMiddle,
+                0,
+                fixturePolicy
+            )
+            .Value;
+        return scores
+            .Select(score => fixturePolicy.Evaluate(score).Value)
+            .Append(selectedReference)
+            .ToArray();
+    }
+
+    private int[] AllScores(
+        FingerprintImage probe,
+        FingerprintImage gallery,
+        FingerprintTemplate probeTemplate,
+        FingerprintTemplate galleryTemplate
+    ) =>
+        [
+            engine.Match(probe, gallery),
+            engine.Match(probe, galleryTemplate),
+            engine.Match(probeTemplate, gallery),
+            engine.Match(probeTemplate, galleryTemplate),
+        ];
 
     private Sd04Image Image(string identifier) =>
         fixtures
@@ -147,22 +178,25 @@ internal sealed class Sd04ComparisonPolicyTests
     private static FingerprintCapture Capture(Sd04Image image, FingerPosition finger)
     {
         var capture = image.Load();
-        return new(
-            capture.Pixels,
-            capture.Width,
-            capture.Height,
-            capture.DotsPerInch,
-            finger,
-            DateTimeOffset.Parse("2026-10-31T12:00:00Z"),
-            FingerprintImpression.PlainLiveScan,
-            3,
-            equipmentAppendixFCertified: true
-        );
+        return FingerprintCapture
+            .Create(
+                capture.Pixels,
+                capture.Width,
+                capture.Height,
+                capture.DotsPerInch,
+                finger,
+                DateTimeOffset.Parse("2026-10-31T12:00:00Z"),
+                FingerprintImpression.PlainLiveScan,
+                3,
+                equipmentAppendixFCertified: true
+            )
+            .Value;
     }
 
     private sealed class FixtureQuality : IFingerprintQualityProvider
     {
-        public FingerprintQualityAssessment Assess(FingerprintCapture capture) =>
-            new(2, "sd04-workflow-fixture");
+        public Result<FingerprintQualityAssessment, FingerprintError> Assess(
+            FingerprintCapture capture
+        ) => FingerprintQualityAssessment.Create(2, "sd04-workflow-fixture");
     }
 }

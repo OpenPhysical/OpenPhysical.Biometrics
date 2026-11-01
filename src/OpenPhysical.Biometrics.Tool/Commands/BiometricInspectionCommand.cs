@@ -92,10 +92,10 @@ internal static class BiometricInspectionCommand
                     Console.WriteLine($"{diagnostic.Code}: {diagnostic.Field}");
                 if (sensitive)
                     foreach (
-                        var field in report.Structure.Fields.Where(field => field.Value is not null)
+                        var field in report.Structure.Fields.Where(field => field.Value.HasValue)
                     )
                         Console.WriteLine(
-                            $"{field.Name} [{field.Offset}:{field.Length}]: {field.Value}"
+                            $"{field.Name} [{field.Offset}:{field.Length}]: {field.Value.Value}"
                         );
             }
             if (!report.Structure.Diagnostics.IsEmpty)

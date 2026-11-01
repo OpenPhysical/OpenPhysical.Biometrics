@@ -24,14 +24,14 @@ internal sealed class FacialPreparationTests
         var original = pixels.ToArray();
         var result = new FacialRecordPreparer().Prepare(pixels, 480, 640, Metadata);
         result.Status.Should().Be(FacialPreparationStatus.Prepared);
-        var bytes = Incits385Codec.Write(result.Record!);
+        var bytes = Incits385Codec.Write(result.Record!).Value;
         var parsed = Incits385Codec.Parse(bytes);
         using (new AssertionScope())
         {
             parsed.IsSuccess.Should().BeTrue();
-            parsed.Value!.Images[0].ImageInformation.Width.Should().Be(480);
-            parsed.Value.Images[0].ImageInformation.Height.Should().Be(640);
-            parsed.Value.Images[0].ImageInformation.ImageDataType.Should().Be(1);
+            parsed.Value.Record.Images[0].ImageInformation.Width.Should().Be(480);
+            parsed.Value.Record.Images[0].ImageInformation.Height.Should().Be(640);
+            parsed.Value.Record.Images[0].ImageInformation.ImageDataType.Should().Be(1);
             pixels.Should().Equal(original);
             result.ProfileDiagnostics.Should().BeEmpty();
         }

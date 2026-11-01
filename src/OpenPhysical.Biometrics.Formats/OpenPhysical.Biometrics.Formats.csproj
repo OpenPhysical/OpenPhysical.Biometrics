@@ -8,4 +8,7 @@
         <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
         <Description>Immutable biometric interchange records, binary codecs, and structured inspection for PIV applications.</Description>
     </PropertyGroup>
+    <ItemGroup>
+        <PackageReference Include="CSharpFunctionalExtensions" Version="3.7.0" />
+    </ItemGroup>
 </Project>

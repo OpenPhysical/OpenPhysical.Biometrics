@@ -7,6 +7,7 @@
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
     </PropertyGroup>
     <ItemGroup>
+        <PackageReference Include="CSharpFunctionalExtensions" Version="3.7.0" />
         <ProjectReference Include="../OpenPhysical.Biometrics.Formats/OpenPhysical.Biometrics.Formats.csproj" />
     </ItemGroup>
 </Project>

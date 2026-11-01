@@ -1,7 +1,10 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
+// Copyright (c) 2026 Mistial Developer
+
 namespace OpenPhysical.Biometrics.Fingerprints;
 
 using System.Collections.Immutable;
+using CSharpFunctionalExtensions;
 using OpenPhysical.Biometrics.Formats.Fingerprints;
 using OpenPhysical.Biometrics.NBIS;
 
@@ -14,172 +17,85 @@ public sealed class PivFingerprintEnrollmentService
     /// <summary>Creates an enrollment service using explicit processing and NFIQ 1 providers.</summary>
     /// <param name="engine">The extraction and comparison engine.</param>
     /// <param name="qualityProvider">The parent-image NFIQ 1 provider.</param>
-    /// <exception cref="ArgumentNullException">A provider is null.</exception>
     public PivFingerprintEnrollmentService(
         IFingerprintEngine engine,
         IFingerprintQualityProvider qualityProvider
     )
     {
-        ArgumentNullException.ThrowIfNull(engine);
-        ArgumentNullException.ThrowIfNull(qualityProvider);
         this.engine = engine;
         this.qualityProvider = qualityProvider;
     }
 
     /// <summary>Assesses and extracts a capture once for subsequent enrollment selection.</summary>
     /// <param name="capture">The immutable original capture.</param>
-    /// <returns>A selected finger with reusable template and quality assessment.</returns>
-    /// <exception cref="ArgumentNullException">The capture is null.</exception>
-    public FingerprintEnrollmentFinger Prepare(FingerprintCapture capture)
-    {
-        ArgumentNullException.ThrowIfNull(capture);
-        var quality = qualityProvider.Assess(capture);
-        return FingerprintEnrollmentFinger.Available(
-            capture,
-            engine.Extract(capture.Image),
-            quality
-        );
-    }
+    /// <returns>A selected finger with reusable template and quality assessment, or an error when assessment or extraction fails.</returns>
+    public Result<FingerprintEnrollmentFinger, FingerprintError> Prepare(
+        FingerprintCapture capture
+    ) =>
+        qualityProvider
+            .Assess(capture)
+            .Bind(quality =>
+                FingerprintEdge
+                    .Try(
+                        () => engine.Extract(capture.Image),
+                        FingerprintErrorCodes.EngineFailed,
+                        "The fingerprint engine failed."
+                    )
+                    .Map(template =>
+                        FingerprintEnrollmentFinger.Available(capture, template, quality)
+                    )
+            );
 
     /// <summary>Selects the best captured attempt for each finger, then ranks fingers for operator review.</summary>
     /// <param name="candidates">Previously prepared available fingers; expensive extraction is already complete.</param>
     /// <param name="preferLeftHand">Whether the holder prefers the left hand.</param>
-    /// <returns>One attempt per finger, ordered by quality and then preferred index, middle, thumb, ring, and little fingers.</returns>
-    /// <exception cref="ArgumentNullException">The sequence is null.</exception>
-    /// <exception cref="ArgumentException">A candidate is null or unavailable.</exception>
-    public static ImmutableArray<FingerprintEnrollmentFinger> RankCandidates(
-        IEnumerable<FingerprintEnrollmentFinger> candidates,
-        bool preferLeftHand
-    )
+    /// <returns>One attempt per finger, ordered by quality and then preferred index, middle, thumb, ring, and little fingers; or an error when a candidate is unavailable.</returns>
+    public static Result<
+        ImmutableArray<FingerprintEnrollmentFinger>,
+        FingerprintError
+    > RankCandidates(IEnumerable<FingerprintEnrollmentFinger> candidates, bool preferLeftHand)
     {
-        ArgumentNullException.ThrowIfNull(candidates);
         var prepared = candidates.ToArray();
-        if (
-            prepared.Any(candidate =>
-                candidate is null || candidate.Availability != FingerprintAvailability.Available
+        return FingerprintChecks
+            .Require(
+                prepared.All(candidate =>
+                    candidate.Availability == FingerprintAvailability.Available
+                ),
+                FingerprintErrorCodes.UnavailableCandidate,
+                "Candidates must contain available prepared fingers."
             )
-        )
-            throw new ArgumentException(
-                "Candidates must contain available prepared fingers.",
-                nameof(candidates)
-            );
-        return prepared
-            .GroupBy(candidate => candidate.Finger)
-            .Select(group =>
-                group
-                    .OrderBy(candidate => candidate.Quality!.Nfiq1)
-                    .ThenByDescending(candidate => candidate.Template!.Minutiae.Length)
-                    .ThenBy(candidate => candidate.Capture!.CapturedAt)
-                    .First()
-            )
-            .OrderBy(candidate => candidate.Quality!.Nfiq1)
-            .ThenBy(candidate => Preference(candidate.Finger, preferLeftHand))
-            .ToImmutableArray();
+            .Map(() => Rank(prepared, preferLeftHand));
     }
 
     /// <summary>Builds the primary and secondary views with the PIV minutiae limits and units.</summary>
     /// <param name="primary">The explicitly selected primary finger.</param>
     /// <param name="secondary">The explicitly selected secondary finger.</param>
     /// <param name="metadata">Registered identifiers and maximum original-image dimensions.</param>
-    /// <returns>A canonical INCITS 378-2004 record ready for encoding and CBEFF preparation.</returns>
+    /// <returns>A canonical INCITS 378-2004 record ready for encoding and CBEFF preparation, or an error when fingers repeat, an unavailable primary precedes an available secondary, dimensions differ from source maxima, or equipment identifiers differ.</returns>
     /// <remarks>Coordinates retain the original pixel scale. Angles reverse the NBIS ridge direction
     /// and use two-degree INCITS units; odd-degree angles round down to the preceding encoded unit.</remarks>
-    /// <exception cref="ArgumentNullException">An input is null.</exception>
-    /// <exception cref="ArgumentException">Fingers repeat, an unavailable primary precedes an available secondary, dimensions differ from source maxima, or equipment identifiers differ.</exception>
-    public FingerprintRecord CreateRecord(
+    public Result<FingerprintRecord, FingerprintError> CreateRecord(
         FingerprintEnrollmentFinger primary,
         FingerprintEnrollmentFinger secondary,
         PivFingerprintRecordMetadata metadata
-    )
-    {
-        ArgumentNullException.ThrowIfNull(primary);
-        ArgumentNullException.ThrowIfNull(secondary);
-        ArgumentNullException.ThrowIfNull(metadata);
-        if (!metadata.EquipmentAppendixFCertified)
-            throw new ArgumentException(
-                "PIV enrollment requires Appendix F acquisition equipment.",
-                nameof(metadata)
-            );
-        if (primary.Finger == secondary.Finger)
-            throw new ArgumentException("Select two different fingers.", nameof(secondary));
-        if (
-            primary.Availability != FingerprintAvailability.Available
-            && secondary.Availability == FingerprintAvailability.Available
-        )
-            throw new ArgumentException(
-                "Select the available finger as the primary finger.",
-                nameof(primary)
-            );
-        var captures = new[] { primary.Capture, secondary.Capture }
-            .OfType<FingerprintCapture>()
-            .ToArray();
-        if (
-            captures.Length > 0
-            && (
-                captures.Max(capture => capture.Image.Width) != metadata.Width
-                || captures.Max(capture => capture.Image.Height) != metadata.Height
-            )
-        )
-            throw new ArgumentException(
-                "Record dimensions must equal the largest original dimensions.",
-                nameof(metadata)
-            );
-        if (
-            captures.Any(capture =>
-                capture.EquipmentId != metadata.EquipmentId || !capture.EquipmentAppendixFCertified
-            )
-        )
-            throw new ArgumentException(
-                "Capture equipment identifiers must agree with the record metadata.",
-                nameof(metadata)
-            );
-        return new FingerprintRecord(
-            metadata.ProductOwner,
-            metadata.ProductType,
-            checked((ushort)(0x8000 | metadata.EquipmentId)),
-            metadata.Width,
-            metadata.Height,
-            FingerprintGeometry.NominalPixelsPerCentimeter,
-            FingerprintGeometry.NominalPixelsPerCentimeter,
-            [CreateView(primary), CreateView(secondary)]
-        );
-    }
+    ) => PivEnrollmentRecordBuilder.Build(primary, secondary, metadata);
 
-    private static FingerprintView CreateView(FingerprintEnrollmentFinger selection)
-    {
-        if (selection.Availability != FingerprintAvailability.Available)
-            return new(
-                (byte)selection.Finger,
-                0,
-                0,
-                selection.Availability == FingerprintAvailability.PermanentlyUnusable
-                    ? (byte)254
-                    : (byte)255,
-                [],
-                []
-            );
-        var template = selection.Template!;
-        // Selection is stable across runs. Coordinates are converted against each source image,
-        // before the record header adopts the largest dimensions of the two source images.
-        var points = template
-            .Minutiae.OrderByDescending(point => point.Quality)
-            .ThenBy(point => point.X)
-            .ThenBy(point => point.Y)
-            .ThenBy(point => point.Angle)
-            .ThenBy(point => point.Type)
-            .DistinctBy(point => (point.X, point.Y))
-            .Take(128)
-            .Select(point => FingerprintGeometry.ToRecord(point, template.Height))
+    private static ImmutableArray<FingerprintEnrollmentFinger> Rank(
+        FingerprintEnrollmentFinger[] prepared,
+        bool preferLeftHand
+    ) =>
+        prepared
+            .GroupBy(candidate => candidate.Finger)
+            .Select(group =>
+                group
+                    .OrderBy(candidate => candidate.Quality.Value.Nfiq1)
+                    .ThenByDescending(candidate => candidate.Template.Value.Minutiae.Length)
+                    .ThenBy(candidate => candidate.Capture.Value.CapturedAt)
+                    .First()
+            )
+            .OrderBy(candidate => candidate.Quality.Value.Nfiq1)
+            .ThenBy(candidate => Preference(candidate.Finger, preferLeftHand))
             .ToImmutableArray();
-        return new(
-            (byte)selection.Finger,
-            0,
-            (byte)selection.Capture!.Impression,
-            selection.Quality!.PivQuality,
-            points,
-            []
-        );
-    }
 
     private static int Preference(FingerPosition finger, bool left)
     {

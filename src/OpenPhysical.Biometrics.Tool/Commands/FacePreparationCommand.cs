@@ -141,8 +141,11 @@ internal static class FacePreparationCommand
                     );
                     return 2;
                 }
+                var encodedRecord = Incits385Codec.Write(prepared.Record!);
+                if (encodedRecord.IsFailure)
+                    return ReportFailure("InvalidPortraitInput", flags);
                 jp2 = prepared.Record!.Images[0].ImageData.ToArray();
-                outputs.Add((options["--record"], Incits385Codec.Write(prepared.Record)));
+                outputs.Add((options["--record"], encodedRecord.Value));
             }
             else
                 jp2 = PortraitEncoding.EncodeJpeg2000(pixels, 480, 640);
@@ -182,18 +185,23 @@ internal static class FacePreparationCommand
                 IOException or UnauthorizedAccessException => "PortraitFileAccessFailed",
                 _ => "PortraitPreparationFailed",
             };
-            if (flags.Contains("--json"))
-                Console.WriteLine(
-                    JsonSerializer.Serialize(new { Status = "Failed", Code = code }, Json)
-                );
-            else
-                Console.Error.WriteLine(
-                    code == "NativeRuntimeUnavailable"
-                        ? "NativeRuntimeUnavailable: install the ONNX Runtime and Skia native assets for this operating system and architecture."
-                        : $"{code}: check the input, reviewed geometry, model runtime, and output paths."
-                );
-            return 1;
+            return ReportFailure(code, flags);
         }
+    }
+
+    private static int ReportFailure(string code, HashSet<string> flags)
+    {
+        if (flags.Contains("--json"))
+            Console.WriteLine(
+                JsonSerializer.Serialize(new { Status = "Failed", Code = code }, Json)
+            );
+        else
+            Console.Error.WriteLine(
+                code == "NativeRuntimeUnavailable"
+                    ? "NativeRuntimeUnavailable: install the ONNX Runtime and Skia native assets for this operating system and architecture."
+                    : $"{code}: check the input, reviewed geometry, model runtime, and output paths."
+            );
+        return 1;
     }
 
     private static T? Read<T>(Dictionary<string, string> options, string key)

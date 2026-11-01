@@ -1,7 +1,11 @@
-using System.Buffers.Binary;
-using System.Collections.Immutable;
+// SPDX-License-Identifier: GPL-2.0-or-later
+// Copyright (c) 2026 Mistial Developer
 
 namespace OpenPhysical.Biometrics.Formats.Cbeff;
+
+using System.Buffers.Binary;
+using System.Collections.Immutable;
+using CSharpFunctionalExtensions;
 
 /// <summary>Preserves the exact 88-byte PIV CBEFF header and exposes its typed fields.</summary>
 public sealed class CbeffHeader
@@ -10,20 +14,17 @@ public sealed class CbeffHeader
     public const int Size = 88;
     private readonly ImmutableArray<byte> bytes;
 
-    /// <summary>Creates a header from a complete 88-byte buffer, taking a defensive copy.</summary>
-    /// <param name="rawHeader">Header bytes in their signed wire representation.</param>
-    /// <exception cref="ArgumentException">The length or timestamp representation is invalid.</exception>
-    public CbeffHeader(ReadOnlySpan<byte> rawHeader)
+    private CbeffHeader(
+        ImmutableArray<byte> bytes,
+        DateTimeOffset creationDate,
+        DateTimeOffset validityNotBefore,
+        DateTimeOffset validityNotAfter
+    )
     {
-        if (rawHeader.Length != Size)
-            throw new ArgumentException(
-                "A PIV CBEFF header contains exactly 88 bytes.",
-                nameof(rawHeader)
-            );
-        _ = DecodeDate(rawHeader.Slice(12, 8));
-        _ = DecodeDate(rawHeader.Slice(20, 8));
-        _ = DecodeDate(rawHeader.Slice(28, 8));
-        bytes = ImmutableArray.Create(rawHeader.ToArray());
+        this.bytes = bytes;
+        CreationDate = creationDate;
+        ValidityNotBefore = validityNotBefore;
+        ValidityNotAfter = validityNotAfter;
     }
 
     /// <summary>Gets the original, immutable signed header bytes.</summary>
@@ -48,13 +49,13 @@ public sealed class CbeffHeader
     public ushort FormatType => BinaryPrimitives.ReadUInt16BigEndian(bytes.AsSpan(10, 2));
 
     /// <summary>Gets the creation timestamp in UTC with second precision.</summary>
-    public DateTimeOffset CreationDate => DecodeDate(bytes.AsSpan(12, 8));
+    public DateTimeOffset CreationDate { get; }
 
     /// <summary>Gets the start of the biometric validity interval.</summary>
-    public DateTimeOffset ValidityNotBefore => DecodeDate(bytes.AsSpan(20, 8));
+    public DateTimeOffset ValidityNotBefore { get; }
 
     /// <summary>Gets the end of the biometric validity interval.</summary>
-    public DateTimeOffset ValidityNotAfter => DecodeDate(bytes.AsSpan(28, 8));
+    public DateTimeOffset ValidityNotAfter { get; }
 
     /// <summary>Gets the 24-bit biometric type mask.</summary>
     public uint BiometricType => (uint)(bytes[36] << 16 | bytes[37] << 8 | bytes[38]);
@@ -74,6 +75,24 @@ public sealed class CbeffHeader
     /// <summary>Gets the four reserved bytes.</summary>
     public ImmutableArray<byte> Reserved => ImmutableArray.Create(bytes.AsSpan(84, 4).ToArray());
 
+    /// <summary>Creates a header from a complete 88-byte buffer, taking a defensive copy.</summary>
+    /// <param name="rawHeader">Header bytes in their signed wire representation.</param>
+    /// <returns>The header, or an error when the length or a timestamp representation is invalid.</returns>
+    public static Result<CbeffHeader, FormatError> FromBytes(ReadOnlySpan<byte> rawHeader)
+    {
+        if (rawHeader.Length != Size)
+            return Result.Failure<CbeffHeader, FormatError>(
+                FormatError.Invalid(
+                    "CbeffHeaderLength",
+                    "A PIV CBEFF header contains exactly 88 bytes."
+                )
+            );
+        var copy = ImmutableArray.Create(rawHeader.ToArray());
+        return CbeffHeaderLayout
+            .DecodeDates(rawHeader)
+            .Map(dates => new CbeffHeader(copy, dates.Creation, dates.NotBefore, dates.NotAfter));
+    }
+
     /// <summary>Returns a separate mutable copy of the exact header.</summary>
     /// <returns>Header bytes owned by the caller.</returns>
     public byte[] ToArray() => bytes.ToArray();
@@ -85,7 +104,7 @@ public sealed class CbeffHeader
     {
         var copy = ToArray();
         BinaryPrimitives.WriteUInt16BigEndian(copy.AsSpan(6, 2), length);
-        return new(copy);
+        return new(ImmutableArray.Create(copy), CreationDate, ValidityNotBefore, ValidityNotAfter);
     }
 
     /// <summary>Returns a copy with the biometric data length updated.</summary>
@@ -95,7 +114,7 @@ public sealed class CbeffHeader
     {
         var copy = ToArray();
         BinaryPrimitives.WriteUInt32BigEndian(copy.AsSpan(2, 4), length);
-        return new(copy);
+        return new(ImmutableArray.Create(copy), CreationDate, ValidityNotBefore, ValidityNotAfter);
     }
 
     /// <summary>Creates a PIV patron header from explicit metadata.</summary>
@@ -113,8 +132,8 @@ public sealed class CbeffHeader
     /// <param name="fascN">Exactly 25 FASC-N bytes.</param>
     /// <param name="securityOptions">Security options specified by the selected PIV profile.</param>
     /// <param name="patronHeaderVersion">Patron version, normally three.</param>
-    /// <returns>A new immutable header with zeroed reserved bytes.</returns>
-    public static CbeffHeader Create(
+    /// <returns>A new immutable header with zeroed reserved bytes, or an error for an invalid field size.</returns>
+    public static Result<CbeffHeader, FormatError> Create(
         uint biometricDataLength,
         ushort signatureLength,
         ushort formatOwner,
@@ -131,41 +150,23 @@ public sealed class CbeffHeader
         byte patronHeaderVersion = 3
     )
     {
-        if (creator.Length != 18)
-            throw new ArgumentException(
-                "The creator field contains exactly 18 bytes.",
-                nameof(creator)
-            );
-        if (fascN.Length != 25)
-            throw new ArgumentException(
-                "The FASC-N field contains exactly 25 bytes.",
-                nameof(fascN)
-            );
-        if (biometricType > 0xFFFFFF)
-            throw new ArgumentOutOfRangeException(nameof(biometricType));
-        var result = new byte[Size];
-        result[0] = patronHeaderVersion;
-        result[1] = securityOptions;
-        BinaryPrimitives.WriteUInt32BigEndian(result.AsSpan(2), biometricDataLength);
-        BinaryPrimitives.WriteUInt16BigEndian(result.AsSpan(6), signatureLength);
-        BinaryPrimitives.WriteUInt16BigEndian(result.AsSpan(8), formatOwner);
-        BinaryPrimitives.WriteUInt16BigEndian(result.AsSpan(10), formatType);
-        EncodeDate(creationDate, result.AsSpan(12, 8));
-        EncodeDate(validityNotBefore, result.AsSpan(20, 8));
-        EncodeDate(validityNotAfter, result.AsSpan(28, 8));
-        result[36] = (byte)(biometricType >> 16);
-        result[37] = (byte)(biometricType >> 8);
-        result[38] = (byte)biometricType;
-        result[39] = biometricDataType;
-        result[40] = unchecked((byte)quality);
-        creator.CopyTo(result.AsSpan(41));
-        fascN.CopyTo(result.AsSpan(59));
-        return new(result);
+        var check = CbeffHeaderLayout.CheckFields(creator.Length, fascN.Length, biometricType);
+        if (check.IsFailure)
+            return Result.Failure<CbeffHeader, FormatError>(check.Error);
+        var fields = new CbeffHeaderFields(
+            patronHeaderVersion,
+            securityOptions,
+            biometricDataLength,
+            signatureLength,
+            formatOwner,
+            formatType,
+            creationDate,
+            validityNotBefore,
+            validityNotAfter,
+            biometricType,
+            biometricDataType,
+            quality
+        );
+        return FromBytes(CbeffHeaderLayout.Build(fields, creator, fascN));
     }
-
-    private static void EncodeDate(DateTimeOffset value, Span<byte> destination) =>
-        CbeffTimestampCodec.Encode(value, destination);
-
-    internal static DateTimeOffset DecodeDate(ReadOnlySpan<byte> value) =>
-        CbeffTimestampCodec.Decode(value);
 }

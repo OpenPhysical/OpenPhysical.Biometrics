@@ -1,96 +1,145 @@
-using System.Buffers.Binary;
-using System.Collections.Immutable;
+// SPDX-License-Identifier: GPL-2.0-or-later
+// Copyright (c) 2026 Mistial Developer
 
 namespace OpenPhysical.Biometrics.Formats;
 
-internal sealed class FormatReadException(FormatDiagnostic diagnostic)
-    : Exception(diagnostic.Message)
-{
-    internal FormatDiagnostic Diagnostic { get; } = diagnostic;
-}
+using System.Buffers.Binary;
+using System.Collections.Immutable;
+using CSharpFunctionalExtensions;
 
-// Each nested reader is bounded by its declared block.
-// Offsets refer to the original buffer.
-internal ref struct BinaryFormatReader(
-    ReadOnlySpan<byte> data,
-    int origin,
-    List<InspectionField> fields,
-    InspectionOptions? options
-)
+// One reader serves one bounded block of a single parse. Nested readers share the
+// located-field list, so every offset refers to the original buffer. Each step
+// reports failure as a located FormatError and never throws.
+internal sealed class BinaryFormatReader
 {
-    private readonly ReadOnlySpan<byte> data = data;
-    internal int Position { get; private set; }
-    internal readonly int Remaining => data.Length - Position;
-    internal readonly int Offset => origin + Position;
+    private readonly ReadOnlyMemory<byte> data;
+    private readonly int origin;
+    private readonly List<InspectionField> fields;
+    private readonly bool includeValues;
+    private readonly bool recordFields;
+    private int position;
 
-    internal ReadOnlySpan<byte> Read(int length, string name)
+    private BinaryFormatReader(
+        ReadOnlyMemory<byte> data,
+        int origin,
+        List<InspectionField> fields,
+        bool includeValues,
+        bool recordFields
+    )
+    {
+        this.data = data;
+        this.origin = origin;
+        this.fields = fields;
+        this.includeValues = includeValues;
+        this.recordFields = recordFields;
+    }
+
+    internal int Position => position;
+
+    internal int Remaining => data.Length - position;
+
+    internal int Offset => origin + position;
+
+    internal static BinaryFormatReader Create(ReadOnlySpan<byte> data, InspectionOptions options) =>
+        new(data.ToArray(), 0, [], options.IncludeSensitiveValues, true);
+
+    internal InspectionReport Report() => new(fields.ToImmutableArray(), []);
+
+    internal FormatError Error(string code, string message, int offset, int length)
+    {
+        var diagnostic = new FormatDiagnostic(code, message, offset, length);
+        return new FormatError(
+            code,
+            message,
+            new InspectionReport(fields.ToImmutableArray(), [diagnostic])
+        );
+    }
+
+    internal Result<T, FormatError> Fail<T>(string code, string message, int offset, int length) =>
+        Result.Failure<T, FormatError>(Error(code, message, offset, length));
+
+    internal UnitResult<FormatError> Require(
+        bool condition,
+        string code,
+        string message,
+        int offset,
+        int length
+    ) =>
+        condition
+            ? UnitResult.Success<FormatError>()
+            : UnitResult.Failure(Error(code, message, offset, length));
+
+    internal Result<ReadOnlyMemory<byte>, FormatError> Read(int length, string name)
     {
         if (length < 0 || length > Remaining)
-            Fail(
+            return Fail<ReadOnlyMemory<byte>>(
                 "Truncated",
                 "The declared field extends beyond its containing block.",
                 Offset,
                 Math.Max(0, Remaining)
             );
-        var value = data.Slice(Position, length);
-        fields.Add(
-            new InspectionField(
-                name,
-                Offset,
-                length,
-                options?.IncludeSensitiveValues == true ? Convert.ToHexString(value) : null
-            )
-        );
-        Position += length;
+        var value = data.Slice(position, length);
+        if (recordFields)
+            fields.Add(new InspectionField(name, Offset, length, Describe(value)));
+        position += length;
         return value;
     }
 
-    internal byte Byte(string name) => Read(1, name)[0];
+    internal Result<byte, FormatError> Byte(string name) => Read(1, name).Map(v => v.Span[0]);
 
-    internal ushort UInt16(string name) => BinaryPrimitives.ReadUInt16BigEndian(Read(2, name));
+    internal Result<ushort, FormatError> UInt16(string name) =>
+        Read(2, name).Map(v => BinaryPrimitives.ReadUInt16BigEndian(v.Span));
 
-    internal uint UInt32(string name) => BinaryPrimitives.ReadUInt32BigEndian(Read(4, name));
+    internal Result<uint, FormatError> UInt32(string name) =>
+        Read(4, name).Map(v => BinaryPrimitives.ReadUInt32BigEndian(v.Span));
 
-    internal uint UInt24(string name)
+    internal Result<uint, FormatError> UInt24(string name) =>
+        Read(3, name).Map(v => (uint)(v.Span[0] << 16 | v.Span[1] << 8 | v.Span[2]));
+
+    internal Result<ImmutableArray<byte>, FormatError> Bytes(int length, string name) =>
+        Read(length, name).Map(v => ImmutableArray.Create(v.ToArray()));
+
+    // Reads consecutive big-endian 16-bit fields, stopping at the first failure.
+    internal Result<ImmutableArray<ushort>, FormatError> UInt16s(params string[] names) =>
+        ParseSteps.Repeat<ushort>(names.Length, previous => UInt16(names[previous.Count]));
+
+    internal UnitResult<FormatError> Expect(
+        string name,
+        byte[] expected,
+        string code,
+        string message,
+        int offset
+    ) =>
+        Read(expected.Length, name)
+            .Bind(v =>
+                Require(v.Span.SequenceEqual(expected), code, message, offset, expected.Length)
+            );
+
+    // Reads a field and returns a reader bounded to exactly that field.
+    internal Result<BinaryFormatReader, FormatError> Block(int length, string name)
     {
-        var bytes = Read(3, name);
-        return (uint)(bytes[0] << 16 | bytes[1] << 8 | bytes[2]);
+        var start = Offset;
+        return Read(length, name)
+            .Map(v => new BinaryFormatReader(v, start, fields, includeValues, recordFields));
     }
 
-    internal ImmutableArray<byte> Bytes(int length, string name) =>
-        ImmutableArray.Create(Read(length, name).ToArray());
+    // Returns a recording reader bounded to an already-read block that starts at blockOrigin.
+    internal BinaryFormatReader Nested(ReadOnlyMemory<byte> block, int blockOrigin) =>
+        new(block, blockOrigin, fields, includeValues, recordFields);
 
-    internal readonly void RequireEnd()
-    {
-        if (Remaining != 0)
-            Fail("TrailingData", "The containing block has unconsumed bytes.", Offset, Remaining);
-    }
+    // Returns a bounded reader that shares error context but adds no inspection fields.
+    internal BinaryFormatReader Scratch(ReadOnlyMemory<byte> block, int blockOrigin) =>
+        new(block, blockOrigin, fields, false, false);
 
-    internal static void Fail(string code, string message, int offset, int length) =>
-        throw new FormatReadException(new(code, message, offset, length));
-}
+    internal UnitResult<FormatError> RequireEnd() =>
+        Require(
+            Remaining == 0,
+            "TrailingData",
+            "The containing block has unconsumed bytes.",
+            Offset,
+            Remaining
+        );
 
-internal static class BinaryFormatWriter
-{
-    internal static void UInt16(Stream stream, ushort value)
-    {
-        Span<byte> bytes = stackalloc byte[2];
-        BinaryPrimitives.WriteUInt16BigEndian(bytes, value);
-        stream.Write(bytes);
-    }
-
-    internal static void UInt32(Stream stream, uint value)
-    {
-        Span<byte> bytes = stackalloc byte[4];
-        BinaryPrimitives.WriteUInt32BigEndian(bytes, value);
-        stream.Write(bytes);
-    }
-
-    internal static void UInt24(Stream stream, uint value)
-    {
-        if (value > 0xFFFFFF)
-            throw new ArgumentOutOfRangeException(nameof(value));
-        stream.WriteByte((byte)(value >> 16));
-        UInt16(stream, (ushort)value);
-    }
+    private Maybe<string> Describe(ReadOnlyMemory<byte> value) =>
+        includeValues ? Maybe.From(Convert.ToHexString(value.Span)) : Maybe<string>.None;
 }

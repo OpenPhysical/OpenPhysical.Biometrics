@@ -10,6 +10,9 @@ using OpenPhysical.Biometrics.NBIS;
 // coordinate conversion have one implementation across every entry point.
 internal static class FingerprintConversionCommand
 {
+    private const string FailureMessage =
+        "Fingerprint conversion failed. Check the raw FMR record, selected finger/view, resolution, and output availability.";
+
     internal static int Run(string[] args)
     {
         byte[]? bytes = null;
@@ -41,15 +44,20 @@ internal static class FingerprintConversionCommand
                 throw new ArgumentException("The fingerprint record exceeds the input limit.");
             bytes = File.ReadAllBytes(args[0]);
             var parsed = Incits378Codec.Parse(bytes);
-            if (!parsed.IsSuccess)
+            if (parsed.IsFailure)
             {
-                foreach (var diagnostic in parsed.Diagnostics)
+                foreach (var diagnostic in parsed.Error.Diagnostics)
                     Console.Error.WriteLine(
                         $"{diagnostic.Code} at byte {diagnostic.Offset}, length {diagnostic.Length}"
                     );
                 return 1;
             }
-            var template = parsed.Value!.ToMatchingTemplate((FingerPosition)finger, view);
+            var template = parsed.Value.Record.ToMatchingTemplate((FingerPosition)finger, view);
+            if (template.IsFailure)
+            {
+                Console.Error.WriteLine(FailureMessage);
+                return 1;
+            }
             // CreateNew protects an existing template if the output path is reused.
             using var stream = new FileStream(
                 args[1],
@@ -58,7 +66,7 @@ internal static class FingerprintConversionCommand
                 FileShare.None
             );
             using var writer = new StreamWriter(stream);
-            writer.Write(FingerprintTemplateJson.Serialize(template));
+            writer.Write(FingerprintTemplateJson.Serialize(template.Value));
             return 0;
         }
         catch (Exception error)
@@ -70,9 +78,7 @@ internal static class FingerprintConversionCommand
                         or NotSupportedException
             )
         {
-            Console.Error.WriteLine(
-                "Fingerprint conversion failed. Check the raw FMR record, selected finger/view, resolution, and output availability."
-            );
+            Console.Error.WriteLine(FailureMessage);
             return 1;
         }
         finally

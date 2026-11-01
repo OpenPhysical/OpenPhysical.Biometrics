@@ -31,7 +31,7 @@ internal sealed class InspectionTests
                 .Structure.Fields.Single(field => field.Name == "BiometricData.FormatIdentifier")
                 .Offset.Should()
                 .Be(88);
-            report.Structure.Fields.All(field => field.Value is null).Should().BeTrue();
+            report.Structure.Fields.All(field => field.Value.HasNoValue).Should().BeTrue();
             report.HasSignatureBlock.Should().BeTrue();
         }
     }
@@ -44,11 +44,21 @@ internal sealed class InspectionTests
             Now,
             new InspectionOptions(IncludeSensitiveValues: true)
         );
-        report.Structure.Fields.Any(field => field.Value is not null).Should().BeTrue();
-        var restored = JsonSerializer.Deserialize<BiometricInspectionReport>(
-            JsonSerializer.Serialize(report)
-        );
-        restored!.FingerViews.Should().Equal(report.FingerViews);
+        report.Structure.Fields.Any(field => field.Value.HasValue).Should().BeTrue();
+        if (
+            JsonSerializer.Deserialize<BiometricInspectionReport>(JsonSerializer.Serialize(report))
+            is not { } restored
+        )
+        {
+            Assert.Fail("The serialized report did not restore.");
+            return;
+        }
+        using (new AssertionScope())
+        {
+            restored.FingerViews.Should().Equal(report.FingerViews);
+            restored.Structure.Fields.Should().Equal(report.Structure.Fields);
+            restored.Structure.Fields.All(field => field.Value.HasValue).Should().BeTrue();
+        }
     }
 
     [Test]
@@ -70,7 +80,7 @@ internal sealed class InspectionTests
     public void NestedWrappersStopAtTheBiometricRecordBoundary()
     {
         var outer = Wrap(Wrapped());
-        var report = BiometricInspector.Inspect(CbeffCodec.Write(outer), Now);
+        var report = BiometricInspector.Inspect(CbeffCodec.Write(outer).Value, Now);
         report
             .Structure.Diagnostics.Select(error => error.Code)
             .Should()
@@ -80,14 +90,14 @@ internal sealed class InspectionTests
     [Test]
     public void PivProfileFindingsRemainSeparateFromStructuralParsing()
     {
-        var bytes = Incits378Codec.Write(Fingerprint() with { XResolution = 196 });
+        var bytes = Incits378Codec.Write(Fingerprint() with { XResolution = 196 }).Value;
         var report = BiometricInspector.Inspect(bytes, Now);
         report.Structure.Diagnostics.Should().BeEmpty();
         report.ProfileDiagnostics.Select(error => error.Code).Should().Contain("Resolution");
     }
 
     [Test]
-    public void PublicContractsExposeStandardAndProjectOwnedTypes()
+    public void PublicContractsExposeResultsAndKeepCryptographyOutOfTheBoundary()
     {
         var assemblies = new[]
         {
@@ -108,7 +118,7 @@ internal sealed class InspectionTests
                 type.ToString().Contains("CSharpFunctionalExtensions", StringComparison.Ordinal)
             )
             .Should()
-            .BeFalse();
+            .BeTrue();
         contracts
             .Any(type => type.ToString().Contains("BouncyCastle", StringComparison.Ordinal))
             .Should()
@@ -130,25 +140,28 @@ internal sealed class InspectionTests
             ]
         );
 
-    private static byte[] Wrapped() => CbeffCodec.Write(Wrap(Incits378Codec.Write(Fingerprint())));
+    private static byte[] Wrapped() =>
+        CbeffCodec.Write(Wrap(Incits378Codec.Write(Fingerprint()).Value)).Value;
 
     private static CbeffRecord Wrap(byte[] content) =>
         new(
-            CbeffHeader.Create(
-                (uint)content.Length,
-                4,
-                0x001B,
-                0x0201,
-                Now,
-                Now,
-                Now.AddYears(1),
-                8,
-                0x80,
-                80,
-                new byte[18],
-                new byte[25],
-                securityOptions: 0x0D
-            ),
+            CbeffHeader
+                .Create(
+                    (uint)content.Length,
+                    4,
+                    0x001B,
+                    0x0201,
+                    Now,
+                    Now,
+                    Now.AddYears(1),
+                    8,
+                    0x80,
+                    80,
+                    new byte[18],
+                    new byte[25],
+                    securityOptions: 0x0D
+                )
+                .Value,
             ImmutableArray.Create(content),
             ImmutableArray.Create<byte>(1, 2, 3, 4)
         );

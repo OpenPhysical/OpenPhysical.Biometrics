@@ -6,6 +6,7 @@
         <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     </PropertyGroup>
     <ItemGroup>
+        <PackageReference Include="CSharpFunctionalExtensions" Version="3.7.0" />
         <ProjectReference Include="../OpenPhysical.Biometrics.Formats/OpenPhysical.Biometrics.Formats.csproj" />
         <PackageReference Include="OpenPhysical.Biometrics.NBIS" Version="$(NbisPackageVersion)" />
         <PackageReference Include="OpenPhysical.Biometrics.NFIQ1" Version="$(NfiqPackageVersion)" />

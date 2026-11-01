@@ -17,7 +17,13 @@ internal static class Sd04MatchingExample
         IFingerprintEngine engine = new NbisFingerprintEngine();
         var reference = images["f0005_03"].Load();
         var referenceTemplate = engine.Extract(reference);
-        var policy = new FingerprintMatchingPolicy("sd04-assortment-regression-v1", 40);
+        var created = FingerprintMatchingPolicy.Create("sd04-assortment-regression-v1", 40);
+        if (created.IsFailure)
+        {
+            Console.Error.WriteLine(created.Error.Message);
+            return 1;
+        }
+        var policy = created.Value;
 
         // This policy belongs to the supplied regression assortment. The paired
         // impressions and known nonmates demonstrate an application's decision
@@ -46,9 +52,12 @@ internal static class Sd04MatchingExample
                 engine.Match(item.Template, referenceTemplate),
             ];
             var results = scores.Select(policy.Evaluate).ToImmutableArray();
-            if (results.Any(result => result.Accepted != item.Expected))
-                throw new InvalidOperationException("The fixture comparison decision changed.");
-            Console.WriteLine($"Policy {policy.Identifier}: accepted={results[0].Accepted}");
+            if (results.Any(result => result.IsFailure || result.Value.Accepted != item.Expected))
+            {
+                Console.Error.WriteLine("The fixture comparison decision changed.");
+                return 1;
+            }
+            Console.WriteLine($"Policy {policy.Identifier}: accepted={results[0].Value.Accepted}");
         }
         return 0;
     }

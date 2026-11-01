@@ -14,10 +14,8 @@ public static class FingerprintServiceCollectionExtensions
     /// <returns>The same collection for chained registration.</returns>
     /// <remarks>Register an <see cref="IFingerprintQualityProvider"/> for enrollment. Native processing
     /// initializes when an engine operation is first invoked.</remarks>
-    /// <exception cref="ArgumentNullException">The collection is null.</exception>
     public static IServiceCollection AddFingerprintProcessing(this IServiceCollection services)
     {
-        ArgumentNullException.ThrowIfNull(services);
         services.TryAddSingleton<IFingerprintEngine, NbisFingerprintEngine>();
         services.TryAddTransient<FingerprintComparisonService>();
         services.TryAddTransient<PivFingerprintEnrollmentService>();
@@ -27,10 +25,8 @@ public static class FingerprintServiceCollectionExtensions
     /// <summary>Registers the NIST NFIQ 1 engine and its PIV enrollment quality adapter.</summary>
     /// <param name="services">The application's dependency-injection services.</param>
     /// <returns>The same collection for chained registration.</returns>
-    /// <exception cref="ArgumentNullException">The collection is null.</exception>
     public static IServiceCollection AddNfiq1FingerprintQuality(this IServiceCollection services)
     {
-        ArgumentNullException.ThrowIfNull(services);
         services.TryAddSingleton<INfiq1Engine, Nfiq1Engine>();
         services.TryAddSingleton<IFingerprintQualityProvider, Nfiq1FingerprintQualityProvider>();
         return services;
