@@ -52,10 +52,10 @@
     <!-- Include package icon in all projects for NuGet packaging -->
     <ItemGroup>
         <None
-            Include="$(MSBuildThisFileDirectory)icon.png"
+            Include="$(MSBuildThisFileDirectory)assets/icon.png"
             Pack="true"
             PackagePath=""
-            Condition="Exists('$(MSBuildThisFileDirectory)icon.png')"
+            Condition="Exists('$(MSBuildThisFileDirectory)assets/icon.png')"
         />
     </ItemGroup>
     <ItemGroup>
