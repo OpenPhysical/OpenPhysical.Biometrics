@@ -4,187 +4,202 @@
 namespace OpenPhysical.Biometrics.Facial;
 
 using System.Collections.Immutable;
+using CSharpFunctionalExtensions;
 using Microsoft.ML.OnnxRuntime;
 using Microsoft.ML.OnnxRuntime.Tensors;
-using OpenPhysical.Biometrics.Onnx;
 
 internal sealed class MediaPipeDetector : IDisposable
 {
     private readonly InferenceSession detector;
     private readonly InferenceSession mesh;
 
-    internal MediaPipeDetector()
+    private MediaPipeDetector(InferenceSession detector, InferenceSession mesh)
     {
-        using var options = new SessionOptions { IntraOpNumThreads = 1, InterOpNumThreads = 1 };
-        detector = new InferenceSession(
-            Load(
-                "face_detection_short_range.onnx",
-                "2f2689b040becf555706d2cb978d2f0e3296ea82413734fba9a856c66c5f2b17"
-            ),
-            options
+        this.detector = detector;
+        this.mesh = mesh;
+    }
+
+    internal static Result<MediaPipeDetector, FacialError> Create() =>
+        FacialEdge.TryBind(
+            OpenSessions,
+            FacialErrorCodes.ModelLoadFailed,
+            "The packaged MediaPipe models could not be loaded."
         );
-        try
-        {
-            mesh = new InferenceSession(
-                Load(
-                    "face_landmarker_Nx3x256x256.onnx",
-                    "111795f8703cdeb6d0c68a9f3cc966a0f23f8786bb00f4577a11f461fc4276ac"
-                ),
-                options
+
+    internal Result<ImmutableArray<PortraitFace>, FacialError> Detect(PortraitPixels image)
+    {
+        var box = DetectorBox.For(image);
+        return image
+            .Warp(DetectorBox.Size, DetectorBox.Size, box.Transform, true)
+            .Bind(RunDetector)
+            .Bind(BlazeFaceDecoder.Suppress)
+            .Bind(rows => Locate(image, box, rows))
+            .Map(faces =>
+                faces
+                    .OrderBy(f => f.X)
+                    .ThenBy(f => f.Y)
+                    .Select((f, i) => f.Face with { Index = i })
+                    .ToImmutableArray()
             );
-        }
-        catch
-        {
-            detector.Dispose();
-            throw;
-        }
     }
-
-    internal static byte[] Load(string file, string hash)
-    {
-        using var stream =
-            typeof(MediaPipeModels).Assembly.GetManifestResourceStream(
-                "OpenPhysical.Biometrics.Onnx.Resources." + file
-            ) ?? throw new InvalidOperationException("The packaged MediaPipe model is missing.");
-        using var buffer = new MemoryStream();
-        stream.CopyTo(buffer);
-        var bytes = buffer.ToArray();
-        if (!Sha256.HexDigest(bytes).Equals(hash, StringComparison.OrdinalIgnoreCase))
-            throw new InvalidOperationException(
-                "The packaged MediaPipe model checksum is invalid."
-            );
-        return bytes;
-    }
-
-    internal ImmutableArray<PortraitFace> Detect(PortraitPixels image)
-    {
-        var scale = 128.0 / Math.Max(image.Width, image.Height);
-        var px = (128 - image.Width * scale) / 2;
-        var py = (128 - image.Height * scale) / 2;
-        var detectorPixels = image.Warp(128, 128, new(scale, 0, px, py), true);
-        using var outputs = detector.Run([
-            NamedOnnxValue.CreateFromTensor("input", Tensor(detectorPixels, 128, true)),
-        ]);
-        var raw = outputs.First().AsTensor<float>().ToArray();
-        var logits = outputs.Last().AsTensor<float>().ToArray();
-        if (raw.Length != 896 * 16 || logits.Length != 896)
-            throw new InvalidOperationException("Unexpected detector output dimensions.");
-        var rows = new List<double[]>();
-        var anchor = 0;
-        foreach (var (cells, repetitions) in new[] { (16, 2), (8, 6) })
-            for (var y = 0; y < cells; y++)
-            for (var x = 0; x < cells; x++)
-            for (var repeat = 0; repeat < repetitions; repeat++, anchor++)
-            {
-                var score = Sigmoid(logits[anchor]);
-                if (score < .5)
-                    continue;
-                var row = new double[17];
-                row[0] = score;
-                for (var k = 0; k < 16; k++)
-                    row[k + 1] =
-                        raw[anchor * 16 + k] / 128.0
-                        + (k is 2 or 3 ? 0 : ((k % 2 == 0 ? x : y) + .5) / cells);
-                if (row.All(double.IsFinite) && row[3] > 0 && row[4] > 0)
-                    rows.Add(row);
-            }
-        var blended = Suppress(rows);
-        var faces = new List<(double X, double Y, PortraitFace Face)>();
-        foreach (var row in blended)
-        {
-            var cx = (row[1] * 128 - px) / scale;
-            var cy = (row[2] * 128 - py) / scale;
-            var side = Math.Max(row[3], row[4]) * 128 / scale * 1.5;
-            var angle = Math.Atan2(row[8] - row[6], row[7] - row[5]);
-            var a = Math.Cos(angle) * 256 / side;
-            var b = Math.Sin(angle) * 256 / side;
-            var transform = new PortraitTransform(
-                a,
-                b,
-                128 - a * cx - b * cy,
-                128 + b * cx - a * cy
-            );
-            var pixels = image.Warp(256, 256, transform, true);
-            using var result = mesh.Run([
-                NamedOnnxValue.CreateFromTensor("input", Tensor(pixels, 256, false)),
-            ]);
-            var values = result.First(o => o.Name == "landmarks").AsTensor<float>().ToArray();
-            var presence = Sigmoid(result.First(o => o.Name == "score").AsTensor<float>().First());
-            if (values.Length != 1434 || !values.All(float.IsFinite) || !double.IsFinite(presence))
-                throw new InvalidOperationException("Invalid landmark output.");
-            if (presence < .5)
-                continue;
-            var points = Enumerable
-                .Range(0, 478)
-                .Select(i =>
-                {
-                    var point = transform.Inverse(new(values[i * 3], values[i * 3 + 1]));
-                    return new FaceMeshPoint(point.X, point.Y, values[i * 3 + 2] * side / 256);
-                })
-                .ToImmutableArray();
-            PortraitPoint Ear(int k) =>
-                new((row[5 + k * 2] * 128 - px) / scale, (row[6 + k * 2] * 128 - py) / scale);
-            faces.Add((cx, cy, new(0, row[0], presence, points, Ear(4), Ear(5))));
-        }
-        return faces
-            .OrderBy(f => f.X)
-            .ThenBy(f => f.Y)
-            .Select((f, i) => f.Face with { Index = i })
-            .ToImmutableArray();
-    }
-
-    private static DenseTensor<float> Tensor(byte[] rgb, int size, bool signed)
-    {
-        var plane = size * size;
-        var values = new float[plane * 3];
-        for (var i = 0; i < plane; i++)
-        for (var c = 0; c < 3; c++)
-            values[c * plane + i] = signed
-                ? (rgb[i * 3 + c] - 127.5f) / 127.5f
-                : rgb[i * 3 + c] / 255f;
-        return new(values, [1, 3, size, size]);
-    }
-
-    private static List<double[]> Suppress(List<double[]> candidates)
-    {
-        var remaining = candidates.OrderByDescending(r => r[0]).ToList();
-        var result = new List<double[]>();
-        while (remaining.Count > 0)
-        {
-            var top = remaining[0];
-            var group = remaining.Where(r => Overlap(top, r) > .3).ToArray();
-            if (group.Length == 0)
-                throw new InvalidOperationException("Invalid detection geometry.");
-            var total = group.Sum(r => r[0]);
-            var blend = (double[])top.Clone();
-            for (var k = 1; k < 17; k++)
-                blend[k] = group.Sum(r => r[k] * r[0]) / total;
-            result.Add(blend);
-            remaining = remaining.Where(r => Overlap(top, r) <= .3).ToList();
-        }
-        return result;
-    }
-
-    private static double Overlap(double[] a, double[] b)
-    {
-        var width = Math.Max(
-            0,
-            Math.Min(a[1] + a[3] / 2, b[1] + b[3] / 2) - Math.Max(a[1] - a[3] / 2, b[1] - b[3] / 2)
-        );
-        var height = Math.Max(
-            0,
-            Math.Min(a[2] + a[4] / 2, b[2] + b[4] / 2) - Math.Max(a[2] - a[4] / 2, b[2] - b[4] / 2)
-        );
-        var area = width * height;
-        return area / Math.Max(1e-9, a[3] * a[4] + b[3] * b[4] - area);
-    }
-
-    private static double Sigmoid(double value) =>
-        value >= 0 ? 1 / (1 + Math.Exp(-value)) : Math.Exp(value) / (1 + Math.Exp(value));
 
     public void Dispose()
     {
         mesh.Dispose();
         detector.Dispose();
+    }
+
+    private static Result<MediaPipeDetector, FacialError> OpenSessions()
+    {
+        using var options = new SessionOptions { IntraOpNumThreads = 1, InterOpNumThreads = 1 };
+        return OpenSession(
+                "face_detection_short_range.onnx",
+                "2f2689b040becf555706d2cb978d2f0e3296ea82413734fba9a856c66c5f2b17",
+                options
+            )
+            .Bind(opened =>
+                OpenSession(
+                        "face_landmarker_Nx3x256x256.onnx",
+                        "111795f8703cdeb6d0c68a9f3cc966a0f23f8786bb00f4577a11f461fc4276ac",
+                        options
+                    )
+                    .TapError(_ => opened.Dispose())
+                    .Map(second => new MediaPipeDetector(opened, second))
+            );
+    }
+
+    private static Result<InferenceSession, FacialError> OpenSession(
+        string file,
+        string hash,
+        SessionOptions options
+    ) =>
+        MediaPipeModelLoader
+            .Load(file, hash)
+            .Bind(bytes =>
+                FacialEdge.Try(
+                    () => new InferenceSession(bytes, options),
+                    FacialErrorCodes.ModelLoadFailed,
+                    "The packaged MediaPipe model could not be loaded."
+                )
+            );
+
+    private Result<List<double[]>, FacialError> RunDetector(byte[] pixels) =>
+        FacialEdge
+            .Try(
+                () =>
+                {
+                    using var outputs = detector.Run([
+                        NamedOnnxValue.CreateFromTensor(
+                            "input",
+                            MediaPipeTensor.Create(pixels, 128, true)
+                        ),
+                    ]);
+                    return (
+                        Raw: outputs.First().AsTensor<float>().ToArray(),
+                        Logits: outputs.Last().AsTensor<float>().ToArray()
+                    );
+                },
+                FacialErrorCodes.ModelExecutionFailed,
+                "The face detector failed."
+            )
+            .Bind(output =>
+                output.Raw.Length != BlazeFaceDecoder.Anchors * BlazeFaceDecoder.Values
+                || output.Logits.Length != BlazeFaceDecoder.Anchors
+                    ? FacialErrors.DetectorOutput().Fail<List<double[]>>()
+                    : BlazeFaceDecoder.Candidates(output.Raw, output.Logits).Succeed()
+            );
+
+    private Result<List<(double X, double Y, PortraitFace Face)>, FacialError> Locate(
+        PortraitPixels image,
+        DetectorBox box,
+        List<double[]> rows
+    )
+    {
+        var faces = new List<(double X, double Y, PortraitFace Face)>();
+        foreach (var row in rows)
+        {
+            var located = Landmarks(image, box, row);
+            if (located.IsFailure)
+                return located.Error.Fail<List<(double X, double Y, PortraitFace Face)>>();
+            if (located.Value.HasValue)
+                faces.Add(located.Value.Value);
+        }
+        return faces.Succeed();
+    }
+
+    private Result<Maybe<(double X, double Y, PortraitFace Face)>, FacialError> Landmarks(
+        PortraitPixels image,
+        DetectorBox box,
+        double[] row
+    )
+    {
+        var cx = box.SourceX(row[1]);
+        var cy = box.SourceY(row[2]);
+        var side = Math.Max(row[3], row[4]) * DetectorBox.Size / box.Scale * 1.5;
+        var angle = Math.Atan2(row[8] - row[6], row[7] - row[5]);
+        var a = Math.Cos(angle) * 256 / side;
+        var b = Math.Sin(angle) * 256 / side;
+        var transform = new PortraitTransform(a, b, 128 - a * cx - b * cy, 128 + b * cx - a * cy);
+        return image
+            .Warp(256, 256, transform, true)
+            .Bind(RunMesh)
+            .Map(output => MeshFace(output, row, box, transform, side, (cx, cy)));
+    }
+
+    private Result<MeshOutput, FacialError> RunMesh(byte[] pixels) =>
+        FacialEdge
+            .Try(
+                () =>
+                {
+                    using var result = mesh.Run([
+                        NamedOnnxValue.CreateFromTensor(
+                            "input",
+                            MediaPipeTensor.Create(pixels, 256, false)
+                        ),
+                    ]);
+                    return new MeshOutput(
+                        result.First(o => o.Name == "landmarks").AsTensor<float>().ToArray(),
+                        BlazeFaceDecoder.Sigmoid(
+                            result.First(o => o.Name == "score").AsTensor<float>().First()
+                        )
+                    );
+                },
+                FacialErrorCodes.ModelExecutionFailed,
+                "The landmark network failed."
+            )
+            .Ensure(
+                output =>
+                    output.Values.Length == 1434
+                    && output.Values.All(float.IsFinite)
+                    && double.IsFinite(output.Presence),
+                FacialErrors.LandmarkOutput()
+            );
+
+    private static Maybe<(double X, double Y, PortraitFace Face)> MeshFace(
+        MeshOutput output,
+        double[] row,
+        DetectorBox box,
+        PortraitTransform transform,
+        double side,
+        (double X, double Y) center
+    )
+    {
+        if (output.Presence < .5)
+            return Maybe<(double X, double Y, PortraitFace Face)>.None;
+        var values = output.Values;
+        var points = Enumerable
+            .Range(0, 478)
+            .Select(i =>
+            {
+                var point = transform.InverseUnchecked(new(values[i * 3], values[i * 3 + 1]));
+                return new FaceMeshPoint(point.X, point.Y, values[i * 3 + 2] * side / 256);
+            })
+            .ToImmutableArray();
+        PortraitPoint Ear(int k) => new(box.SourceX(row[5 + k * 2]), box.SourceY(row[6 + k * 2]));
+        return (
+            center.X,
+            center.Y,
+            new PortraitFace(0, row[0], output.Presence, points, Ear(4), Ear(5))
+        );
     }
 }

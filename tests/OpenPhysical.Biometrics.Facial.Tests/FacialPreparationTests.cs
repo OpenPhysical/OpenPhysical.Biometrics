@@ -3,6 +3,7 @@ namespace OpenPhysical.Biometrics.Facial.Tests;
 
 using AwesomeAssertions;
 using AwesomeAssertions.Execution;
+using CSharpFunctionalExtensions.AwesomeAssertions;
 using NUnit.Framework;
 using OpenPhysical.Biometrics.Formats.Faces;
 
@@ -22,9 +23,11 @@ internal sealed class FacialPreparationTests
         var pixels = new byte[480 * 640 * 3];
         new Random(3207).NextBytes(pixels);
         var original = pixels.ToArray();
-        var result = new FacialRecordPreparer().Prepare(pixels, 480, 640, Metadata);
+        var prepared = TestFixtures.NewRecordPreparer().Prepare(pixels, 480, 640, Metadata);
+        prepared.Should().Succeed();
+        var result = prepared.Value;
         result.Status.Should().Be(FacialPreparationStatus.Prepared);
-        var bytes = Incits385Codec.Write(result.Record!).Value;
+        var bytes = Incits385Codec.Write(result.Record.Value).Value;
         var parsed = Incits385Codec.Parse(bytes);
         using (new AssertionScope())
         {
@@ -40,43 +43,58 @@ internal sealed class FacialPreparationTests
     [Test]
     public void MissingAcquisitionEvidenceProducesAnOperatorReviewOutcome()
     {
-        var result = new FacialRecordPreparer().Prepare(
-            new byte[480 * 640 * 3],
-            480,
-            640,
-            Metadata with
-            {
-                FullFrontalConfirmed = false,
-            }
-        );
-        result.Status.Should().Be(FacialPreparationStatus.AcquisitionReviewRequired);
-        result.Record.Should().BeNull();
+        var prepared = TestFixtures
+            .NewRecordPreparer()
+            .Prepare(
+                new byte[480 * 640 * 3],
+                480,
+                640,
+                Metadata with
+                {
+                    FullFrontalConfirmed = false,
+                }
+            );
+        prepared.Should().Succeed();
+        prepared.Value.Status.Should().Be(FacialPreparationStatus.AcquisitionReviewRequired);
+        prepared.Value.Record.HasValue.Should().BeFalse();
     }
 
     [Test]
     public void UnsupportedProfileGeometryProducesAnExplicitOutcome()
     {
-        var result = new FacialRecordPreparer().Prepare(
-            new byte[420 * 560 * 3],
-            420,
-            560,
-            Metadata
-        );
-        result.Status.Should().Be(FacialPreparationStatus.ProfileRejected);
-        result.Record.Should().BeNull();
+        var prepared = TestFixtures
+            .NewRecordPreparer()
+            .Prepare(new byte[420 * 560 * 3], 420, 560, Metadata);
+        prepared.Should().Succeed();
+        prepared.Value.Status.Should().Be(FacialPreparationStatus.ProfileRejected);
+        prepared.Value.Record.HasValue.Should().BeFalse();
+    }
+
+    [Test]
+    public void OverCompressedImageProducesACompressionOutcome()
+    {
+        var prepared = TestFixtures
+            .NewRecordPreparer()
+            .Prepare(new byte[480 * 640 * 3], 480, 640, Metadata);
+        prepared.Should().Succeed();
+        prepared.Value.Status.Should().Be(FacialPreparationStatus.CompressionRejected);
     }
 
     [Test]
     public void InvalidDimensionsAndBuffersFailBeforeEncoding()
     {
-        var service = new FacialRecordPreparer();
-        FluentActions
-            .Invoking(() => service.Prepare([], int.MaxValue, 640, Metadata))
+        var service = TestFixtures.NewRecordPreparer();
+        service
+            .Prepare([], int.MaxValue, 640, Metadata)
             .Should()
-            .ThrowExactly<ArgumentOutOfRangeException>();
-        FluentActions
-            .Invoking(() => service.Prepare(new byte[3], 480, 640, Metadata))
+            .Fail()
+            .Which.Code.Should()
+            .Be(FacialErrorCodes.InvalidDimensions);
+        service
+            .Prepare(new byte[3], 480, 640, Metadata)
             .Should()
-            .ThrowExactly<ArgumentException>();
+            .Fail()
+            .Which.Code.Should()
+            .Be(FacialErrorCodes.InvalidPixelBuffer);
     }
 }

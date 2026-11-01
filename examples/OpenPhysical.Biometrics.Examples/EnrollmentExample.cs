@@ -25,63 +25,22 @@ internal static class EnrollmentExample
         DateTimeOffset expiresAt
     )
     {
-        // Prepare performs extraction and quality assessment. Materialize it once
-        // so grouping, review, and issuance reuse the same expensive results.
-        var prepared = captures.Select(enrollment.Prepare).ToImmutableArray();
-        if (prepared.Any(candidate => candidate.IsFailure))
-            return Result.Failure<CbeffRecord>("A capture could not be prepared.");
-        var ranked = PivFingerprintEnrollmentService.RankCandidates(
-            prepared.Select(candidate => candidate.Value),
-            preferLeftHand
-        );
-        if (ranked.IsFailure)
-            return Result.Failure<CbeffRecord>(ranked.Error.Message);
-        var selections = ranked.Value.ToDictionary(candidate => candidate.Finger);
+        var selections = Rank(captures, enrollment, preferLeftHand);
+        if (selections.IsFailure)
+            return Result.Failure<CbeffRecord>(selections.Error);
 
         // Selection remains explicit after the operator reviews candidate quality
         // and any reacquisition recommendation. Each selected finger has one view.
-        var record = enrollment.CreateRecord(
-            selections[primaryFinger],
-            selections[secondaryFinger],
-            equipment
-        );
+        var primary = selections.Value[primaryFinger];
+        var secondary = selections.Value[secondaryFinger];
+        var record = CreateValidatedRecord(enrollment, primary, secondary, equipment);
         if (record.IsFailure)
-            return Result.Failure<CbeffRecord>(record.Error.Message);
-        if (!PivBiometricProfile.Validate(record.Value).IsEmpty)
-            return Result.Failure<CbeffRecord>("The selected enrollment needs profile review.");
+            return Result.Failure<CbeffRecord>(record.Error);
         var encoded = Incits378Codec.Write(record.Value);
         if (encoded.IsFailure)
             return Result.Failure<CbeffRecord>(encoded.Error.Message);
-
-        // The PIV patron header identifies a processed fingerprint record. The
-        // signing workflow resolves the final detached-block length afterwards.
-        var acquisitionTime = new[]
-        {
-            selections[primaryFinger].Capture,
-            selections[secondaryFinger].Capture,
-        }
-            .Where(capture => capture.HasValue)
-            .Select(capture => capture.Value.CapturedAt)
-            .DefaultIfEmpty(createdAt)
-            .Min();
-        var header = CbeffHeader.Create(
-            (uint)encoded.Value.Length,
-            0,
-            0x001B,
-            0x0201,
-            acquisitionTime,
-            createdAt,
-            expiresAt,
-            8,
-            0x80,
-            HeaderQuality(record.Value),
-            creator,
-            identity.FascN.AsSpan(),
-            securityOptions: 0x0D
-        );
-        return header.IsFailure
-            ? Result.Failure<CbeffRecord>(header.Error.Message)
-            : new CbeffRecord(header.Value, ImmutableArray.Create(encoded.Value), []);
+        var acquired = AcquisitionTime(primary, secondary, createdAt);
+        return Wrap(record.Value, encoded.Value, identity, creator, acquired, createdAt, expiresAt);
     }
 
     internal static Result<FingerprintEnrollmentFinger, FingerprintError> RecordUnavailable(
@@ -91,6 +50,88 @@ internal static class EnrollmentExample
         // The acquisition station records why a finger is unusable. The record
         // writer preserves its temporary or permanent status in the selected view.
         FingerprintEnrollmentFinger.Unavailable(finger, availability);
+
+    // Prepare performs extraction and quality assessment. Materialize it once
+    // so grouping, review, and issuance reuse the same expensive results.
+    private static Result<Dictionary<FingerPosition, FingerprintEnrollmentFinger>> Rank(
+        IEnumerable<FingerprintCapture> captures,
+        PivFingerprintEnrollmentService enrollment,
+        bool preferLeftHand
+    )
+    {
+        var prepared = captures.Select(enrollment.Prepare).ToImmutableArray();
+        if (prepared.Any(candidate => candidate.IsFailure))
+            return Result.Failure<Dictionary<FingerPosition, FingerprintEnrollmentFinger>>(
+                "A capture could not be prepared."
+            );
+        var ranked = PivFingerprintEnrollmentService.RankCandidates(
+            prepared.Select(candidate => candidate.Value),
+            preferLeftHand
+        );
+        return ranked.IsFailure
+            ? Result.Failure<Dictionary<FingerPosition, FingerprintEnrollmentFinger>>(
+                ranked.Error.Message
+            )
+            : ranked.Value.ToDictionary(candidate => candidate.Finger);
+    }
+
+    private static Result<FingerprintRecord> CreateValidatedRecord(
+        PivFingerprintEnrollmentService enrollment,
+        FingerprintEnrollmentFinger primary,
+        FingerprintEnrollmentFinger secondary,
+        PivFingerprintRecordMetadata equipment
+    )
+    {
+        var record = enrollment.CreateRecord(primary, secondary, equipment);
+        if (record.IsFailure)
+            return Result.Failure<FingerprintRecord>(record.Error.Message);
+        return PivBiometricProfile.Validate(record.Value).IsEmpty
+            ? record.Value
+            : Result.Failure<FingerprintRecord>("The selected enrollment needs profile review.");
+    }
+
+    private static DateTimeOffset AcquisitionTime(
+        FingerprintEnrollmentFinger primary,
+        FingerprintEnrollmentFinger secondary,
+        DateTimeOffset fallback
+    ) =>
+        new[] { primary.Capture, secondary.Capture }
+            .Choose()
+            .Select(capture => capture.CapturedAt)
+            .DefaultIfEmpty(fallback)
+            .Min();
+
+    // The PIV patron header identifies a processed fingerprint record. The
+    // signing workflow resolves the final detached-block length afterwards.
+    private static Result<CbeffRecord> Wrap(
+        FingerprintRecord record,
+        byte[] encoded,
+        BiometricIdentity identity,
+        ReadOnlySpan<byte> creator,
+        DateTimeOffset acquisitionTime,
+        DateTimeOffset createdAt,
+        DateTimeOffset expiresAt
+    )
+    {
+        var header = CbeffHeader.Create(
+            (uint)encoded.Length,
+            0,
+            0x001B,
+            0x0201,
+            acquisitionTime,
+            createdAt,
+            expiresAt,
+            8,
+            0x80,
+            HeaderQuality(record),
+            creator,
+            identity.FascN.AsSpan(),
+            securityOptions: 0x0D
+        );
+        return header.IsFailure
+            ? Result.Failure<CbeffRecord>(header.Error.Message)
+            : new CbeffRecord(header.Value, ImmutableArray.Create(encoded), []);
+    }
 
     private static sbyte HeaderQuality(FingerprintRecord record) =>
         record.Views.Any(view => view.Quality <= 100)

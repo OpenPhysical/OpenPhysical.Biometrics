@@ -66,6 +66,9 @@ jobs:
       - name: Check CSharpier formatting
         working-directory: OpenPhysical.Biometrics
         run: dotnet csharpier check .
+      - name: Enforce file size limits
+        working-directory: OpenPhysical.Biometrics
+        run: python scripts/check-file-size.py
       - name: Verify optional facial model assets
         working-directory: OpenPhysical.Biometrics
         run: python scripts/verify-models.py

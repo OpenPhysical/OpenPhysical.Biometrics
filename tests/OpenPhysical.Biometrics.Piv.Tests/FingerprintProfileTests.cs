@@ -55,23 +55,8 @@ internal sealed class FingerprintProfileTests
             (valid with { Quality = 0 }, "Nfiq1Quality"),
             (valid with { Quality = 254 }, "UnavailableFingerMinutiae"),
             (valid with { Minutiae = [valid.Minutiae[0], valid.Minutiae[0]] }, "DuplicateMinutiae"),
-            (
-                valid with
-                {
-                    Minutiae = Enumerable
-                        .Range(0, 129)
-                        .Select(x => new FingerprintMinutia(1, (ushort)x, 20, 30, 90))
-                        .ToImmutableArray(),
-                },
-                "MinutiaCount"
-            ),
-            (
-                valid with
-                {
-                    ExtendedBlocks = [new FingerprintExtendedBlock(0x0100, [1])],
-                },
-                "ExtendedData"
-            ),
+            (valid with { Minutiae = Minutiae(129) }, "MinutiaCount"),
+            (valid with { ExtendedBlocks = [new(0x0100, [1])] }, "ExtendedData"),
         ];
         foreach (var item in cases)
             PivBiometricProfile
@@ -120,4 +105,10 @@ internal sealed class FingerprintProfileTests
             .Should()
             .Contain("InvalidRecord");
     }
+
+    private static ImmutableArray<FingerprintMinutia> Minutiae(int count) =>
+        Enumerable
+            .Range(0, count)
+            .Select(x => new FingerprintMinutia(1, (ushort)x, 20, 30, 90))
+            .ToImmutableArray();
 }

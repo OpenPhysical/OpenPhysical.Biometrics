@@ -21,15 +21,47 @@ loading, transforms, and encoding.
 
 `PortraitPreparer` in `.Facial` uses the pinned `.Facial.Models` assets through
 Microsoft.ML.OnnxRuntime. Register `AddPortraitPreparation()` for lazy CPU inference.
-The result contains immutable source-coordinate landmarks, named anatomical
+`Prepare` returns `Result<PortraitPreparationResult, FacialError>`; the successful
+result contains immutable source-coordinate landmarks, named anatomical
 features, prepared pixels, and the source-to-portrait transformation.
 See [portrait preparation](PIV-PORTRAITS.md) for reviewed geometry and CLI workflows.
+
+## Error handling
+
+No public operation throws for expected failures or returns null. Operations return
+`Result<T, TError>` or `UnitResult<TError>` from CSharpFunctionalExtensions, and
+optional values use `Maybe<T>`. Each library has one error record with a stable
+`Code` and a human-readable `Message`: `ImagingError`, `FormatError`, `PivError`,
+`FingerprintError`, and `FacialError`. The codes live in `ImagingErrorCodes`,
+`PivErrorCodes`, `FingerprintErrorCodes`, and `FacialErrorCodes`. Branch on the code,
+never the message. `FormatError` also exposes located diagnostics through
+`FormatError.Diagnostics`.
+
+```csharp
+var decoded = RgbImageDecoder.Load(path);
+if (decoded.IsFailure)
+    return Present(decoded.Error.Code, decoded.Error.Message);
+
+// Compose steps with Bind and Map; the first failure short-circuits.
+using var source = decoded.Value;
+var bytes = source.Resize(480, 640, fillCrop: true).Bind(image => image.CopyRgbBytes());
+
+// Maybe values: check HasValue or fall back explicitly.
+var label = optionalText.GetValueOrDefault("not recorded");
+```
+
+The third-party NBIS and NFIQ engines still report native failures by throwing.
+Applications convert those calls to results at one edge, as
+`ExampleEdge.TryBind` does in the runnable examples.
 
 ## Extract and compare fingerprints
 
 Supply the original one-byte grayscale samples, dimensions, and explicit
-resolution. `FingerprintImage` owns its samples, and extraction produces an
-immutable template that can be reused across comparisons.
+resolution. `FingerprintImage` (from the NBIS package) owns its samples and validates
+its geometry when constructed. Wrap construction at your edge, or build an
+`FingerprintCapture` with `FingerprintCapture.Create`, which validates the same
+facts and returns a `Result`. Extraction produces an immutable template that can be
+reused across comparisons.
 
 ```csharp
 using System.Collections.Immutable;
@@ -44,8 +76,14 @@ var probe = engine.Extract(probeImage);
 var rawScore = engine.Match(probe, reference);
 
 // Record the application's policy identifier with its decision.
-var policy = new FingerprintMatchingPolicy(policyIdentifier, minimumScore);
-var decision = policy.Evaluate(rawScore);
+var created = FingerprintMatchingPolicy.Create(policyIdentifier, minimumScore);
+if (created.IsFailure)
+    return Present(created.Error.Code); // InvalidPolicy or InvalidScore
+
+var policy = created.Value;
+var decision = policy.Evaluate(rawScore); // Result<FingerprintComparisonResult, FingerprintError>
+if (decision.IsSuccess)
+    Apply(decision.Value.Accepted, decision.Value.PolicyIdentifier);
 
 // Materialize extraction once when the same captures support several comparisons.
 var templates = capturedImages.Select(engine.Extract).ToImmutableArray();
@@ -66,14 +104,17 @@ Select the finger and view explicitly when creating an NBIS matching template.
 using OpenPhysical.Biometrics.Formats.Fingerprints;
 
 var parsed = Incits378Codec.Parse(rawFingerprintRecord);
-if (!parsed.IsSuccess)
-    throw new FormatException(string.Join("; ", parsed.Diagnostics.Select(
-        diagnostic => $"{diagnostic.Code} at byte {diagnostic.Offset}")));
+if (parsed.IsFailure)
+    return Present(parsed.Error.Diagnostics.Select(
+        diagnostic => $"{diagnostic.Code} at byte {diagnostic.Offset}"));
 
-var reference = parsed.Value!.ToMatchingTemplate(
+var reference = parsed.Value.Record.ToMatchingTemplate(
     FingerPosition.RightIndex,
-    viewNumber: 0);
-var rawScore = engine.Match(probeImage, reference);
+    viewNumber: 0); // Result<FingerprintTemplate, FingerprintError>
+if (reference.IsFailure)
+    return Present(reference.Error.Code); // for example ViewSelection or FingerUnavailable
+
+var rawScore = engine.Match(probeImage, reference.Value);
 var decision = policy.Evaluate(rawScore);
 ```
 
@@ -85,8 +126,11 @@ unavailable fingers.
 
 ## Inspect and validate records
 
-A parse result contains the immutable value, typed diagnostics, and fields with
-byte offsets and lengths. `BiometricInspector` adds a common presentation model
+A successful parse returns `ParsedRecord<T>`, holding the immutable record and an
+`InspectionReport` of fields with byte offsets and lengths. A failed parse returns a
+`FormatError` whose `Diagnostics` list the located problems. Field values are
+`Maybe<string>` and are present only when `InspectionOptions.IncludeSensitiveValues`
+is set. `BiometricInspector` adds a common presentation model
 and PIV profile findings for raw FMR, FAC, or CBEFF data.
 
 ```csharp
@@ -109,27 +153,33 @@ identifiers.
 
 `FacialRecordPreparer` accepts tightly packed sRGB samples and acquisition facts
 from the camera and attended capture workflow. It preserves the supplied geometry
-and returns a typed preparation outcome and canonical facial record.
+and returns `Result<FacialPreparationResult, FacialError>`. A failure reports bad
+input or an encoder fault. A successful result carries a status, and its `Record`
+is a `Maybe<FaceRecord>` that is present only for `Prepared`.
 
 ```csharp
 using OpenPhysical.Biometrics.Facial;
 using OpenPhysical.Biometrics.Formats.Faces;
 
-var preparer = new FacialRecordPreparer(logger);
+var preparer = new FacialRecordPreparer(logger); // ILogger<FacialRecordPreparer>
 var prepared = preparer.Prepare(
     capturedSrgbPixels,
     capturedWidth,
     capturedHeight,
     acquisitionMetadata);
 
-if (prepared.Status == FacialPreparationStatus.Prepared)
+if (prepared.IsFailure)
 {
-    var facialRecordBytes = Incits385Codec.Write(prepared.Record!);
-    ContinueIssuance(facialRecordBytes, prepared.Acquisition);
+    PresentFailure(prepared.Error.Code); // for example InvalidPixelBuffer
+}
+else if (prepared.Value.Record.TryGetValue(out var faceRecord))
+{
+    var facialRecordBytes = Incits385Codec.Write(faceRecord); // Result<byte[], FormatError>
+    ContinueIssuance(facialRecordBytes, prepared.Value.Acquisition);
 }
 else
 {
-    PresentCaptureOutcome(prepared.Status, prepared.ProfileDiagnostics);
+    PresentCaptureOutcome(prepared.Value.Status, prepared.Value.ProfileDiagnostics);
 }
 ```
 
@@ -149,16 +199,28 @@ using OpenPhysical.Biometrics.Formats.Cbeff;
 
 var issued = await BiometricSignatureWorkflow.SignAsync(
     preparedRecord, expectedIdentity, signer, verifier, cancellationToken);
-if (issued.Record is { } completed)
+if (issued.IsFailure)
+    return Present(issued.Error.Code); // for example SigningProviderFailed or Cancelled
+
+var outcome = issued.Value; // BiometricSigningResult
+if (outcome.Record.TryGetValue(out var completed)
+    && outcome.Verification.TryGetValue(out var verification))
 {
-    ApplyIssuancePolicy(issued.Verification!);
-    var cardObjectBytes = CbeffCodec.Write(completed);
+    ApplyIssuancePolicy(verification);
+    var cardObjectBytes = CbeffCodec.Write(completed); // Result<byte[], FormatError>
     ContinueCardTransaction(cardObjectBytes);
+}
+else
+{
+    Present(outcome.Failure); // SignatureFailure, for example LengthDidNotConverge
 }
 ```
 
-`VerifyAsync` accepts the parsed original record, expected card identity, and the
-application verifier. Its result retains signature, trust, revocation, and
+A signing or verification provider that throws, fails, or is cancelled yields a failed
+`PivError` with code `SigningProviderFailed`, `VerificationProviderFailed`, or
+`Cancelled`. `VerifyAsync` accepts the parsed original record, expected card identity,
+and the application verifier, and returns
+`Result<BiometricVerificationReport, PivError>`. Its report retains signature, trust, revocation, and
 identity-binding findings. [Signature integration](SIGNATURE-INTEGRATION.md)
 describes the exact signed bytes, CMS attributes, and issuer policy handoff.
 
@@ -170,15 +232,27 @@ Enrollment also receives the application's selected `IFingerprintQualityProvider
 Logging uses `Microsoft.Extensions.Logging` throughout.
 
 For image transformations, dispose the owned buffer when its workflow finishes.
-`Clone` creates independent storage; `CopyRgbBytes` supplies standard .NET byte
-samples to another component.
+`RgbImageDecoder.Load` decodes files, streams, or bytes, and `RgbImage.Create` makes
+a blank image. Every operation returns a result. `Clone` creates independent storage,
+and `Clone` with a transform disposes the copy if the transform fails.
+`CopyRgbBytes` supplies standard .NET byte samples to another component.
+`RgbImage` has no indexer, mutation callback, or pixel-row processor; use
+`GetPixel` and `SetPixel`, which return results.
 
 ```csharp
 using OpenPhysical.Biometrics.Imaging;
 
-using var original = RgbImage.Load("capture.jpg");
-using var preview = original.Clone(image => image.Resize(240, 320, fillCrop: true));
-var previewRgb = preview.CopyRgbBytes();
+var loaded = RgbImageDecoder.Load("capture.jpg");
+if (loaded.IsFailure)
+    return Present(loaded.Error.Code); // for example Imaging.DecodeFailed
+
+using var original = loaded.Value;
+var preview = original.Clone(image => image.Resize(240, 320, fillCrop: true));
+if (preview.IsFailure)
+    return Present(preview.Error.Code);
+
+using var previewImage = preview.Value;
+var previewRgb = previewImage.CopyRgbBytes(); // Result<byte[], ImagingError>
 ```
 
 The [runnable examples](../examples/README.md) connect these steps using attributed

@@ -78,8 +78,39 @@ Application defaults are 480×640, a target eye line at 40% from the top, and a 
 
 The model source is yakhyo/mediapipe-face-mesh-onnx commit `3bdf1e0d100a4c709766c051a0c9e9cdab1fed62`, with Google's original MediaPipe weights. Package provenance records SHA-256 hashes, and runtime loading checks them. Apache-2.0 notices accompany the model package; first-party code carries the additional MediaPipe combination permission in `LICENSE`.
 
-Use `Microsoft.ML.OnnxRuntime` CPU inference. Unsupported native-runtime deployments fail explicitly when initializing the model. Facial sessions initialize on the first portrait-preparation call.
+Use `Microsoft.ML.OnnxRuntime` CPU inference. Unsupported native-runtime deployments fail explicitly when initializing the model, with a failed result whose code is `NativeRuntimeUnavailable`. Facial sessions initialize on the first portrait-preparation call.
 
+## Using the library
+
+`PortraitPreparer` requires an `ILogger<PortraitPreparer>` and is disposable. `Prepare`
+returns `Result<PortraitPreparationResult, FacialError>`. A failure means malformed
+input, mismatched reviewed geometry, a disposed service, or a missing or failing model;
+branch on `error.Code` from `FacialErrorCodes`. A success may still need review, so check
+`Status` and the `Findings`. Fields that exist only in some outcomes are `Maybe` values:
+`Transform` and `Measurements` on the result, and `Features` on each `PortraitFace`.
+
+```csharp
+using Microsoft.Extensions.Logging.Abstractions;
+using OpenPhysical.Biometrics.Facial;
+
+using var portraits = new PortraitPreparer(NullLogger<PortraitPreparer>.Instance);
+var prepared = portraits.Prepare(encodedCapture, reviewedGeometry);
+if (prepared.IsFailure)
+    return Present(prepared.Error.Code, prepared.Error.Message);
+
+var portrait = prepared.Value;
+if (portrait.Status != PortraitStatus.Prepared)
+    return PresentReview(portrait.Status, portrait.Findings);
+
+// Measurements is Maybe<PortraitMeasurements>; read it only after Prepared.
+var reviewed = portrait.Measurements.HasValue && portrait.Measurements.Value.ReviewedHeadBoundary;
+var jpeg2000 = PortraitEncoding.EncodeJpeg2000(portrait.RgbPixels.AsSpan(), 480, 640);
+```
+
+`PortraitEncoding.EncodeJpeg2000` and `EncodePng` also return
+`Result<byte[], FacialError>`. The runnable
+[portrait example](../examples/OpenPhysical.Biometrics.Examples/PortraitExample.cs)
+chains `Prepare`, `Ensure`, and `FacialRecordPreparer.Prepare` with `Bind`.
 
 ## Troubleshooting
 

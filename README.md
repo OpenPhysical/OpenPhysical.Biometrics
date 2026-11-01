@@ -42,8 +42,15 @@ using OpenPhysical.Biometrics.Formats.Fingerprints;
 using OpenPhysical.Biometrics.Piv;
 
 var parsed = Incits378Codec.Parse(recordBytes);
-if (parsed.Value is { } record)
+if (parsed.IsFailure)
 {
+    // FormatError carries a stable Code and located diagnostics.
+    foreach (var diagnostic in parsed.Error.Diagnostics)
+        Present(diagnostic.Code, diagnostic.Offset, diagnostic.Length);
+}
+else
+{
+    var record = parsed.Value.Record;
     var fingerViews = record.Views
         .Select(view => (view.FingerPosition, view.ViewNumber, view.Minutiae.Length))
         .ToArray();
@@ -54,7 +61,12 @@ if (parsed.Value is { } record)
 var inspection = BiometricInspector.Inspect(recordBytes, DateTimeOffset.UtcNow);
 ```
 
-Parsing returns an immutable record and a structured report. Diagnostics identify
+Public operations return `Result<T, TError>` or `UnitResult<TError>` instead of
+throwing, and optional values use `Maybe<T>`. Each error type (`FormatError`,
+`PivError`, `FingerprintError`, `FacialError`, `ImagingError`) carries a stable
+`Code` string from its matching `*ErrorCodes` class. A successful parse returns a
+`ParsedRecord<T>` with the immutable record and a structured report; a failed parse
+exposes the same located diagnostics on `FormatError.Diagnostics`. Diagnostics identify
 fields by stable codes and byte offsets. The same report supplies middleware and
 CLI presentations. Set `InspectionOptions.IncludeSensitiveValues` explicitly when
 an inspection needs field contents.
@@ -93,13 +105,17 @@ using OpenPhysical.Biometrics.Fingerprints;
 using OpenPhysical.Biometrics.Formats.Fingerprints;
 using OpenPhysical.Biometrics.NBIS;
 
-var parsed = Incits378Codec.Parse(verifiedFmrBytes);
-if (parsed.Value is { } record)
-{
-    var reference = record.ToMatchingTemplate(FingerPosition.RightIndex, viewNumber: 0);
-    int rawScore = engine.Match(capture, reference);
-    var decision = applicationPolicy.Evaluate(rawScore);
-}
+var decision = Incits378Codec
+    .Parse(verifiedFmrBytes)
+    .MapError(error => new FingerprintError(error.Code, error.Message))
+    .Bind(parsed => parsed.Record.ToMatchingTemplate(FingerPosition.RightIndex, viewNumber: 0))
+    .Map(reference => engine.Match(capture, reference))
+    .Bind(applicationPolicy.Evaluate);
+
+if (decision.IsFailure)
+    Present(decision.Error.Code);
+else
+    Apply(decision.Value.Accepted, decision.Value.PolicyIdentifier);
 ```
 
 Record collections support LINQ queries and immutable projections. Use `with` to
@@ -119,13 +135,20 @@ var signed = await BiometricSignatureWorkflow.SignAsync(
     preparedRecord, expectedIdentity, signingService, verificationService,
     cancellationToken);
 
-if (signed.Record is { } completedRecord)
+if (signed.IsFailure)
 {
-    byte[] objectBytes = CbeffCodec.Write(completedRecord);
+    // PivError.Code is a PivErrorCodes value, such as SigningProviderFailed,
+    // VerificationProviderFailed, or Cancelled.
+    Present(signed.Error.Code);
+}
+else if (signed.Value.Record.TryGetValue(out var completedRecord))
+{
+    var objectBytes = CbeffCodec.Write(completedRecord); // Result<byte[], FormatError>
 }
 ```
 
-The workflow resolves the signature-block length before completing the object and
+A provider that fails or is cancelled surfaces as a failed `PivError` result rather than
+an exception. The workflow resolves the signature-block length before completing the object and
 requests verification over those same bytes. The returned report keeps signature,
 envelope, trust, revocation, and identity-binding findings distinct. The caller
 applies its authentication policy.
@@ -138,7 +161,10 @@ See [signature integration](docs/SIGNATURE-INTEGRATION.md) and the runnable
 Register `AddFacialRecordPreparation()` from the optional facial package. Supply
 captured, tightly packed sRGB pixels and explicit camera/operator acquisition
 findings. The preparer encodes the original geometry as JPEG 2000 and returns an
-INCITS 385 record with typed profile findings. JPEG 2000 encoding uses
+INCITS 385 record with typed profile findings. `Prepare` returns
+`Result<FacialPreparationResult, FacialError>`, and the record is a `Maybe<FaceRecord>`
+that is present only when the status is `Prepared`. The preparer requires an
+`ILogger<FacialRecordPreparer>`. JPEG 2000 encoding uses
 **CoreJ2K.Skia**, and the shared imaging package uses SkiaSharp for image I/O and
 transforms.
 

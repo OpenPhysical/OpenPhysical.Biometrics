@@ -5,6 +5,7 @@
         <IsPackable>false</IsPackable>
     </PropertyGroup>
     <ItemGroup>
+        <PackageReference Include="CSharpFunctionalExtensions" Version="3.7.0" />
         <ProjectReference Include="../../src/OpenPhysical.Biometrics/OpenPhysical.Biometrics.csproj" />
         <ProjectReference Include="../../src/OpenPhysical.Biometrics.Facial/OpenPhysical.Biometrics.Facial.csproj" />
         <PackageReference Include="BouncyCastle.Cryptography" Version="2.6.1" />

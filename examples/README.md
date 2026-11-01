@@ -13,6 +13,11 @@ assessment, extraction, and all four comparison combinations:
 dotnet run --project examples/OpenPhysical.Biometrics.Examples -c Release -- ../OpenPhysical.Biometrics.NBIS/tests/fixtures/sd04/f0005_03.gray8 ../OpenPhysical.Biometrics.NBIS/tests/fixtures/sd04/s0005_03.gray8 512 512
 ```
 
+The NBIS and NFIQ engines throw on native failures, so
+[ExampleEdge.cs](OpenPhysical.Biometrics.Examples/ExampleEdge.cs) is the single place
+that converts those exceptions to a failed `Result`. Every example reports failures
+through results and an exit code, not exceptions.
+
 [Program.cs](OpenPhysical.Biometrics.Examples/Program.cs) shows image/image,
 image/template, template/image, and template/template comparison, NFIQ 1 and NFIQ 2
 assessments, a JSON template round trip, and LINQ projections that materialize
@@ -28,8 +33,12 @@ files, source checksums, decoding receipt, and NIST data terms are retained in t
 [EnrollmentExample.cs](OpenPhysical.Biometrics.Examples/EnrollmentExample.cs) takes
 captures with acquisition metadata, assesses each attempt once, ranks candidates
 for review, selects two explicit fingers, and creates their fingerprint record.
-It then builds the CBEFF header and biometric content ready for signing. The
-unavailable-finger example records the acquisition station's explicit status.
+It then builds the CBEFF header and biometric content ready for signing. Each step
+returns a `Result`, so the first failure, such as an unpreparable capture or a record
+needing profile review, becomes a failed result with a message. The unavailable-finger
+example returns `FingerprintEnrollmentFinger.Unavailable`, a
+`Result<FingerprintEnrollmentFinger, FingerprintError>` carrying the acquisition
+station's explicit status.
 
 Registered product identifiers, equipment evidence, creator identity, credential
 identity, and validity dates come from the issuer. Passing them into the example
@@ -40,14 +49,18 @@ keeps the workflow suitable for a real enrollment station.
 [SignatureIntegration.cs](OpenPhysical.Biometrics.Examples/SignatureIntegration.cs)
 accepts the application's signing and verification providers. It waits for a
 consistent signature-block length, checks the verification findings required by
-its issuance policy, and returns bytes for the middleware's card transaction.
+its issuance policy, and returns bytes for the middleware's card transaction. A failed
+`PivError` result, including provider failure and cancellation, becomes a failed result;
+the `Maybe` record and verification in a successful signing result are checked before
+use.
 
 ## Read and authenticate a card reference
 
 [RecordReadingExample.cs](OpenPhysical.Biometrics.Examples/RecordReadingExample.cs)
-parses the original CBEFF bytes, checks the biometric profile, and asks the
-application's verifier to authenticate the exact issuer-signed content. The
-application supplies expected card identity and evaluates the separate findings.
+parses the original CBEFF bytes with `CbeffCodec.Parse`, checks the biometric profile,
+and asks the application's verifier to authenticate the exact issuer-signed content.
+The application supplies expected card identity and evaluates the separate findings.
+Structural, profile, and verifier failures each return a failed result.
 
 [Fingerprint workflows](../docs/FINGERPRINT-WORKFLOWS.md) continue from that
 reference to a comparison governed by the application's versioned matching policy.
@@ -55,9 +68,10 @@ reference to a comparison governed by the application's versioned matching polic
 ## Prepare an attended facial capture
 
 Register `AddFacialRecordPreparation()`, supply the captured sRGB pixels and
-`FacialAcquisitionMetadata`, and call `IFacialRecordPreparer.Prepare`. A prepared
-result contains the canonical INCITS 385 record. Review outcomes retain the
-acquisition evidence and typed findings for the capture station.
+`FacialAcquisitionMetadata`, and call `IFacialRecordPreparer.Prepare`, which returns
+`Result<FacialPreparationResult, FacialError>`. A prepared result holds the canonical
+INCITS 385 record in a `Maybe<FaceRecord>`. Review outcomes leave it empty and retain
+the acquisition evidence and typed findings for the capture station.
 
 JPEG 2000 encoding uses CoreJ2K.Skia. The facial preparation tests exercise actual
 encoding and record round trips; `PortraitPreparer` supplies source-supported Full Frontal pixels.
@@ -76,15 +90,17 @@ The example selects paired impressions `f0005_03` and `s0005_03`, then compares
 The paired impressions are accepted and the different-finger comparisons are
 rejected. Every decision retains the policy identifier.
 
-Apply your own versioned policy to each raw score with `policy.Evaluate(score)`.
-Reuse extracted templates through LINQ projections when making several
-comparisons. A canonical selected card view supports fluent conversion with
-`record.ToMatchingTemplate(FingerPosition.RightMiddle, viewNumber: 0)`.
+Create your own versioned policy with `FingerprintMatchingPolicy.Create` and apply it to
+each raw score with `policy.Evaluate(score)`; both return results. Reuse extracted
+templates through LINQ projections when making several comparisons. A canonical
+selected card view converts with
+`record.ToMatchingTemplate(FingerPosition.RightMiddle, viewNumber: 0)`, which returns a
+`Result<FingerprintTemplate, FingerprintError>`.
 
 ## Prepare and review a portrait
 
 [PortraitExample.cs](OpenPhysical.Biometrics.Examples/PortraitExample.cs) prepares an
 encoded capture, exposes review findings, and feeds the resulting pixels into the
-canonical facial-record writer. The caller supplies reviewed boundaries and
+canonical facial-record preparer, chaining the steps with `Ensure` and `Bind`. The caller supplies reviewed boundaries and
 camera/operator evidence. The [CLI examples](../docs/PIV-PORTRAITS.md) cover
 preview output, explicit face selection, reviewed geometry, and record creation.

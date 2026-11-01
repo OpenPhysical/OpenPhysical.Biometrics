@@ -94,6 +94,7 @@ using OpenPhysical.Biometrics.NBIS;
 using OpenPhysical.Biometrics.NFIQ1;
 using OpenPhysical.Biometrics.NFIQ2;
 using OpenPhysical.Biometrics.Piv;
+using Microsoft.Extensions.Logging.Abstractions;
 using System.Collections.Immutable;
 
 // Exercise native fingerprint processing before touching facial services.
@@ -110,22 +111,28 @@ if (nfiq2.Assess(capture.Pixels, 512, 512, 500).UnifiedQualityScore is < 0 or > 
 if (AppDomain.CurrentDomain.GetAssemblies().Any(a => a.GetName().Name!.Contains("Onnx"))) throw new InvalidOperationException("Fingerprint processing loaded ONNX.");
 var view = new FingerprintView(2, 0, 0, 80, [new OpenPhysical.Biometrics.Formats.Fingerprints.FingerprintMinutia(1, 10, 20, 30, 90)], []);
 var record = new FingerprintRecord(1, 1, 0x8001, 512, 512, 197, 197, [view]);
-var bytes = Incits378Codec.Write(record);
+var written = Incits378Codec.Write(record);
+if (written.IsFailure) throw new InvalidOperationException("Format write failed.");
+var bytes = written.Value;
 if (!Incits378Codec.Parse(bytes).IsSuccess) throw new InvalidOperationException("Format round trip failed.");
 if (!BiometricInspector.Inspect(bytes, DateTimeOffset.UtcNow).Structure.Diagnostics.IsEmpty) throw new InvalidOperationException("Inspection failed.");
-using var image = RgbImage.FromRgbBytes(new byte[32 * 32 * 3], 32, 32);
+var created = RgbImageBytes.FromRgbBytes(new byte[32 * 32 * 3], 32, 32);
+if (created.IsFailure) throw new InvalidOperationException("Image creation failed.");
+using var image = created.Value;
 using var png = new MemoryStream();
-image.SaveAsPng(png);
-using var restored = RgbImage.Load(png.ToArray());
+if (image.SaveAsPng(png).IsFailure) throw new InvalidOperationException("Image encoding failed.");
+var loaded = RgbImageDecoder.Load(png.ToArray());
+if (loaded.IsFailure) throw new InvalidOperationException("Image decoding failed.");
+using var restored = loaded.Value;
 if (restored.Width != 32 || restored.Height != 32) throw new InvalidOperationException("Image round trip failed.");
 // Use deterministic samples to exercise the actual packaged JPEG 2000 encoder.
 var portrait = new byte[480 * 640 * 3];
 new Random(42).NextBytes(portrait);
-var prepared = new FacialRecordPreparer().Prepare(portrait, 480, 640,
+var prepared = new FacialRecordPreparer(NullLogger<FacialRecordPreparer>.Instance).Prepare(portrait, 480, 640,
     new FacialAcquisitionMetadata(DateTimeOffset.UtcNow, 0, 2, true, true, 80));
-if (prepared.Status != FacialPreparationStatus.Prepared || prepared.Record is null)
+if (prepared.IsFailure || prepared.Value.Status != FacialPreparationStatus.Prepared || prepared.Value.Record.HasNoValue)
     throw new InvalidOperationException("Facial record preparation failed.");
-if (!PivBiometricProfile.Validate(prepared.Record).IsEmpty)
+if (!PivBiometricProfile.Validate(prepared.Value.Record.Value).IsEmpty)
     throw new InvalidOperationException("Prepared facial metadata failed its profile.");
 File.WriteAllBytes(args[1], bytes);
 Console.WriteLine("Isolated package workflows passed.");
@@ -162,18 +169,19 @@ Console.WriteLine("Isolated package workflows passed.");
     legacy.mkdir()
     (legacy / "Facial.csproj").write_text('<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net10.0</TargetFramework><ImplicitUsings>enable</ImplicitUsings><TreatWarningsAsErrors>true</TreatWarningsAsErrors></PropertyGroup><ItemGroup><PackageReference Include="OpenPhysical.Biometrics.Facial" Version="' + versions["OpenPhysical.Biometrics.Facial"] + '"/></ItemGroup></Project>')
     (legacy / "Program.cs").write_text(r'''using OpenPhysical.Biometrics.Facial;
+using Microsoft.Extensions.Logging.Abstractions;
 var resources = typeof(OpenPhysical.Biometrics.Onnx.MediaPipeModels).Assembly.GetManifestResourceNames();
 if (resources.Length != 2 || !resources.Contains(OpenPhysical.Biometrics.Onnx.MediaPipeModels.Detector) || !resources.Contains(OpenPhysical.Biometrics.Onnx.MediaPipeModels.Landmarks))
     throw new InvalidOperationException("The model package must contain exactly the selected MediaPipe assets.");
-using var service = new PortraitPreparer();
+using var service = new PortraitPreparer(NullLogger<PortraitPreparer>.Instance);
 var result = service.Prepare(File.ReadAllBytes(args[0]));
-if (result.Faces.Length != 1 || result.Faces[0].Landmarks.Length != 478)
+if (result.IsFailure || result.Value.Faces.Length != 1 || result.Value.Faces[0].Landmarks.Length != 478)
     throw new InvalidOperationException("Packaged MediaPipe detection failed.");
 Console.WriteLine("Isolated MediaPipe facial package workflow passed.");
 ''')
     (legacy / "model-provenance.json").write_text(json.dumps(provenance))
     run("dotnet", "restore", str(legacy / "Facial.csproj"), "--configfile", str(config))
     legacy_assets = json.loads((legacy / "obj/project.assets.json").read_text())["libraries"]
-    assert not any("SixLabors" in name or "ImageSharp" in name or "CSharpFunctionalExtensions" in name or "FaceONNX" in name for name in legacy_assets), "Optional facial dependencies must use the shared Skia backend."
+    assert not any("SixLabors" in name or "ImageSharp" in name or "FaceONNX" in name for name in legacy_assets), "Optional facial dependencies must use the shared Skia backend."
     run("dotnet", "run", "--project", str(legacy / "Facial.csproj"), "-c", "Release", "--no-restore", "--", str(ROOT / "tests/OpenPhysical.Biometrics.Facial.Tests/Fixtures/glenn.jpg"), str(legacy / "model-provenance.json"))
 print("Isolated library and CLI package checks passed.")

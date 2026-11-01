@@ -23,42 +23,59 @@ internal static class Sd04MatchingExample
             Console.Error.WriteLine(created.Error.Message);
             return 1;
         }
-        var policy = created.Value;
-
-        // This policy belongs to the supplied regression assortment. The paired
-        // impressions and known nonmates demonstrate an application's decision
-        // boundary while retaining the selected policy identity in every result.
-        var cases = new[]
+        foreach (var item in Cases(engine, id => images[id].Load()))
         {
-            (Image: images["s0005_03"], Expected: true),
-            (Image: images["f0070_10"], Expected: false),
-            (Image: images["f0003_10"], Expected: false),
-        }
-            .Select(item => (Capture: item.Image.Load(), item.Expected))
-            .ToImmutableArray();
-
-        // Materialize extraction once when templates will be reused. Image-based
-        // overloads perform their own extraction for the requested comparison.
-        var reusable = cases
-            .Select(item => (item.Capture, Template: engine.Extract(item.Capture), item.Expected))
-            .ToImmutableArray();
-        foreach (var item in reusable)
-        {
-            int[] scores =
-            [
-                engine.Match(item.Capture, reference),
-                engine.Match(item.Capture, referenceTemplate),
-                engine.Match(item.Template, reference),
-                engine.Match(item.Template, referenceTemplate),
-            ];
-            var results = scores.Select(policy.Evaluate).ToImmutableArray();
-            if (results.Any(result => result.IsFailure || result.Value.Accepted != item.Expected))
+            var accepted = Decide(engine, created.Value, reference, referenceTemplate, item);
+            if (accepted.IsFailure)
             {
-                Console.Error.WriteLine("The fixture comparison decision changed.");
+                Console.Error.WriteLine(accepted.Error);
                 return 1;
             }
-            Console.WriteLine($"Policy {policy.Identifier}: accepted={results[0].Value.Accepted}");
+            Console.WriteLine($"Policy {created.Value.Identifier}: accepted={accepted.Value}");
         }
         return 0;
+    }
+
+    // This policy belongs to the supplied regression assortment. The paired
+    // impressions and known nonmates demonstrate an application's decision
+    // boundary while retaining the selected policy identity in every result.
+    // Extraction is materialized once because the templates are reused below.
+    private static ImmutableArray<(
+        FingerprintImage Capture,
+        FingerprintTemplate Template,
+        bool Expected
+    )> Cases(IFingerprintEngine engine, Func<string, FingerprintImage> load) =>
+        new[]
+        {
+            (Id: "s0005_03", Expected: true),
+            (Id: "f0070_10", Expected: false),
+            (Id: "f0003_10", Expected: false),
+        }
+            .Select(item => (Capture: load(item.Id), item.Expected))
+            .Select(item => (item.Capture, Template: engine.Extract(item.Capture), item.Expected))
+            .ToImmutableArray();
+
+    // Image-based overloads perform their own extraction for the requested comparison.
+    private static CSharpFunctionalExtensions.Result<bool> Decide(
+        IFingerprintEngine engine,
+        FingerprintMatchingPolicy policy,
+        FingerprintImage reference,
+        FingerprintTemplate referenceTemplate,
+        (FingerprintImage Capture, FingerprintTemplate Template, bool Expected) item
+    )
+    {
+        int[] scores =
+        [
+            engine.Match(item.Capture, reference),
+            engine.Match(item.Capture, referenceTemplate),
+            engine.Match(item.Template, reference),
+            engine.Match(item.Template, referenceTemplate),
+        ];
+        var results = scores.Select(policy.Evaluate).ToImmutableArray();
+        return results.Any(result => result.IsFailure || result.Value.Accepted != item.Expected)
+            ? CSharpFunctionalExtensions.Result.Failure<bool>(
+                "The fixture comparison decision changed."
+            )
+            : results[0].Value.Accepted;
     }
 }

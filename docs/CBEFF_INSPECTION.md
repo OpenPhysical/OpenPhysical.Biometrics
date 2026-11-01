@@ -1,42 +1,58 @@
-# CBEFF Inspection Tool
+# CBEFF inspection
 
-The OpenPhysical.Biometrics tool includes a comprehensive CBEFF (Common Biometric Exchange Formats Framework) inspection command that allows you to analyze and extract data from CBEFF-formatted biometric files.
+`biotool inspect` and the `BiometricInspector` library API decode CBEFF (Common
+Biometric Exchange Formats Framework) objects, INCITS 378 fingerprint records, and
+INCITS 385 facial records. Both report structure with byte offsets and PIV profile
+findings.
 
 ## Features
 
-- **Decode and Display Structure**: Shows the complete CBEFF structure including header, biometric data block, and signature
-- **Format Recognition**: Automatically identifies INCITS 385 (facial image) and INCITS 378 (fingerprint) formats
-- **Hex Dump**: Optional raw hex display of data sections
-- **Data Extraction**: Extract the biometric data block to a separate file
-- **Signature Verification**: Verify CMS signatures on signed CBEFF objects (coming soon)
+- **Decode and display structure**: header, biometric data block, and signature block
+- **Format recognition**: identifies INCITS 385 (facial image) and INCITS 378 (fingerprint) formats
+- **Located diagnostics**: stable codes with byte offsets and lengths
+- **JSON output**: the same report the library supplies to middleware
 
-## Usage
-
-### Basic Inspection
+## Command line
 
 ```bash
-# Inspect a CBEFF file
-biometrics cbeff facial_image.bin
+# Inspect a raw record or CBEFF object
+biotool inspect facial_image.bin
 
-# Inspect with hex dump
-biometrics cbeff facial_image.bin --hex
+# Machine-readable output, with field contents only when explicitly requested
+biotool inspect fingerprint.bin --json --include-sensitive
+
+# Check validity dates against an explicit evaluation time
+biotool validate signed_cbeff.bin --at 2026-10-31T12:00:00.0000000+00:00
 ```
 
-### Extract Biometric Data
+## Library
 
-```bash
-# Extract the biometric data block (e.g., JPEG 2000 image)
-biometrics cbeff facial_image.bin --extract image.jp2
+Parsing returns a result rather than throwing. A success holds the immutable record
+and an `InspectionReport`. A failure holds a `FormatError` whose `Code` is stable and
+whose `Diagnostics` list the located problems, so a rejected record can still be
+explained.
 
-# Extract fingerprint minutiae data
-biometrics cbeff fingerprint.bin --extract minutiae.dat
-```
+```csharp
+using OpenPhysical.Biometrics.Formats.Cbeff;
+using OpenPhysical.Biometrics.Piv;
 
-### Verify Signatures
+var parsed = CbeffCodec.Parse(rawObject); // Result<ParsedRecord<CbeffRecord>, FormatError>
+if (parsed.IsFailure)
+{
+    foreach (var diagnostic in parsed.Error.Diagnostics)
+        Present(diagnostic.Code, diagnostic.Offset, diagnostic.Length);
+    return;
+}
 
-```bash
-# Verify signature with a specific certificate
-biometrics cbeff signed_cbeff.bin --verify --cert signer.crt
+foreach (var field in parsed.Value.Inspection.Fields)
+{
+    // Value is a Maybe<string>. It has a value only when
+    // InspectionOptions.IncludeSensitiveValues was set.
+    Present(field.Name, field.Offset, field.Length, field.Value.GetValueOrDefault("hidden"));
+}
+
+// BiometricInspector never fails; unparseable input yields a report with diagnostics.
+var report = BiometricInspector.Inspect(rawObject, evaluationTime);
 ```
 
 ## Output Format
@@ -60,17 +76,6 @@ The tool displays a hierarchical tree structure showing:
 - CMS signature presence and size
 - Signature type and structure
 
-## Examples with GSA ICAM Test Data
-
-```bash
-# Inspect Golden PIV facial image
-biometrics cbeff "/path/to/gsa-icam/cards/ICAM_Card_Objects/01_Golden_PIV/10 - Face Object"
-
-# Extract the JPEG 2000 facial image
-biometrics cbeff "/path/to/gsa-icam/cards/ICAM_Card_Objects/01_Golden_PIV/10 - Face Object" \
-  --extract golden_piv_face.jp2
-```
-
 ## Understanding the Output
 
 ### Security Options
@@ -92,21 +97,6 @@ biometrics cbeff "/path/to/gsa-icam/cards/ICAM_Card_Objects/01_Golden_PIV/10 - F
 - `0x0101/0x0008`: PIV Patron Format A
 - `0x0101/0x0009`: PIV Patron Format B
 
-## Integration with Other Tools
-
-The extracted biometric data can be used with other OpenPhysical.Biometrics commands:
-
-```bash
-# Extract facial image from CBEFF
-biometrics cbeff face_object.bin --extract face.jp2
-
-# Process the extracted image for PIV compliance
-biometrics process face.jp2 --output processed_face.jp2
-
-# Analyze quality of the extracted image
-biometrics quality --input face.jp2 --standard piv
-```
-
 ## Technical Details
 
 ### CBEFF Structure (per SP 800-76-2)
@@ -126,20 +116,17 @@ biometrics quality --input face.jp2 --standard piv
 - PIV facial images (INCITS 385)
 - PIV fingerprint templates (INCITS 378)
 - Empty fingerprint templates (SP 800-76-2 Section 4.4.3)
-- CMS signed CBEFF objects
+- CMS signed CBEFF objects (structure only; cryptographic verification is external)
 
-## Error Handling
+## Error handling
 
-The tool provides detailed error messages for common issues:
+Malformed input never throws. Each failure is a `FormatError` with located diagnostics
+for these common problems:
+
 - Invalid CBEFF header structure
 - Mismatched data lengths
 - Unknown biometric formats
 - Corrupted signature blocks
 
-## Future Enhancements
-
-- Full CMS signature verification with certificate chain validation
-- Support for additional biometric formats (iris, voice)
-- Batch processing of multiple CBEFF files
-- Export to JSON/XML for integration with other systems
-- Visual representation of facial/fingerprint data
+Signature verification belongs to the application's provider; see
+[signature integration](SIGNATURE-INTEGRATION.md).

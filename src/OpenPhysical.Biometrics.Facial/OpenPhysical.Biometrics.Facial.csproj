@@ -8,6 +8,7 @@
     </PropertyGroup>
     <ItemGroup>
         <InternalsVisibleTo Include="OpenPhysical.Biometrics.Facial.Tests" />
+        <PackageReference Include="CSharpFunctionalExtensions" Version="3.7.0" />
         <ProjectReference Include="../OpenPhysical.Biometrics.Onnx/OpenPhysical.Biometrics.Onnx.csproj" />
         <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.20.1" />
         <ProjectReference Include="../OpenPhysical.Biometrics.Piv/OpenPhysical.Biometrics.Piv.csproj" />

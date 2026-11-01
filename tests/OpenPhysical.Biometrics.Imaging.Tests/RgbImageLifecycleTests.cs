@@ -53,30 +53,10 @@ public sealed class RgbImageLifecycleTests
             Failed(image.BackgroundColor(Color.Red));
             Failed(image.DrawImage(other, Point.Empty));
             Failed(other.DrawImage(image, Point.Empty));
-            image
-                .SetPixel(0, 0, new(1))
-                .Should()
-                .Fail()
-                .Which.Code.Should()
-                .Be(ImagingErrorCodes.Disposed);
-            image
-                .SaveAsPng(stream)
-                .Should()
-                .Fail()
-                .Which.Code.Should()
-                .Be(ImagingErrorCodes.Disposed);
-            image
-                .SaveAsJpeg(stream)
-                .Should()
-                .Fail()
-                .Which.Code.Should()
-                .Be(ImagingErrorCodes.Disposed);
-            image
-                .SaveAsTiff(stream)
-                .Should()
-                .Fail()
-                .Which.Code.Should()
-                .Be(ImagingErrorCodes.Disposed);
+            Disposed(image.SetPixel(0, 0, new(1)));
+            Disposed(image.SaveAsPng(stream));
+            Disposed(image.SaveAsJpeg(stream));
+            Disposed(image.SaveAsTiff(stream));
             stream.Length.Should().Be(0);
         }
     }
@@ -115,5 +95,8 @@ public sealed class RgbImageLifecycleTests
     }
 
     private static void Failed<T>(Result<T, ImagingError> result) =>
+        result.Should().Fail().Which.Code.Should().Be(ImagingErrorCodes.Disposed);
+
+    private static void Disposed(UnitResult<ImagingError> result) =>
         result.Should().Fail().Which.Code.Should().Be(ImagingErrorCodes.Disposed);
 }

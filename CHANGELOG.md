@@ -4,6 +4,17 @@ Releases follow Semantic Versioning. Version 3 is the .NET 10 consolidation rele
 
 ## Unreleased
 
+- **Breaking:** every library now returns `Result<T, TError>`, `UnitResult<TError>`, or `Maybe<T>` instead of throwing or returning null. Errors are `ImagingError`, `FormatError`, `PivError`, `FingerprintError`, and `FacialError`, each with a stable `Code` from its `*ErrorCodes` class.
+- **Breaking:** constructors that validated input are now `Create` factories returning results, including `FingerprintCapture.Create`, `FingerprintMatchingPolicy.Create`, `PivFingerprintRecordMetadata.Create`, `BiometricIdentity.Create`, `CbeffHeader.Create`, and `RgbImage.Create`.
+- **Breaking:** `Incits378Codec`, `Incits385Codec`, and `CbeffCodec` `Parse` return `Result<ParsedRecord<T>, FormatError>`, with failure diagnostics on `FormatError.Diagnostics`, and `Write` returns `Result<byte[], FormatError>`. `InspectionField.Value` is `Maybe<string>`.
+- **Breaking:** `BiometricSignatureWorkflow.SignAsync` and `VerifyAsync` return `Result<..., PivError>`. Provider failures and cancellation surface as `SigningProviderFailed`, `VerificationProviderFailed`, and `Cancelled`. The record and verification on a signing result are `Maybe` values.
+- **Breaking:** `PivFingerprintEnrollmentService.Prepare`, `RankCandidates`, and `CreateRecord`, `FingerprintComparisonService.Compare`, `FingerprintRecordAdapter.ToMatchingTemplate`, `FacialRecordPreparer.Prepare`, and `PortraitPreparer.Prepare` return results. Their optional fields are `Maybe` values.
+- **Breaking:** `RgbImage.Load` is now `RgbImageDecoder.Load`, and image transforms and encoders return results. The `RgbImage` indexer, `Mutate`, and `ProcessPixelRows` are removed; use `GetPixel` and `SetPixel`.
+- BouncyCastle now replaces `System.Security.Cryptography` internally. This is not a public API change.
+- Ship a single `LICENSE` file that includes the MediaPipe combination exception.
+- Migrate tests to AwesomeAssertions.
+- Limit every `.cs` file to 250 lines, every type to 200 lines, and every method to 40 lines, enforced in CI by `scripts/check-file-size.py`.
+- Update the README, API guide, workflow guides, and examples to the Result-based API.
 - Write baseline TIFF resolution tags with the documented 72 ppi display default.
 - Validate signature request lengths against the canonical CBEFF header size.
 - Pin CI to the NFIQ revision with the shared runtime catalog.

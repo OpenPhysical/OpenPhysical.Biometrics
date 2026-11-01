@@ -22,6 +22,27 @@ reference tests. The independent NFIQ repository owns NFIQ1/NFIQ2 native adaptat
 model provenance, and reference tests. Their packages provide explicit runtime
 assets and operational logging.
 
+## Error handling and size rules
+
+The libraries use no exceptions and no nulls in their public APIs. Operations return
+`Result<T, TError>` or `UnitResult<TError>` from CSharpFunctionalExtensions, and
+optional values use `Maybe<T>`. Each library owns one error record with a stable
+`Code`: `ImagingError`, `FormatError`, `PivError`, `FingerprintError`, and
+`FacialError`. Codes are constants in the matching `*ErrorCodes` class, and callers
+branch on them rather than on message text. Callers compose steps with `Bind` and
+`Map`, so the first failure short-circuits.
+
+Each project keeps a single edge helper where code that can throw meets the
+Result-based workflow, for example `ProviderEdge` in `.Piv` for caller-supplied signing
+services and `FingerprintEdge` in `.Fingerprints` for the native NBIS engine. The
+helper converts exceptions and cancellation to failed results with stable codes. All
+other code stays free of `try`/`catch`.
+
+Files stay small enough to read in a slice of a model's context window. Every `.cs`
+file is limited to 250 lines, every type to 200 lines, and every method to 40 lines.
+Split oversized code by responsibility.
+`python scripts/check-file-size.py` enforces all of these limits and runs in CI.
+
 ## Open source middleware ownership
 
 The current OpenPhysical.Net solution contains CardEdge, CardManagement,

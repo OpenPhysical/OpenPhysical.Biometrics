@@ -9,12 +9,40 @@ Implement `IBiometricSignatureProvider.SignAsync` and
 Requests own their bytes and carry the expected credential identity and
 `BiometricSignatureRequirements`. Providers receive cancellation for external work.
 
+The provider interfaces keep their simple task-returning signatures, so a provider may
+throw. The workflow is the single edge that handles this. An exception from a signing
+provider becomes a failed `PivError` with code `SigningProviderFailed`, and one from a
+verifier becomes `VerificationProviderFailed`. A cancelled token, or an
+`OperationCanceledException`, becomes `Cancelled`. The workflow never lets a provider
+exception escape, and it checks the token between signing attempts.
+
 ## Issuance
 
 Prepare a canonical fingerprint or facial record, encode it, and create a
 `CbeffRecord` with its identity, validity, format, and acquisition metadata. Pass
 that record, expected identity, and both providers to
-`BiometricSignatureWorkflow.SignAsync`.
+`BiometricSignatureWorkflow.SignAsync`, which returns
+`Task<Result<BiometricSigningResult, PivError>>`.
+
+```csharp
+var signing = await BiometricSignatureWorkflow.SignAsync(
+    record, identity, signer, verifier, cancellationToken);
+if (signing.IsFailure)
+{
+    // SigningProviderFailed, VerificationProviderFailed, Cancelled,
+    // HeaderIdentityMismatch, SignatureLength, or another PivErrorCodes value.
+    return Present(signing.Error.Code);
+}
+
+var outcome = signing.Value;
+if (outcome.Record.HasNoValue || outcome.Verification.HasNoValue)
+    return Present(outcome.Failure); // SignatureFailure, such as LengthDidNotConverge
+
+var objectBytes = CbeffCodec.Write(outcome.Record.Value); // Result<byte[], FormatError>
+```
+
+`BiometricSigningResult.Record` and `.Verification` are `Maybe` values, present only
+when the object completed.
 
 The signature-block length is part of the signed header. The workflow signs again
 when the returned block has a different size, retaining the exact submitted bytes
@@ -28,8 +56,10 @@ shows this decision explicitly.
 
 ## Reading and verification
 
-Parse the original CBEFF bytes and retain the resulting immutable record. Call
-`VerifyAsync` with expected identity obtained from the application's card context.
+Parse the original CBEFF bytes with `CbeffCodec.Parse`, which returns
+`Result<ParsedRecord<CbeffRecord>, FormatError>`, and retain the resulting immutable
+record. Call `VerifyAsync` with expected identity obtained from the application's
+card context. It returns `Result<BiometricVerificationReport, PivError>`.
 The verifier receives the original signed header and record, together with the
 associated detached block. Its authenticated identity attributes are checked
 against both the expected identity and the header FASC-N.

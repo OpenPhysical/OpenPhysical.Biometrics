@@ -10,11 +10,10 @@
         <Description>Structured biometric record inspection, PIV profile validation, fingerprint template conversion, and MediaPipe portrait preparation.</Description>
     </PropertyGroup>
     <ItemGroup>
-        <Compile Include="Program.cs" />
-        <Compile Include="Commands/FacePreparationCommand.cs" />
+        <Compile Include="*.cs" />
+        <Compile Include="Commands/*.cs" />
+        <PackageReference Include="CSharpFunctionalExtensions" Version="3.7.0" />
         <ProjectReference Include="../OpenPhysical.Biometrics.Facial/OpenPhysical.Biometrics.Facial.csproj" />
-        <Compile Include="Commands/BiometricInspectionCommand.cs" />
-        <Compile Include="Commands/FingerprintConversionCommand.cs" />
         <ProjectReference Include="../OpenPhysical.Biometrics.Fingerprints/OpenPhysical.Biometrics.Fingerprints.csproj" />
         <ProjectReference Include="../OpenPhysical.Biometrics.Piv/OpenPhysical.Biometrics.Piv.csproj" />
     </ItemGroup>

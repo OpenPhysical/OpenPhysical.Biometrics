@@ -19,17 +19,19 @@ internal static class PivEnrollmentRecordBuilder
     ) =>
         CheckSelection(primary, secondary, metadata)
             .Bind(() => CheckCaptures(primary, secondary, metadata))
-            .Map(() =>
-                new FingerprintRecord(
-                    metadata.ProductOwner,
-                    metadata.ProductType,
-                    (ushort)(0x8000 | metadata.EquipmentId),
-                    metadata.Width,
-                    metadata.Height,
-                    FingerprintGeometry.NominalPixelsPerCentimeter,
-                    FingerprintGeometry.NominalPixelsPerCentimeter,
-                    [CreateView(primary), CreateView(secondary)]
-                )
+            .Bind(() => CreateView(primary))
+            .Bind(first =>
+                CreateView(secondary)
+                    .Map(second => new FingerprintRecord(
+                        metadata.ProductOwner,
+                        metadata.ProductType,
+                        (ushort)(0x8000 | metadata.EquipmentId),
+                        metadata.Width,
+                        metadata.Height,
+                        FingerprintGeometry.NominalPixelsPerCentimeter,
+                        FingerprintGeometry.NominalPixelsPerCentimeter,
+                        [first, second]
+                    ))
             );
 
     private static UnitResult<FingerprintError> CheckSelection(
@@ -65,10 +67,7 @@ internal static class PivEnrollmentRecordBuilder
         PivFingerprintRecordMetadata metadata
     )
     {
-        var captures = new[] { primary.Capture, secondary.Capture }
-            .Where(capture => capture.HasValue)
-            .Select(capture => capture.Value)
-            .ToArray();
+        var captures = new[] { primary.Capture, secondary.Capture }.Choose().ToArray();
         return FingerprintChecks
             .Require(
                 captures.Length == 0
@@ -93,31 +92,55 @@ internal static class PivEnrollmentRecordBuilder
 
     // The selection is stable across runs. Coordinates are converted against each source
     // image, before the record header adopts the largest dimensions of the two source images.
-    private static FingerprintView CreateView(FingerprintEnrollmentFinger selection) =>
+    private static Result<FingerprintView, FingerprintError> CreateView(
+        FingerprintEnrollmentFinger selection
+    ) =>
         selection.Template.Match(
             template => CreateAvailableView(selection, template),
             () =>
-                new FingerprintView(
-                    (byte)selection.Finger,
-                    0,
-                    0,
-                    selection.Availability == FingerprintAvailability.PermanentlyUnusable
-                        ? (byte)254
-                        : (byte)255,
-                    [],
-                    []
+                Result.Success<FingerprintView, FingerprintError>(
+                    new FingerprintView(
+                        (byte)selection.Finger,
+                        0,
+                        0,
+                        selection.Availability == FingerprintAvailability.PermanentlyUnusable
+                            ? (byte)254
+                            : (byte)255,
+                        [],
+                        []
+                    )
                 )
         );
 
-    private static FingerprintView CreateAvailableView(
+    private static Result<FingerprintView, FingerprintError> CreateAvailableView(
         FingerprintEnrollmentFinger selection,
         NBIS.FingerprintTemplate template
+    ) =>
+        selection
+            .Capture.ToResult(MissingEvidence())
+            .Bind(capture =>
+                selection
+                    .Quality.ToResult(MissingEvidence())
+                    .Map(quality => BuildAvailableView(selection, template, capture, quality))
+            );
+
+    private static FingerprintError MissingEvidence() =>
+        new(
+            FingerprintErrorCodes.UnavailableCandidate,
+            "An available finger requires its capture, template, and quality assessment."
+        );
+
+    private static FingerprintView BuildAvailableView(
+        FingerprintEnrollmentFinger selection,
+        NBIS.FingerprintTemplate template,
+        FingerprintCapture capture,
+        FingerprintQualityAssessment quality
     ) =>
         new(
             (byte)selection.Finger,
             0,
-            (byte)selection.Capture.Value.Impression,
-            selection.Quality.Value.PivQuality,
+            (byte)capture.Impression,
+            quality.PivQuality,
             template
                 .Minutiae.OrderByDescending(point => point.Quality)
                 .ThenBy(point => point.X)

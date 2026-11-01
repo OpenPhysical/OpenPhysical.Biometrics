@@ -12,7 +12,7 @@ image contains one byte per pixel, with black at zero and white at 255. Supply
 the original dimensions and the explicit 500 ppi resolution.
 
 ```csharp
-var capture = new FingerprintCapture(
+var created = FingerprintCapture.Create(
     grayscalePixels,
     width,
     height,
@@ -22,16 +22,25 @@ var capture = new FingerprintCapture(
     FingerprintImpression.PlainLiveScan,
     equipmentId,
     equipmentAppendixFCertified: deviceHasAppendixFCertification);
+if (created.IsFailure)
+    return Present(created.Error.Code); // for example InvalidCapture or InvalidEquipment
 
 // Quality belongs to the parent image. The provider reports the original
 // five-level NFIQ 1 class and retains its algorithm or model identity.
 var enrollment = new PivFingerprintEnrollmentService(engine, qualityProvider);
-var prepared = enrollment.Prepare(capture);
-if (prepared.ReacquisitionRecommended)
+var prepared = enrollment.Prepare(created.Value);
+if (prepared.IsFailure)
+    return Present(prepared.Error.Code); // for example QualityEngineFailed or EngineFailed
+
+if (prepared.Value.ReacquisitionRecommended)
 {
     // Ask the operator for another capture before choosing the final attempt.
 }
 ```
+
+`FingerprintCapture.Create` copies the pixels, so the caller may clear its buffer
+afterward. Every failure is a `FingerprintError`; branch on its `Code` from
+`FingerprintErrorCodes`.
 
 `IFingerprintQualityProvider` is the quality-engine integration point. Its
 `FingerprintQualityAssessment` preserves the NFIQ 1 class and optional confidence,
@@ -45,25 +54,35 @@ and inspection inexpensive.
 
 ```csharp
 var candidates = captures.Select(enrollment.Prepare).ToImmutableArray();
+if (candidates.Any(candidate => candidate.IsFailure))
+    return Present("A capture could not be prepared.");
+
 var ranked = PivFingerprintEnrollmentService.RankCandidates(
-    candidates,
+    candidates.Select(candidate => candidate.Value),
     preferLeftHand: holderPrefersLeftHand);
+if (ranked.IsFailure)
+    return Present(ranked.Error.Code); // UnavailableCandidate
 
 // The operator confirms the final pair using the ranked assessments and the
 // holder's ability to present each finger to the deployed readers.
-var primary = ranked[0];
-var secondary = ranked[1];
-var record = enrollment.CreateRecord(
-    primary,
-    secondary,
-    new PivFingerprintRecordMetadata(
+var primary = ranked.Value[0];
+var secondary = ranked.Value[1];
+var record = PivFingerprintRecordMetadata
+    .Create(
         registeredProductOwner,
         registeredProductType,
         equipmentId,
         maximumOriginalWidth,
         maximumOriginalHeight,
-        equipmentAppendixFCertified: deviceHasAppendixFCertification));
-var fingerprintRecordBytes = Incits378Codec.Write(record);
+        equipmentAppendixFCertified: deviceHasAppendixFCertification)
+    .Bind(metadata => enrollment.CreateRecord(primary, secondary, metadata));
+if (record.IsFailure)
+    return Present(record.Error.Code); // for example DuplicateFingers or RecordDimensions
+
+// Writing is a format operation, so its failure is a FormatError.
+var fingerprintRecordBytes = Incits378Codec.Write(record.Value);
+if (fingerprintRecordBytes.IsFailure)
+    return Present(fingerprintRecordBytes.Error.Code);
 ```
 
 The ranker keeps the best NFIQ 1 attempt for each finger, preferring more minutiae
@@ -75,7 +94,9 @@ The header uses the maximum width and height of the original captures. Minutia
 coordinates continue to describe each original image.
 
 For an unavailable finger, use `FingerprintEnrollmentFinger.Unavailable` with
-`TemporarilyUnusable` or `PermanentlyUnusable`. These become PIV quality codes
+`TemporarilyUnusable` or `PermanentlyUnusable`; it returns a
+`Result<FingerprintEnrollmentFinger, FingerprintError>`. For such a finger the
+`Capture`, `Template`, and `Quality` properties are `Maybe` values with no value. These become PIV quality codes
 255 and 254 respectively, with an empty minutia collection. Supply explicit
 record geometry when both fingers are unavailable.
 
@@ -96,14 +117,19 @@ var result = comparison.Compare(
     FingerPosition.RightIndex,
     viewNumber: 0,
     applicationMatchingPolicy);
+if (result.IsFailure)
+    return Present(result.Error.Code); // for example FingerMismatch or ViewSelection
 
 // The middleware combines this decision with its signature, identity, and card
 // checks. It keeps the raw score in the authorized workflow result.
-var accepted = result.Accepted;
+var accepted = result.Value.Accepted;
 ```
 
-`FingerprintRecordAdapter.ToMatchingTemplate` makes canonical records reusable
-with NBIS's image/template and template/template overloads. Conversion preserves
+`FingerprintRecordAdapter.ToMatchingTemplate` returns a
+`Result<FingerprintTemplate, FingerprintError>` that makes canonical records reusable
+with NBIS's image/template and template/template overloads. It fails with
+`ViewSelection`, `FingerUnavailable`, or `UnsupportedResolution` when the selection
+or record cannot support matching. Conversion preserves
 the 197 pixels/cm nominal 500 ppi scale, reverses the ridge direction by 180
 degrees, and maps top-origin image rows to NBIS's height-minus-row coordinates.
 
@@ -126,7 +152,9 @@ The example selects paired impressions `f0005_03` and `s0005_03`, then compares
 The paired impressions are accepted and the different-finger comparisons are
 rejected. Every decision retains the policy identifier.
 
-Apply your own versioned policy to each raw score with `policy.Evaluate(score)`.
-Reuse extracted templates through LINQ projections when making several
-comparisons. A canonical selected card view supports fluent conversion with
-`record.ToMatchingTemplate(FingerPosition.RightMiddle, viewNumber: 0)`.
+Create your own versioned policy with `FingerprintMatchingPolicy.Create(identifier,
+minimumScore)` and apply it to each raw score with `policy.Evaluate(score)`; both
+return results. Reuse extracted templates through LINQ projections when making several
+comparisons. A canonical selected card view converts with
+`record.ToMatchingTemplate(FingerPosition.RightMiddle, viewNumber: 0)`, and the
+resulting `Result` composes with `Bind` and `Map`.

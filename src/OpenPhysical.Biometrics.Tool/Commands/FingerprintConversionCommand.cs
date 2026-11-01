@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 namespace OpenPhysical.Biometrics.Tool.Commands;
 
-using System.Globalization;
+using CSharpFunctionalExtensions;
 using OpenPhysical.Biometrics.Fingerprints;
 using OpenPhysical.Biometrics.Formats.Fingerprints;
 using OpenPhysical.Biometrics.NBIS;
@@ -10,81 +10,61 @@ using OpenPhysical.Biometrics.NBIS;
 // coordinate conversion have one implementation across every entry point.
 internal static class FingerprintConversionCommand
 {
-    private const string FailureMessage =
-        "Fingerprint conversion failed. Check the raw FMR record, selected finger/view, resolution, and output availability.";
+    private const long InputLimit = 1_000_000;
 
-    internal static int Run(string[] args)
-    {
-        byte[]? bytes = null;
-        try
-        {
-            if (args.Length != 6)
-                throw new ArgumentException("Supply input, output, finger, and view.");
-            var options = new Dictionary<string, byte>(StringComparer.Ordinal);
-            for (var i = 2; i < args.Length; i += 2)
-            {
-                if (
-                    args[i] is not ("--finger" or "--view")
-                    || !byte.TryParse(
-                        args[i + 1],
-                        NumberStyles.None,
-                        CultureInfo.InvariantCulture,
-                        out var value
-                    )
-                    || !options.TryAdd(args[i], value)
+    internal static Result<CommandOutcome, ToolError> Run(string[] args) =>
+        ConversionArguments.Parse(args).Bind(Convert);
+
+    private static Result<CommandOutcome, ToolError> Convert(ConversionArguments arguments) =>
+        ToolEdge
+            .Try(() => new FileInfo(arguments.Input).Length, ToolErrors.ConversionFailed())
+            .Ensure(length => length <= InputLimit, ToolErrors.ConversionFailed())
+            .Bind(_ =>
+                ToolEdge.Try(
+                    () => File.ReadAllBytes(arguments.Input),
+                    ToolErrors.ConversionFailed()
                 )
-                    throw new ArgumentException("Invalid or duplicate selection option.");
-            }
-            if (
-                !options.TryGetValue("--finger", out var finger)
-                || !options.TryGetValue("--view", out var view)
             )
-                throw new ArgumentException("Select both finger and view.");
-            if (new FileInfo(args[0]).Length > 1_000_000)
-                throw new ArgumentException("The fingerprint record exceeds the input limit.");
-            bytes = File.ReadAllBytes(args[0]);
-            var parsed = Incits378Codec.Parse(bytes);
-            if (parsed.IsFailure)
-            {
-                foreach (var diagnostic in parsed.Error.Diagnostics)
-                    Console.Error.WriteLine(
+            .Bind(bytes => SensitiveBytes.With(bytes, buffer => Project(buffer, arguments)))
+            .Bind(json => Write(arguments.Output, json));
+
+    private static Result<string, ToolError> Project(byte[] bytes, ConversionArguments arguments)
+    {
+        var parsed = Incits378Codec.Parse(bytes);
+        if (parsed.IsFailure)
+            return ToolErrors
+                .InvalidFingerprintRecord(
+                    parsed.Error.Diagnostics.Select(diagnostic =>
                         $"{diagnostic.Code} at byte {diagnostic.Offset}, length {diagnostic.Length}"
-                    );
-                return 1;
-            }
-            var template = parsed.Value.Record.ToMatchingTemplate((FingerPosition)finger, view);
-            if (template.IsFailure)
-            {
-                Console.Error.WriteLine(FailureMessage);
-                return 1;
-            }
-            // CreateNew protects an existing template if the output path is reused.
-            using var stream = new FileStream(
-                args[1],
-                FileMode.CreateNew,
-                FileAccess.Write,
-                FileShare.None
+                    )
+                )
+                .Fail<string>();
+        return parsed
+            .Value.Record.ToMatchingTemplate((FingerPosition)arguments.Finger, arguments.View)
+            .MapError(_ => ToolErrors.ConversionFailed())
+            .Bind(template =>
+                ToolEdge.Try(
+                    () => FingerprintTemplateJson.Serialize(template),
+                    ToolErrors.ConversionFailed()
+                )
             );
-            using var writer = new StreamWriter(stream);
-            writer.Write(FingerprintTemplateJson.Serialize(template.Value));
-            return 0;
-        }
-        catch (Exception error)
-            when (error
-                    is ArgumentException
-                        or IOException
-                        or UnauthorizedAccessException
-                        or InvalidOperationException
-                        or NotSupportedException
-            )
-        {
-            Console.Error.WriteLine(FailureMessage);
-            return 1;
-        }
-        finally
-        {
-            if (bytes is not null)
-                Array.Clear(bytes);
-        }
     }
+
+    // CreateNew protects an existing template if the output path is reused.
+    private static Result<CommandOutcome, ToolError> Write(string output, string json) =>
+        ToolEdge.Try(
+            () =>
+            {
+                using var stream = new FileStream(
+                    output,
+                    FileMode.CreateNew,
+                    FileAccess.Write,
+                    FileShare.None
+                );
+                using var writer = new StreamWriter(stream);
+                writer.Write(json);
+                return CommandOutcome.Of(0);
+            },
+            ToolErrors.ConversionFailed()
+        );
 }

@@ -87,15 +87,24 @@ public sealed class PivFingerprintEnrollmentService
         prepared
             .GroupBy(candidate => candidate.Finger)
             .Select(group =>
-                group
-                    .OrderBy(candidate => candidate.Quality.Value.Nfiq1)
-                    .ThenByDescending(candidate => candidate.Template.Value.Minutiae.Length)
-                    .ThenBy(candidate => candidate.Capture.Value.CapturedAt)
-                    .First()
+                group.OrderBy(Nfiq1).ThenByDescending(MinutiaeCount).ThenBy(CapturedAt).First()
             )
-            .OrderBy(candidate => candidate.Quality.Value.Nfiq1)
+            .OrderBy(Nfiq1)
             .ThenBy(candidate => Preference(candidate.Finger, preferLeftHand))
             .ToImmutableArray();
+
+    // Prepared candidates always carry all three values; the defaults only order any other
+    // finger last instead of failing.
+    private static int Nfiq1(FingerprintEnrollmentFinger finger) =>
+        finger.Quality.Select(quality => quality.Nfiq1).GetValueOrDefault(int.MaxValue);
+
+    private static int MinutiaeCount(FingerprintEnrollmentFinger finger) =>
+        finger.Template.Select(template => template.Minutiae.Length).GetValueOrDefault(0);
+
+    private static DateTimeOffset CapturedAt(FingerprintEnrollmentFinger finger) =>
+        finger
+            .Capture.Select(capture => capture.CapturedAt)
+            .GetValueOrDefault(DateTimeOffset.MaxValue);
 
     private static int Preference(FingerPosition finger, bool left)
     {
