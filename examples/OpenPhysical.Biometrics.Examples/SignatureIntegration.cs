@@ -25,7 +25,7 @@ internal static class SignatureIntegration
         );
         if (result.Record is not { } completed)
             throw new InvalidOperationException(
-                "The signing service did not complete a consistent object."
+                "The signing service returned an incomplete or inconsistent object."
             );
 
         // Integrity and identity binding were checked by the attachment workflow.
@@ -36,7 +36,7 @@ internal static class SignatureIntegration
             findings.Trust != ValidationStatus.Passed
             || findings.Revocation != ValidationStatus.Passed
         )
-            throw new InvalidOperationException("The issuer's trust policy was not satisfied.");
+            throw new InvalidOperationException("The issuer's trust policy rejected the result.");
         return CbeffCodec.Write(completed);
     }
 }

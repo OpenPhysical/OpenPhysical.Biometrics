@@ -5,7 +5,6 @@
         <IsPackable>true</IsPackable>
         <Description>Biometric records, structured inspection, PIV preparation, and fingerprint processing for .NET.</Description>
         <PackageReadmeFile>README.md</PackageReadmeFile>
-        <PackageLicenseExpression>GPL-2.0-or-later</PackageLicenseExpression>
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
         <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     </PropertyGroup>

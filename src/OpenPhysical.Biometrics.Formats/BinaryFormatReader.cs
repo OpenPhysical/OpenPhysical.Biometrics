@@ -9,8 +9,8 @@ internal sealed class FormatReadException(FormatDiagnostic diagnostic)
     internal FormatDiagnostic Diagnostic { get; } = diagnostic;
 }
 
-// Each nested reader sees only its declared block, so a malformed child cannot
-// borrow bytes from the next record. Offsets still refer to the original buffer.
+// Each nested reader is bounded by its declared block.
+// Offsets refer to the original buffer.
 internal ref struct BinaryFormatReader(
     ReadOnlySpan<byte> data,
     int origin,

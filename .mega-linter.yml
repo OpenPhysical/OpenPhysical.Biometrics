@@ -20,5 +20,5 @@ DISABLE:
 # - SPELL # Uncomment to disable checks of spelling mistakes
 
 SHOW_ELAPSED_TIME: true
-# Uncomment if you want MegaLinter to detect errors but not block CI to pass
+# Uncomment to report MegaLinter findings while allowing CI to continue
 # DISABLE_ERRORS: true

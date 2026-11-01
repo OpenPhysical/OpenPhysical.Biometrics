@@ -7,7 +7,7 @@ set -e
 
 # Check if ImageMagick is installed
 if ! command -v convert &> /dev/null; then
-    echo "Error: ImageMagick is required but not installed."
+    echo "Error: Install ImageMagick to run this test."
     echo "Install with: brew install imagemagick"
     exit 1
 fi

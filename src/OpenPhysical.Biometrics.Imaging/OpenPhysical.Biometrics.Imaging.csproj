@@ -10,13 +10,9 @@
     <ItemGroup>
         <PackageReference Include="SkiaSharp" Version="3.119.4" />
         <PackageReference Include="SkiaSharp.NativeAssets.Linux.NoDependencies" Version="3.119.4" />
-        <InternalsVisibleTo Include="OpenPhysical.Biometrics.Infrastructure" />
         <InternalsVisibleTo Include="OpenPhysical.Biometrics.Facial" />
         <InternalsVisibleTo Include="OpenPhysical.Biometrics.Tool" />
-        <InternalsVisibleTo Include="OpenPhysical.Biometrics.Tool.Compatibility" />
-        <InternalsVisibleTo Include="OpenPhysical.Biometrics.Tool.Tests" />
         <InternalsVisibleTo Include="biotool" />
-        <InternalsVisibleTo Include="biotool-compat" />
         <InternalsVisibleTo Include="OpenPhysical.Biometrics.Imaging.Tests" />
     </ItemGroup>
 </Project>

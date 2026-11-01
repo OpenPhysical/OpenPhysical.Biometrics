@@ -27,7 +27,7 @@ public sealed record FaceInformation(
 /// <param name="Y">Vertical image coordinate.</param>
 public sealed record FaceFeaturePoint(byte Type, byte Identifier, ushort X, ushort Y);
 
-/// <summary>Describes the encoded face image without decoding its pixels.</summary>
+/// <summary>Describes the encoded face image metadata.</summary>
 /// <param name="FaceImageType">Encoded facial image type.</param>
 /// <param name="ImageDataType">Zero for JPEG or one for JPEG 2000.</param>
 /// <param name="Width">Image width in pixels.</param>

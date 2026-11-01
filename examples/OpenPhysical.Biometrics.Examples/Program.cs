@@ -31,7 +31,7 @@ try
     using var nfiq2 = new Nfiq2Engine();
 
     // Materialize each expensive projection once. Reusing the resulting arrays
-    // then reuses the assessments and minutiae rather than rerunning extraction.
+    // then reuses the assessments and extracted minutiae.
     var firstQuality = captures
         .Select(image => nfiq1.Assess(image.Pixels, image.Width, image.Height, image.DotsPerInch))
         .ToImmutableArray();
@@ -90,7 +90,7 @@ catch (Exception error)
     )
 {
     Console.Error.WriteLine(
-        "The example could not complete. Check input geometry and native runtime installation."
+        "The workflow failed. Check input geometry and native runtime installation."
     );
     return 1;
 }

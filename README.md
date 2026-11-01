@@ -24,10 +24,10 @@ The libraries target **.NET 10**.
 - **OpenPhysical.Biometrics.Fingerprints** connects NIST NBIS extraction/matching and
   NFIQ 1 quality assessment to fingerprint enrollment and comparison.
 - **OpenPhysical.Biometrics.Facial** prepares attended sRGB captures as JPEG 2000
-  facial records while preserving their geometry.
+  facial records and prepares Full Frontal portraits using MediaPipe landmarks.
 - **OpenPhysical.Biometrics.Imaging** provides owned image buffers and Skia-backed
   decoding, encoding, and transforms.
-- **OpenPhysical.Biometrics.Tool** installs `biotool` for text/JSON inspection and selected-view template conversion.
+- **OpenPhysical.Biometrics.Tool** installs `biotool` for portrait preparation, text/JSON inspection, and selected-view template conversion.
 
 [NIST NBIS bindings](https://github.com/OpenPhysical/OpenPhysical.Biometrics.NBIS)
 provide MINDTCT extraction and Bozorth3 comparison. The independently versioned
@@ -173,8 +173,7 @@ reproduction commands. The [architecture guide](docs/ARCHITECTURE.md) explains p
 OpenPhysical.Middleware/Pivantra migration sequence.
 
 The [beta release guide](docs/RELEASING.md) describes the signed tags, complete
-package artifacts, and publication order. The [migration guide](docs/MIGRATING-TO-3.md) maps the previous projects and APIs to
-the major-release packages and the explicit compatibility solution.
+package artifacts, and publication order.
 
 ## Licensing and contributions
 
@@ -182,3 +181,7 @@ First-party code is available under GPL v2 or later and separately negotiated
 commercial terms. Dependency notices preserve their applicable licenses. See
 [commercial licensing](COMMERCIAL-LICENSING.md), [contribution policy](CONTRIBUTING.md),
 [Bounded Contribution Policy](CODE_OF_CONDUCT.md), and [security reporting](SECURITY.md).
+
+## Prepare a PIV portrait
+
+Use `biotool face prepare capture.jpg --output portrait.jp2 --preview portrait.png` to prepare a 480 × 640 facial image. MediaPipe locates the facial features, and the library selects a Full Frontal crop from the source pixels. Reviewed head boundaries and acquisition metadata support creation of the INCITS 385 record. See [the portrait workflow](docs/PIV-PORTRAITS.md) for examples and geometry review.

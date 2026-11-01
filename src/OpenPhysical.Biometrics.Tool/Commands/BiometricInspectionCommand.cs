@@ -111,7 +111,7 @@ internal static class BiometricInspectionCommand
                         or NotSupportedException
             )
         {
-            Console.Error.WriteLine("The input record could not be read or interpreted.");
+            Console.Error.WriteLine("Reading or interpreting the input record failed.");
             return 1;
         }
         finally

@@ -4,6 +4,6 @@ The [architecture guide](docs/ARCHITECTURE.md) describes the current package gra
 biometric/signature responsibility boundary, middleware integration, and the
 OpenPhysical.Middleware/Pivantra migration sequence.
 
-The [version 3 migration guide](docs/MIGRATING-TO-3.md) maps the existing facial APIs
-to their optional package graph. [Workflow examples](examples/README.md) explain
-the supported capture, enrollment, inspection, signing, and comparison paths.
+[Workflow examples](examples/README.md) explain capture, enrollment, inspection,
+signing, and comparison. [Portrait preparation](docs/PIV-PORTRAITS.md) describes
+the MediaPipe model and Full Frontal geometry.

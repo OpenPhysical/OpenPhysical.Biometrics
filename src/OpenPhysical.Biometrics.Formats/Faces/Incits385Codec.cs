@@ -138,7 +138,7 @@ public static class Incits385Codec
     /// <summary>Serializes every image block, deriving counts and lengths from the immutable data.</summary>
     /// <param name="record">The facial interchange record.</param>
     /// <returns>Fresh FAC bytes owned by the caller.</returns>
-    /// <exception cref="ArgumentException">The record cannot be represented by INCITS 385-2004.</exception>
+    /// <exception cref="ArgumentException">A record field exceeds the INCITS 385-2004 encoding limits.</exception>
     public static byte[] Write(FaceRecord record)
     {
         ArgumentNullException.ThrowIfNull(record);

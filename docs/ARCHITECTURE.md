@@ -13,9 +13,9 @@ Formats plus the independently versioned NBIS and NFIQ1 bindings. The root packa
 composes those entry points.
 
 `.Facial` depends on Formats/Piv and CoreJ2K.Skia for captured-pixel preparation.
-`.Imaging` owns buffers and Skia-backed image operations. The existing Core,
-Infrastructure, ONNX, Models, and compatibility projects retain the facial
-analysis pipeline while their codecs adapt to the canonical records.
+`.Imaging` owns buffers and Skia-backed image operations. `.Facial.Models` carries
+the pinned MediaPipe models; `.Facial` runs them through ONNX Runtime and prepares
+portraits using named anatomical features and reviewed head boundaries.
 
 The independent NBIS repository owns MINDTCT/Bozorth3 native adaptation and its
 reference tests. The independent NFIQ repository owns NFIQ1/NFIQ2 native adaptation,
@@ -55,9 +55,9 @@ their actual dependencies and rights coverage.
 
 1. Release the independent algorithm bindings with reproducible native assets,
    NIST reference vectors, sanitizer checks, and isolated package consumers.
-2. Release canonical Biometrics 3 packages and their migration guide. Migrate
+2. Release canonical Biometrics 3 packages. Connect
    middleware parsing, inspection, enrollment, and signature integration to those
-   contracts while retaining compatibility projections for existing consumers.
+   contracts.
 3. Establish OpenPhysical.Middleware repository/package boundaries around the
    essential credential services and emulator-backed workflows.
 4. Move product-specific orchestration and UI into Pivantra in focused changes,

@@ -16,18 +16,13 @@ import xml.etree.ElementTree as ET
 ROOT = Path(__file__).resolve().parents[1]
 PACKAGES = ROOT / "artifacts/packages"
 PROJECTS = ["OpenPhysical.Biometrics.Formats", "OpenPhysical.Biometrics.Piv", "OpenPhysical.Biometrics.Fingerprints", "OpenPhysical.Biometrics.Imaging", "OpenPhysical.Biometrics.Facial", "OpenPhysical.Biometrics", "OpenPhysical.Biometrics.Tool"]
-LEGACY = {
-    "OpenPhysical.Biometrics.Facial.Compatibility": "OpenPhysical.Biometrics.Compatibility",
-    "OpenPhysical.Biometrics.Facial.Core": "OpenPhysical.Biometrics.Core",
-    "OpenPhysical.Biometrics.Facial.Models": "OpenPhysical.Biometrics.Onnx",
-    "OpenPhysical.Biometrics.Facial.Infrastructure": "OpenPhysical.Biometrics.Infrastructure",
-}
+MODEL_PROJECT = {"OpenPhysical.Biometrics.Facial.Models": "OpenPhysical.Biometrics.Onnx"}
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument("--skip-pack", action="store_true", help="Consume the most recently built packages.")
 parser.add_argument("--require-all-runtimes", action="store_true", help="Validate complete five-runtime dependency and CLI release packages.")
 options = parser.parse_args()
 subprocess.run([sys.executable, str(ROOT / "scripts/verify-models.py")], check=True, cwd=ROOT)
-for name in ([] if options.skip_pack else PROJECTS + list(LEGACY.values())):
+for name in ([] if options.skip_pack else PROJECTS + list(MODEL_PROJECT.values())):
     arguments = ["dotnet", "pack", str(ROOT / "src" / name), "-c", "Release", "-m:1", "-nr:false", "-p:UseSharedCompilation=false"]
     if name == "OpenPhysical.Biometrics.Tool" and not options.require_all_runtimes:
         # Local verification uses the current host assets; release packing checks all five runtimes.
@@ -35,10 +30,10 @@ for name in ([] if options.skip_pack else PROJECTS + list(LEGACY.values())):
     subprocess.run(arguments, check=True, cwd=ROOT)
 
 versions = {}
-for name in PROJECTS + list(LEGACY):
+for name in PROJECTS + list(MODEL_PROJECT):
     matches = sorted(PACKAGES.glob(name + ".[0-9]*.nupkg"), key=lambda path: path.stat().st_mtime)
     if not matches:
-        raise SystemExit(f"Package missing: {name}; run this script without --skip-pack.")
+        raise SystemExit(f"Package missing: {name}; run this script with packing enabled.")
     package = matches[-1]
     versions[name] = package.name[len(name) + 1:-6]
     with zipfile.ZipFile(package) as archive:
@@ -48,13 +43,15 @@ for name in PROJECTS + list(LEGACY):
         metadata = archive.read(name + ".nuspec").decode()
         assert "SixLabors" not in metadata and "ImageSharp" not in metadata, package
         assert "THIRD_PARTY_NOTICES.md" in names, package
+        assert any(path.endswith("LICENSE-MediaPipe-Apache-2.0.txt") for path in names), package
+        assert "LICENSE-PACKAGE" in names and "LICENSE-MEDIAPIPE-EXCEPTION" in names, package
+        assert not any("FaceDetector.onnx" in path or "landmarks_68_pfld" in path or "FaceONNX" in path for path in names), package
         assert "LICENSE" in names and "LICENSE-MIT-ORIGINAL" in names, package
         assert not any(path.lower().endswith((".p12", ".pfx", ".key")) for path in names), package
         if name == "OpenPhysical.Biometrics.Facial.Models":
             provenance = json.loads(archive.read("models/provenance.json"))
             assert provenance == json.loads((ROOT / "src/OpenPhysical.Biometrics.Onnx/Resources/provenance.json").read_text()), package
-            notice = provenance["historical_distribution_notice"]
-            assert hashlib.sha256(archive.read("models/" + notice["notice_file"])).hexdigest() == notice["notice_sha256"], package
+            assert "models/LICENSE-MediaPipe-Apache-2.0.txt" in names, package
             assert "models/README.md" in names, package
 
 # Algorithm versions come from the same properties used by the product projects.
@@ -143,11 +140,12 @@ Console.WriteLine("Isolated package workflows passed.");
     output = work / "record.fmr"
     run("dotnet", "restore", "Consumer.csproj", "--configfile", str(config))
     modern_assets = json.loads((work / "obj/project.assets.json").read_text())["libraries"]
-    assert not any("SixLabors" in name or "ImageSharp" in name or "Onnx" in name for name in modern_assets), "Modern dependency graph must remain independent of facial inference."
+    assert not any("SixLabors" in name or "ImageSharp" in name for name in modern_assets), "Modern dependency graph must use the Skia image backend."
     run("dotnet", "run", "--project", "Consumer.csproj", "-c", "Release", "--no-restore", "--", str(fixture), str(output))
     run("dotnet", "tool", "install", "OpenPhysical.Biometrics.Tool", "--version", versions["OpenPhysical.Biometrics.Tool"], "--tool-path", str(work / "tools"), "--configfile", str(config))
     command = work / "tools" / ("biotool.exe" if os.name == "nt" else "biotool")
     run(str(command), "inspect", str(output), "--json")
+    run(sys.executable, str(ROOT / "scripts/test-portrait-cli.py"), str(command))
     converted = work / "template.json"
     run(str(command), "convert", str(output), str(converted), "--finger", "2", "--view", "0")
     serialized = converted.read_bytes()
@@ -158,50 +156,25 @@ Console.WriteLine("Isolated package workflows passed.");
     malformed.write_bytes(b"FMR")
     rejected = work / "rejected.json"
     run(str(command), "convert", str(malformed), str(rejected), "--finger", "2", "--view", "0", expected=1)
-    assert not rejected.exists(), "Malformed records must not create a template."
+    assert not rejected.exists(), "Malformed records must preserve the output directory."
     # Exercise the optional facial dependency graph in a separate process. The
     # fingerprint consumer above already proved that its operations leave ONNX idle.
     legacy = work / "facial"
     legacy.mkdir()
-    (legacy / "Facial.csproj").write_text('<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net10.0</TargetFramework><ImplicitUsings>enable</ImplicitUsings><TreatWarningsAsErrors>true</TreatWarningsAsErrors></PropertyGroup><ItemGroup><PackageReference Include="OpenPhysical.Biometrics.Facial.Infrastructure" Version="' + versions["OpenPhysical.Biometrics.Facial.Infrastructure"] + '"/><PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.0"/><PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.0"/></ItemGroup></Project>')
-    (legacy / "Program.cs").write_text(r'''using System.Security.Cryptography;
-using System.Text.Json;
-using Microsoft.Extensions.DependencyInjection;
-using OpenPhysical.Biometrics.Onnx;
-using OpenPhysical.Biometrics.Core.Abstractions;
-using OpenPhysical.Biometrics.Core.Cbeff;
-using OpenPhysical.Biometrics.Imaging;
-using OpenPhysical.Biometrics.Infrastructure.Extensions;
-using OpenPhysical.Biometrics.Infrastructure.Services;
-var collection = new ServiceCollection();
-collection.AddLogging();
-collection.AddBiometricServices();
-using var services = collection.BuildServiceProvider();
-_ = services.GetRequiredService<ICbeffBuilder>();
-if (services.GetService<ICbeffSigner>() is not null) throw new InvalidOperationException("Unexpected application signing registration.");
-if (typeof(FacialImageEncoderService).Assembly.GetType("OpenPhysical.Biometrics.Infrastructure.Cbeff.CbeffSignerService") is not null) throw new InvalidOperationException("Unexpected application signing implementation.");
-if (typeof(ICbeffBuilder).Assembly.GetType("OpenPhysical.Biometrics.Core.Certificates.TrustedCertificateStore") is not null)
-    throw new InvalidOperationException("Unexpected application trust store implementation.");
-using var manifest = JsonDocument.Parse(File.ReadAllText(args[1]));
-foreach (var entry in manifest.RootElement.GetProperty("files").EnumerateArray())
-{
-    var model = ModelRegistry.GetModel("OpenPhysical.Biometrics.Onnx.Resources." + entry.GetProperty("file").GetString());
-    if (model.LongLength != entry.GetProperty("bytes").GetInt64() ||
-        !Convert.ToHexString(SHA256.HashData(model)).Equals(entry.GetProperty("sha256").GetString(), StringComparison.OrdinalIgnoreCase))
-        throw new InvalidOperationException("Packaged model differs from its published provenance.");
-    Array.Clear(model);
-}
-using var image = RgbImage.Load(args[0]);
-var found = await services.GetRequiredService<IFaceDetector>().DetectFacesAsync(image);
-if (!found.IsSuccess || found.Value.Count == 0) throw new InvalidOperationException("Facial package processing failed.");
-var encoded = await services.GetRequiredService<FacialImageEncoderService>().ProcessForPivAsync(File.ReadAllBytes(args[0]));
-if (!encoded.IsSuccess || encoded.Value.ImageData.Length == 0)
-    throw new InvalidOperationException("Packaged facial image processing and encoding failed.");
-Console.WriteLine("Isolated facial package workflow passed.");
+    (legacy / "Facial.csproj").write_text('<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net10.0</TargetFramework><ImplicitUsings>enable</ImplicitUsings><TreatWarningsAsErrors>true</TreatWarningsAsErrors></PropertyGroup><ItemGroup><PackageReference Include="OpenPhysical.Biometrics.Facial" Version="' + versions["OpenPhysical.Biometrics.Facial"] + '"/></ItemGroup></Project>')
+    (legacy / "Program.cs").write_text(r'''using OpenPhysical.Biometrics.Facial;
+var resources = typeof(OpenPhysical.Biometrics.Onnx.MediaPipeModels).Assembly.GetManifestResourceNames();
+if (resources.Length != 2 || !resources.Contains(OpenPhysical.Biometrics.Onnx.MediaPipeModels.Detector) || !resources.Contains(OpenPhysical.Biometrics.Onnx.MediaPipeModels.Landmarks))
+    throw new InvalidOperationException("The model package must contain exactly the selected MediaPipe assets.");
+using var service = new PortraitPreparer();
+var result = service.Prepare(File.ReadAllBytes(args[0]));
+if (result.Faces.Length != 1 || result.Faces[0].Landmarks.Length != 478)
+    throw new InvalidOperationException("Packaged MediaPipe detection failed.");
+Console.WriteLine("Isolated MediaPipe facial package workflow passed.");
 ''')
     (legacy / "model-provenance.json").write_text(json.dumps(provenance))
     run("dotnet", "restore", str(legacy / "Facial.csproj"), "--configfile", str(config))
     legacy_assets = json.loads((legacy / "obj/project.assets.json").read_text())["libraries"]
-    assert not any("SixLabors" in name or "ImageSharp" in name for name in legacy_assets), "Optional facial dependencies must use the shared Skia backend."
-    run("dotnet", "run", "--project", str(legacy / "Facial.csproj"), "-c", "Release", "--no-restore", "--", str(ROOT / "tests/sample_images/generic_guy.jpg"), str(legacy / "model-provenance.json"))
+    assert not any("SixLabors" in name or "ImageSharp" in name or "CSharpFunctionalExtensions" in name or "FaceONNX" in name for name in legacy_assets), "Optional facial dependencies must use the shared Skia backend."
+    run("dotnet", "run", "--project", str(legacy / "Facial.csproj"), "-c", "Release", "--no-restore", "--", str(ROOT / "tests/OpenPhysical.Biometrics.Facial.Tests/Fixtures/glenn.jpg"), str(legacy / "model-provenance.json"))
 print("Isolated library and CLI package checks passed.")

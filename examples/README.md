@@ -60,7 +60,7 @@ result contains the canonical INCITS 385 record. Review outcomes retain the
 acquisition evidence and typed findings for the capture station.
 
 JPEG 2000 encoding uses CoreJ2K.Skia. The facial preparation tests exercise actual
-encoding and record round trips; the optional facial pipeline adds capture analysis.
+encoding and record round trips; `PortraitPreparer` supplies source-supported Full Frontal pixels.
 
 ## Compare paired impressions and different fingers
 
@@ -80,3 +80,11 @@ Apply your own versioned policy to each raw score with `policy.Evaluate(score)`.
 Reuse extracted templates through LINQ projections when making several
 comparisons. A canonical selected card view supports fluent conversion with
 `record.ToMatchingTemplate(FingerPosition.RightMiddle, viewNumber: 0)`.
+
+## Prepare and review a portrait
+
+[PortraitExample.cs](OpenPhysical.Biometrics.Examples/PortraitExample.cs) prepares an
+encoded capture, exposes review findings, and feeds the resulting pixels into the
+canonical facial-record writer. The caller supplies reviewed boundaries and
+camera/operator evidence. The [CLI examples](../docs/PIV-PORTRAITS.md) cover
+preview output, explicit face selection, reviewed geometry, and record creation.

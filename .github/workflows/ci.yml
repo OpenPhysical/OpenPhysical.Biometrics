@@ -7,7 +7,7 @@ concurrency:
   cancel-in-progress: true
 env:
   NBIS_SOURCE_REVISION: d8e67d61af827d179beac51ddc4d933f75d4c695
-  NFIQ_SOURCE_REVISION: 5e9e3e68edc92030a6c8914f47cc4779afb5c682
+  NFIQ_SOURCE_REVISION: fea2d64e7e93388f460d57fc1219b44d5b48dd1f
 jobs:
   runtime:
     strategy:
@@ -52,6 +52,11 @@ jobs:
         if: runner.os == 'Windows'
         shell: pwsh
         run: Add-Content $env:GITHUB_PATH "${{ steps.msys2.outputs.msys2-location }}\ucrt64\bin"
+      - name: Install independent JPEG 2000 decoder
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libopenjp2-tools
       - name: Build pinned development dependencies
         working-directory: OpenPhysical.Biometrics
         run: python scripts/build-development-dependencies.py
@@ -72,9 +77,9 @@ jobs:
         run: |
           dotnet build OpenPhysical.Biometrics.sln -c Release -m:1 -nr:false -p:UseSharedCompilation=false
           dotnet test OpenPhysical.Biometrics.sln -c Release --no-build -m:1 -nr:false --collect:"XPlat Code Coverage" --results-directory artifacts/test-results/modern
-      - name: Facial pipeline and compatibility coverage
+      - name: Portrait CLI workflows
         working-directory: OpenPhysical.Biometrics
-        run: dotnet test OpenPhysical.Biometrics.Compatibility.sln -c Release -m:1 -nr:false -p:UseSharedCompilation=false --collect:"XPlat Code Coverage" --results-directory artifacts/test-results/compatibility
+        run: python scripts/test-portrait-cli.py dotnet artifacts/bin/OpenPhysical.Biometrics.Tool/Release/net10.0/OpenPhysical.Biometrics.Tool.dll
       - name: Run paired capture example
         working-directory: OpenPhysical.Biometrics
         run: dotnet run --project examples/OpenPhysical.Biometrics.Examples -c Release --no-build -- ../OpenPhysical.Biometrics.NBIS/tests/fixtures/sd04/f0005_03.gray8 ../OpenPhysical.Biometrics.NBIS/tests/fixtures/sd04/s0005_03.gray8 512 512

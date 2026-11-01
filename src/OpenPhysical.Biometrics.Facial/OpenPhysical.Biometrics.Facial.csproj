@@ -7,6 +7,9 @@
         <Description>Facial capture preparation and PIV facial records using standard .NET contracts.</Description>
     </PropertyGroup>
     <ItemGroup>
+        <InternalsVisibleTo Include="OpenPhysical.Biometrics.Facial.Tests" />
+        <ProjectReference Include="../OpenPhysical.Biometrics.Onnx/OpenPhysical.Biometrics.Onnx.csproj" />
+        <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.20.1" />
         <ProjectReference Include="../OpenPhysical.Biometrics.Piv/OpenPhysical.Biometrics.Piv.csproj" />
         <PackageReference Include="CoreJ2K.Skia" Version="2.4.1.108" />
         <PackageReference Include="SkiaSharp.NativeAssets.Linux.NoDependencies" Version="3.119.4" />

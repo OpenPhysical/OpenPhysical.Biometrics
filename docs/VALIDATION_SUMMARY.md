@@ -6,7 +6,7 @@ Windows x64, Linux x64/ARM64, and macOS x64/ARM64.
 
 ## Managed contracts and workflows
 
-The modern solution passes **114 NUnit tests**:
+The modern solution passes **135 NUnit tests**:
 
 - Formats: 24: malformed/truncated records, length and extension framing, timestamp
   encoding, owned data, and canonical binary round trips.
@@ -15,16 +15,12 @@ The modern solution passes **114 NUnit tests**:
   image/template comparison workflows.
 - PIV: 27: profile checks, safe inspection, exact signed bytes, bounded signature
   sizing, caller verification, identity binding, provider failures, and cancellation.
-- Facial: 4: real JPEG 2000 preparation, geometry, ownership, and record round trips.
+- Facial: 25: reference inference, EXIF orientation, roll correction, source coverage,
+  reviewed boundaries, multiple faces, negative controls, concurrency, JPEG 2000,
+  immutable inputs, and canonical record round trips.
 - Imaging: 16: owned buffers, transformations, image formats, and TIFF alpha semantics.
 
-The compatibility solution passes **622 tests**: Core 283, Infrastructure 274,
-and CLI 65. It retains the facial pipeline while adapting format operations to the
-canonical codecs. Focused privacy tests first reproduce exception-object and
-service-diagnostic leakage into ILogger, then verify status-only logging.
-
-The suites execute serially. Modern and compatibility solutions have separate
-responsibilities, and the shared test-helper project is a helper assembly.
+The suites execute serially in the current solution.
 
 ## Reference fingerprints and application policy
 
@@ -58,7 +54,7 @@ revocation behavior have their own integration cases.
 
 ## Packages and developer gates
 
-All 11 packages pass content and clean-consumer validation. Checks cover notices,
+Eight current packages pass local clean-consumer validation. Checks cover notices,
 model hashes, fixture/private-key exclusion, dependency separation, native
 fingerprint operations, facial JPEG 2000 preparation, optional ONNX inference,
 and installed CLI inspection/conversion. CLI rejection cases cover malformed
@@ -69,7 +65,7 @@ checks use `AllowPartialBiometricRuntimes=true` explicitly for the current host.
 Algorithm repository pipelines produce and consume their complete runtime
 packages on each supported platform.
 
-CSharpier checks 375 files. Eight positive/negative documentation probes verify
+CSharpier checks the current source tree. Eight positive/negative documentation probes verify
 that documented APIs compile and that missing summaries/parameters/returns,
 broken references, diagnostic suppression, downgraded warnings, and disabled
 analyzers fail the build. Public XML documentation and warnings-as-errors remain
@@ -86,7 +82,6 @@ dotnet csharpier check .
 python scripts/verify-models.py
 python scripts/verify-documentation-gate.py
 dotnet test OpenPhysical.Biometrics.sln -c Release -m:1 --collect:"XPlat Code Coverage" --results-directory artifacts/test-results/modern
-dotnet test OpenPhysical.Biometrics.Compatibility.sln -c Release -m:1 --collect:"XPlat Code Coverage" --results-directory artifacts/test-results/compatibility
 python scripts/test-package.py
 dotnet run --project examples/OpenPhysical.Biometrics.Examples -c Release -- --sd04 ../OpenPhysical.Biometrics.NBIS/tests/fixtures/sd04
 ```

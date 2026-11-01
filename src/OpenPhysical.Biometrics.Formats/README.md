@@ -12,14 +12,14 @@ using OpenPhysical.Biometrics.Formats.Fingerprints;
 var result = Incits378Codec.Parse(fmrBytes);
 if (!result.IsSuccess)
 {
-    // These diagnostics describe the field and offset, without its contents.
+    // These diagnostics identify the field and byte offset.
     foreach (var error in result.Diagnostics)
         Console.WriteLine($"{error.Code} at byte {error.Offset}: {error.Message}");
     return;
 }
 
 // The finger position and view number together identify one captured impression.
-// Select them explicitly rather than relying on the ordering of the card record.
+// Select the finger and view explicitly.
 var rightIndex = result.Value!.Views.Single(view =>
     view.FingerPosition == 2 && view.ViewNumber == 0);
 

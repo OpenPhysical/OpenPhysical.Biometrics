@@ -7,10 +7,12 @@
         <PackAsTool>true</PackAsTool>
         <ToolCommandName>biotool</ToolCommandName>
         <PackageId>OpenPhysical.Biometrics.Tool</PackageId>
-        <Description>Structured biometric record inspection, PIV profile validation, and fingerprint template conversion.</Description>
+        <Description>Structured biometric record inspection, PIV profile validation, fingerprint template conversion, and MediaPipe portrait preparation.</Description>
     </PropertyGroup>
     <ItemGroup>
         <Compile Include="Program.cs" />
+        <Compile Include="Commands/FacePreparationCommand.cs" />
+        <ProjectReference Include="../OpenPhysical.Biometrics.Facial/OpenPhysical.Biometrics.Facial.csproj" />
         <Compile Include="Commands/BiometricInspectionCommand.cs" />
         <Compile Include="Commands/FingerprintConversionCommand.cs" />
         <ProjectReference Include="../OpenPhysical.Biometrics.Fingerprints/OpenPhysical.Biometrics.Fingerprints.csproj" />

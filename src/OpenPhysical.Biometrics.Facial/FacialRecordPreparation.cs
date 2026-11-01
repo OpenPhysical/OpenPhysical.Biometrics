@@ -4,17 +4,12 @@
 namespace OpenPhysical.Biometrics.Facial;
 
 using System.Collections.Immutable;
-using System.Globalization;
-using CoreJ2K;
-using CoreJ2K.Skia;
-using CoreJ2K.Util;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using OpenPhysical.Biometrics.Formats.Faces;
 using OpenPhysical.Biometrics.Piv;
-using SkiaSharp;
 
 /// <summary>Records the camera and operator findings attached to the captured sRGB pixels.</summary>
 /// <param name="CapturedAt">The acquisition instant.</param>
@@ -41,7 +36,7 @@ public enum FacialPreparationStatus
     /// <summary>Acquisition evidence needs operator review.</summary>
     AcquisitionReviewRequired,
 
-    /// <summary>The supplied geometry or metadata does not meet the selected profile.</summary>
+    /// <summary>The supplied geometry or metadata fails the selected profile.</summary>
     ProfileRejected,
 
     /// <summary>The encoded image exceeded the permitted compression ratio.</summary>
@@ -80,7 +75,6 @@ public interface IFacialRecordPreparer
 /// <summary>Encodes real attended captures using the shared JPEG 2000 implementation.</summary>
 public sealed class FacialRecordPreparer : IFacialRecordPreparer
 {
-    private static readonly object EncoderLock = new();
     private readonly ILogger<FacialRecordPreparer> logger;
 
     /// <summary>Creates a preparer with optional status-only diagnostics.</summary>
@@ -124,40 +118,20 @@ public sealed class FacialRecordPreparer : IFacialRecordPreparer
                 [new("FacialAcquisition", "Capture")]
             );
 
-        // Skia owns the temporary pixel buffer. The caller retains its original
-        // capture while CoreJ2K encodes this independent sRGB bitmap.
-        using var colorSpace = SKColorSpace.CreateSrgb();
-        using var image = new SKBitmap(
-            new SKImageInfo(width, height, SKColorType.Rgba8888, SKAlphaType.Opaque, colorSpace)
-        );
-        var rgba = image.GetPixelSpan();
-        for (var index = 0; index < width * height; index++)
-        {
-            rgba[index * 4] = srgbPixels[index * 3];
-            rgba[index * 4 + 1] = srgbPixels[index * 3 + 1];
-            rgba[index * 4 + 2] = srgbPixels[index * 3 + 2];
-            rgba[index * 4 + 3] = 255;
-        }
         byte[] encoded;
-        lock (EncoderLock)
+        try
         {
-            ImageFactory.Register(new SKBitmapImageCreator());
-            var parameters = J2kImage.GetDefaultEncoderParameterList();
-            // Twenty-four input bits per pixel at 1.6 output bits per pixel
-            // corresponds to the whole-image PIV maximum ratio of 15:1.
-            parameters["rate"] = 1.6f.ToString("F1", CultureInfo.InvariantCulture);
-            parameters["lossless"] = "off";
-            parameters["file_format"] = "on";
-            parameters["Stiles"] = string.Create(CultureInfo.InvariantCulture, $"{width} {height}");
-            encoded = J2kImage.ToBytes(image, parameters);
+            encoded = PortraitEncoding.EncodeJpeg2000(srgbPixels, width, height);
         }
-        if ((long)encoded.Length * 15 < srgbPixels.Length)
+        catch (InvalidOperationException)
+        {
             return new(
                 FacialPreparationStatus.CompressionRejected,
                 null,
                 acquisition,
                 [new("CompressionRatio", "ImageData")]
             );
+        }
         var face = new FaceImage(
             new FaceInformation(0, 0, 0, 0, 1, 0, 0),
             [],

@@ -37,7 +37,7 @@ if [ -f "$GSA_PATH/10 - Face Object" ]; then
         ls -la facial_image.jp2
     fi
 else
-    echo "Error: GSA ICAM test data not found at expected location"
+    echo "Error: Supply GSA ICAM test data at the expected location"
     echo "Please ensure gsa-icam-card-builder is at: $GSA_PATH"
     exit 1
 fi

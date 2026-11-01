@@ -9,7 +9,7 @@ using OpenPhysical.Biometrics.Formats.Cbeff;
 using OpenPhysical.Biometrics.Formats.Faces;
 using OpenPhysical.Biometrics.Formats.Fingerprints;
 
-/// <summary>Identifies a biometric profile requirement that was not satisfied.</summary>
+/// <summary>Identifies a failed biometric profile requirement.</summary>
 /// <param name="Code">Stable diagnostic code.</param>
 /// <param name="Field">The affected typed field path.</param>
 public sealed record BiometricProfileDiagnostic(string Code, string Field);
@@ -67,7 +67,7 @@ public static class PivBiometricProfile
 
     /// <summary>Checks the PIV fingerprint header independently of the number of views.</summary>
     /// <param name="record">A canonical record carrying the original header fields.</param>
-    /// <returns>Header profile findings without inspecting or inventing finger views.</returns>
+    /// <returns>Profile findings for the supplied header.</returns>
     /// <exception cref="ArgumentNullException">The record is null.</exception>
     public static ImmutableArray<BiometricProfileDiagnostic> ValidateFingerprintHeader(
         FingerprintRecord record

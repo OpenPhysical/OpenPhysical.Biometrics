@@ -15,7 +15,7 @@ purchase inquiry. They arise only from a signed agreement with the applicable co
 
 Commercial terms may address proprietary redistribution, product integration, support,
 maintenance, warranties, or other customer requirements. Third-party components remain governed by
-their own licenses and are not relicensed by OpenPhysical.
+their original licenses.
 
 Licensing fees for OpenPhysical.Biometrics support the development of OpenPhysical software and services. Contact
 [opensource@mistial.dev](mailto:opensource@mistial.dev) with the intended use, deployment model,

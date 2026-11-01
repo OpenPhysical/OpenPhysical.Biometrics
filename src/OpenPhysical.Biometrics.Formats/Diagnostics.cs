@@ -2,7 +2,7 @@ using System.Collections.Immutable;
 
 namespace OpenPhysical.Biometrics.Formats;
 
-/// <summary>Describes a format error without including biometric or identity data.</summary>
+/// <summary>Describes a format error by diagnostic code and byte location.</summary>
 /// <param name="Code">Stable, machine-readable error identifier.</param>
 /// <param name="Message">Explanation of the failed structural check.</param>
 /// <param name="Offset">Zero-based byte offset in the supplied buffer.</param>

@@ -62,8 +62,8 @@ public static class FingerprintRecordAdapter
                 "The selected view has invalid quality or minutia count.",
                 nameof(record)
             );
-        // Bozorth3 ranks at most 150 points. Unreported quality cannot support a
-        // quality-based reduction, so the caller must select that subset explicitly.
+        // Bozorth3 ranks at most 150 points. When quality is unreported,
+        // the caller selects the subset explicitly.
         if (view.Minutiae.Length > 150 && view.Minutiae.Any(point => point is { Quality: 0 }))
             throw new NotSupportedException(
                 "Select at most 150 minutiae when their quality is unreported."

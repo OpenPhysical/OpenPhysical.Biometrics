@@ -54,7 +54,7 @@ The tool displays a hierarchical tree structure showing:
 ### Biometric Data Analysis
 - For facial images: INCITS 385 format details, image dimensions, data type
 - For fingerprints: INCITS 378 template structure, finger records
-- Empty template detection for individuals who cannot be fingerprinted
+- Empty template detection for unavailable fingers
 
 ### Signature Information
 - CMS signature presence and size
@@ -80,7 +80,7 @@ biometrics cbeff "/path/to/gsa-icam/cards/ICAM_Card_Objects/01_Golden_PIV/10 - F
 - `0x0D`: Signed plaintext (most common for PIV)
 
 ### Biometric Quality Values
-- `-2`: Not supported
+- `-2`: Unsupported operation
 - `-1`: Failed attempt
 - `0-100`: Quality percentage
 - `254`: Permanently unusable (PIV fingerprint)

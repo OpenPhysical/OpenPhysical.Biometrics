@@ -5,6 +5,7 @@
         <IsPackable>false</IsPackable>
     </PropertyGroup>
     <ItemGroup>
+        <None Include="Fixtures/**" CopyToOutputDirectory="PreserveNewest" />
         <PackageReference Include="NUnit" Version="4.4.0" />
         <PackageReference Include="NUnit3TestAdapter" Version="5.0.0" />
         <PackageReference Update="Microsoft.NET.Test.Sdk" Version="17.14.1" />

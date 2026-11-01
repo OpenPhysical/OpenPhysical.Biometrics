@@ -5,8 +5,8 @@ namespace OpenPhysical.Biometrics.Formats.Fingerprints;
 /// <summary>Reads and writes complete INCITS 378-2004 records using bounded binary fields.</summary>
 public static class Incits378Codec
 {
-    /// <summary>Parses one complete record. Malformed input produces located diagnostics rather than partial success.</summary>
-    /// <param name="data">A raw FMR record without CBEFF or card TLV wrapping.</param>
+    /// <summary>Parses one complete record and returns located diagnostics for malformed input.</summary>
+    /// <param name="data">The raw FMR record bytes.</param>
     /// <param name="options">Explicit opt-in for sensitive values in the inspection report.</param>
     /// <returns>The immutable record and inspection report, or structural diagnostics.</returns>
     public static ParseResult<FingerprintRecord> Parse(
@@ -192,7 +192,7 @@ public static class Incits378Codec
     /// <summary>Serializes a record, deriving all lengths and counts from its immutable collections.</summary>
     /// <param name="record">The record to write.</param>
     /// <returns>Complete FMR bytes, owned by the caller.</returns>
-    /// <exception cref="ArgumentException">A field cannot be represented by INCITS 378-2004.</exception>
+    /// <exception cref="ArgumentException">A field exceeds the INCITS 378-2004 encoding limits.</exception>
     public static byte[] Write(FingerprintRecord record)
     {
         ArgumentNullException.ThrowIfNull(record);
@@ -232,7 +232,10 @@ public static class Incits378Codec
             foreach (var point in view.Minutiae)
             {
                 if (point is null || point.X > 0x3FFF || point.Y > 0x3FFF || point.Type > 2)
-                    throw new ArgumentException("A minutia cannot be represented.", nameof(record));
+                    throw new ArgumentException(
+                        "A minutia exceeds the encoding limits.",
+                        nameof(record)
+                    );
                 BinaryFormatWriter.UInt16(body, (ushort)(point.Type << 14 | point.X));
                 BinaryFormatWriter.UInt16(body, point.Y);
                 body.WriteByte(point.Angle);
@@ -247,7 +250,7 @@ public static class Incits378Codec
                     || block.Data.Length > ushort.MaxValue - 4
                 )
                     throw new ArgumentException(
-                        "An extended block cannot be represented.",
+                        "An extended block exceeds the encoding limits.",
                         nameof(record)
                     );
                 BinaryFormatWriter.UInt16(extended, block.Type);

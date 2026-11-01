@@ -11,12 +11,9 @@
         <None Update="Resources/README.md" Pack="true" PackagePath="models/README.md" />
         <None Update="Resources/provenance.json" Pack="true" PackagePath="models/provenance.json" />
         <None
-            Update="Resources/LICENSE-FaceONNX-MIT.txt"
+            Update="Resources/LICENSE-MediaPipe-Apache-2.0.txt"
             Pack="true"
-            PackagePath="models/LICENSE-FaceONNX-MIT.txt"
+            PackagePath="models/LICENSE-MediaPipe-Apache-2.0.txt"
         />
-    </ItemGroup>
-    <ItemGroup>
-        <PackageReference Include="JetBrains.Annotations" Version="2025.2.0" />
     </ItemGroup>
 </Project>

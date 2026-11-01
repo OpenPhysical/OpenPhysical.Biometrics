@@ -20,9 +20,4 @@ The dependency packages carry their native libraries and third-party notices.
 
 ## Retained facial models
 
-The optional facial-model package retains the existing RetinaFace and PFLD assets.
-Its `models/provenance.json` records exact hashes and the pre-consolidation source
-commit, while `models/README.md` retains the historical model-source context.
-`models/LICENSE-FaceONNX-MIT.txt` preserves the model archive publisher MIT notice
-(copyright 2020–2025 Valery Asiryan), pinned by revision and SHA-256 in the
-provenance file. `LICENSE-MIT-ORIGINAL` separately preserves the FaceOFFx notice.
+The facial-model package includes Google's MediaPipe weights in the ONNX conversion published by Yakhyokhuja Valikhujaev. The models and adapted detector/crop postprocessing retain Apache-2.0 terms. See `src/OpenPhysical.Biometrics.Onnx/Resources/provenance.json` and `LICENSE-MediaPipe-Apache-2.0.txt` for exact artifacts and notices. First-party combination permission is recorded in `LICENSE-MEDIAPIPE-EXCEPTION`.

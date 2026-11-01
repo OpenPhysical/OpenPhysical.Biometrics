@@ -15,7 +15,7 @@
         <Company>OpenPhysical</Company>
         <Product>OpenPhysical Biometrics</Product>
         <Copyright>Copyright © 2024 OpenPhysical Contributors</Copyright>
-        <PackageLicenseExpression>GPL-2.0-or-later</PackageLicenseExpression>
+        <PackageLicenseFile>LICENSE-PACKAGE</PackageLicenseFile>
         <PackageProjectUrl>https://github.com/OpenPhysical/OpenPhysical.Biometrics</PackageProjectUrl>
         <RepositoryUrl>https://github.com/OpenPhysical/OpenPhysical.Biometrics</RepositoryUrl>
         <RepositoryType>git</RepositoryType>
@@ -66,7 +66,7 @@
             Condition="Exists('$(MSBuildThisFileDirectory)README.md')"
         />
     </ItemGroup>
-    <PropertyGroup Condition="'$(MSBuildProjectName)' == 'OpenPhysical.Biometrics' or '$(MSBuildProjectName)' == 'OpenPhysical.Biometrics.Examples' or '$(MSBuildProjectName)' == 'OpenPhysical.Biometrics.Facial' or '$(MSBuildProjectName)' == 'OpenPhysical.Biometrics.Facial.Tests' or '$(MSBuildProjectName)' == 'OpenPhysical.Biometrics.Tool' or '$(MSBuildProjectName)' == 'OpenPhysical.Biometrics.Imaging' or '$(MSBuildProjectName)' == 'OpenPhysical.Biometrics.Imaging.Tests' or '$(MSBuildProjectName)' == 'OpenPhysical.Biometrics.Formats' or '$(MSBuildProjectName)' == 'OpenPhysical.Biometrics.Piv' or '$(MSBuildProjectName)' == 'OpenPhysical.Biometrics.Fingerprints' or '$(MSBuildProjectName)' == 'OpenPhysical.Biometrics.Formats.Tests' or '$(MSBuildProjectName)' == 'OpenPhysical.Biometrics.Piv.Tests' or '$(MSBuildProjectName)' == 'OpenPhysical.Biometrics.Fingerprints.Tests'">
+    <PropertyGroup Condition="'$(MSBuildProjectName)' == 'OpenPhysical.Biometrics.Onnx' or '$(MSBuildProjectName)' == 'OpenPhysical.Biometrics' or '$(MSBuildProjectName)' == 'OpenPhysical.Biometrics.Examples' or '$(MSBuildProjectName)' == 'OpenPhysical.Biometrics.Facial' or '$(MSBuildProjectName)' == 'OpenPhysical.Biometrics.Facial.Tests' or '$(MSBuildProjectName)' == 'OpenPhysical.Biometrics.Tool' or '$(MSBuildProjectName)' == 'OpenPhysical.Biometrics.Imaging' or '$(MSBuildProjectName)' == 'OpenPhysical.Biometrics.Imaging.Tests' or '$(MSBuildProjectName)' == 'OpenPhysical.Biometrics.Formats' or '$(MSBuildProjectName)' == 'OpenPhysical.Biometrics.Piv' or '$(MSBuildProjectName)' == 'OpenPhysical.Biometrics.Fingerprints' or '$(MSBuildProjectName)' == 'OpenPhysical.Biometrics.Formats.Tests' or '$(MSBuildProjectName)' == 'OpenPhysical.Biometrics.Piv.Tests' or '$(MSBuildProjectName)' == 'OpenPhysical.Biometrics.Fingerprints.Tests'">
         <IsConsolidatedBiometricsProject>true</IsConsolidatedBiometricsProject>
         <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
@@ -81,6 +81,18 @@
         <AdditionalFiles Include="$(MSBuildThisFileDirectory)stylecop.json" />
     </ItemGroup>
     <ItemGroup>
+        <None
+            Include="$(MSBuildThisFileDirectory)src/OpenPhysical.Biometrics.Onnx/Resources/LICENSE-MediaPipe-Apache-2.0.txt"
+            Pack="true"
+            PackagePath="/LICENSE-MediaPipe-Apache-2.0.txt"
+            Condition="'$(MSBuildProjectName)' != 'OpenPhysical.Biometrics.Onnx'"
+        />
+        <None Include="$(MSBuildThisFileDirectory)LICENSE-PACKAGE" Pack="true" PackagePath="/" />
+        <None
+            Include="$(MSBuildThisFileDirectory)LICENSE-MEDIAPIPE-EXCEPTION"
+            Pack="true"
+            PackagePath="/"
+        />
         <None Include="$(MSBuildThisFileDirectory)LICENSE" Pack="true" PackagePath="/" />
         <None
             Include="$(MSBuildThisFileDirectory)LICENSE-MIT-ORIGINAL"

@@ -1,0 +1,29 @@
+{
+  "revision": "3bdf1e0d100a4c709766c051a0c9e9cdab1fed62",
+  "files": {
+    "bush.jpg": {
+      "bytes": 328010,
+      "sha256": "d935c932c2989f1d0d23ab02b401a5905ebea9c9a6beefb5cf6d150b031cbb37"
+    },
+    "glenn.input.f32": {
+      "bytes": 786432,
+      "sha256": "a38749f67a59a5c6dc579868cb1034b9e7a3a5e3e401de07e881e763e2c69222"
+    },
+    "glenn.jpg": {
+      "bytes": 173964,
+      "sha256": "09d1af00da493b69681e4678a7448c665516ebe90c930dfd93bd7db333f17942"
+    },
+    "glenn.output0.f32": {
+      "bytes": 5736,
+      "sha256": "5631fad7e8d9c166e874ddc8fccc101970cd8b3f548a4ae30ce26519216d4599"
+    },
+    "glenn.reference.json": {
+      "bytes": 42473,
+      "sha256": "ee12c0afaf50c83396d0349e53fb2af378aac04239e720c7c49d68bfeef1103f"
+    },
+    "maddie.jpeg": {
+      "bytes": 92040,
+      "sha256": "a8c930684d59acad95fc993216af8b9caa716e02ef14772d2b4875e6ef055fa4"
+    }
+  }
+}

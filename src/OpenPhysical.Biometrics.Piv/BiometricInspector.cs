@@ -12,7 +12,7 @@ using OpenPhysical.Biometrics.Formats.Fingerprints;
 /// <summary>Identifies the binary record interpreted by inspection.</summary>
 public enum BiometricRecordKind
 {
-    /// <summary>The bytes could not be identified.</summary>
+    /// <summary>The bytes have an unknown record format.</summary>
     Unknown,
 
     /// <summary>A raw INCITS 378-2004 fingerprint record.</summary>
@@ -25,13 +25,13 @@ public enum BiometricRecordKind
     Cbeff,
 }
 
-/// <summary>Describes a finger selection without exposing its minutiae.</summary>
+/// <summary>Describes the selected finger and view metadata.</summary>
 /// <param name="FingerPosition">Encoded finger position.</param>
 /// <param name="ViewNumber">Encoded view selection.</param>
 /// <param name="MinutiaCount">Number of encoded minutiae.</param>
 public sealed record FingerViewSummary(byte FingerPosition, byte ViewNumber, int MinutiaCount);
 
-/// <summary>Describes facial image geometry without exposing its image bytes.</summary>
+/// <summary>Describes facial image dimensions and encoding metadata.</summary>
 /// <param name="Width">Encoded width in pixels.</param>
 /// <param name="Height">Encoded height in pixels.</param>
 /// <param name="ImageDataType">The encoded image compression type.</param>

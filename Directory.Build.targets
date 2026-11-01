@@ -21,7 +21,7 @@
         </PropertyGroup>
         <Error
             Condition="$([System.Text.RegularExpressions.Regex]::IsMatch('$(NoWarn);$(WarningsNotAsErrors)', '$(DocumentationDiagnosticPattern)'))"
-            Text="Public API documentation diagnostics cannot be suppressed or downgraded."
+            Text="Public API documentation diagnostics must remain enabled at error severity."
         />
     </Target>
 </Project>

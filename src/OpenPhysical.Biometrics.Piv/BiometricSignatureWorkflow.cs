@@ -6,7 +6,7 @@ namespace OpenPhysical.Biometrics.Piv;
 using System.Collections.Immutable;
 using OpenPhysical.Biometrics.Formats.Cbeff;
 
-/// <summary>Identifies why an external signing workflow did not produce a completed object.</summary>
+/// <summary>Identifies an external signing workflow failure.</summary>
 public enum SignatureFailure
 {
     /// <summary>The object was completed successfully.</summary>
@@ -15,13 +15,13 @@ public enum SignatureFailure
     /// <summary>The provider returned an empty or oversized signature block.</summary>
     InvalidBlockLength,
 
-    /// <summary>The signature length did not stabilize within the attempt limit.</summary>
+    /// <summary>The signature length remained variable through the attempt limit.</summary>
     LengthDidNotConverge,
 
     /// <summary>The external verifier rejected the signature or its required envelope attributes.</summary>
     VerificationFailed,
 
-    /// <summary>The authenticated identity did not match the requested identity.</summary>
+    /// <summary>The authenticated identity differs from the requested identity.</summary>
     IdentityMismatch,
 }
 
@@ -131,7 +131,7 @@ public static class BiometricSignatureWorkflow
         {
             cancellationToken.ThrowIfCancellationRequested();
             // The block length is itself signed. Every length change therefore
-            // requires a fresh request rather than a patch to signed bytes.
+            // requires a fresh signing request covering the updated header.
             var candidate = new CbeffRecord(
                 record.Header.WithSignatureLength(length),
                 record.BiometricData,

@@ -35,7 +35,7 @@ public static class CbeffCodec
                 {
                     BinaryFormatReader.Fail(
                         "CbeffTimestamp",
-                        "A header timestamp is not a valid UTC calendar time.",
+                        "A header timestamp contains an invalid UTC calendar time.",
                         headerReader.Offset - 8,
                         8
                     );
@@ -54,7 +54,7 @@ public static class CbeffCodec
             )
                 BinaryFormatReader.Fail(
                     "CbeffLength",
-                    "The declared biometric and security block lengths do not match the buffer.",
+                    "The declared biometric and security block lengths differ from the buffer length.",
                     2,
                     6
                 );
@@ -87,7 +87,7 @@ public static class CbeffCodec
 
     /// <summary>Returns the exact header followed by biometric data for detached CMS processing.</summary>
     /// <param name="record">The record whose lengths have been finalized before signing.</param>
-    /// <returns>Signed-content bytes without the detached security block.</returns>
+    /// <returns>The exact header and biometric-record bytes covered by the signature.</returns>
     public static byte[] GetSignedData(CbeffRecord record)
     {
         ArgumentNullException.ThrowIfNull(record);

@@ -4,6 +4,13 @@ Releases follow Semantic Versioning. Version 3 is the .NET 10 consolidation rele
 
 ## Unreleased
 
+- Write baseline TIFF resolution tags with the documented 72 ppi display default.
+- Validate signature request lengths against the canonical CBEFF header size.
+- Pin CI to the NFIQ revision with the shared runtime catalog.
+
+- Add MediaPipe-backed `biotool face prepare`, reviewed head geometry, source-supported Full Frontal cropping, and shared JPEG 2000 encoding.
+- Replace facial model assets with pinned Apache-2.0 MediaPipe ONNX models and add the first-party GPLv2 combination exception.
+
 ## 3.0.0-beta.1 - 2026-10-31
 
 - Centralize canonical fingerprint-to-NBIS coordinate and angle conversion in the fingerprint package.

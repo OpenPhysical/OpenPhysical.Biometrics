@@ -19,10 +19,11 @@ inspection, and signature handoffs. `.Facial` prepares captured sRGB pixels as a
 JPEG 2000 facial record. `.Imaging` supplies an owned `RgbImage` buffer for image
 loading, transforms, and encoding.
 
-The `.Facial.Infrastructure`, `.Facial.Core`, `.Facial.Models`, and
-`.Facial.Compatibility` packages retain the existing facial detection,
-landmark, and quality-assessment pipeline. They share `RgbImage` and the Skia
-backend. See [migration notes](MIGRATING-TO-3.md) for the package and contract map.
+`PortraitPreparer` in `.Facial` uses the pinned `.Facial.Models` assets through
+Microsoft.ML.OnnxRuntime. Register `AddPortraitPreparation()` for lazy CPU inference.
+The result contains immutable source-coordinate landmarks, named anatomical
+features, prepared pixels, and the source-to-portrait transformation.
+See [portrait preparation](PIV-PORTRAITS.md) for reviewed geometry and CLI workflows.
 
 ## Extract and compare fingerprints
 
@@ -134,9 +135,8 @@ else
 
 Acquisition metadata records source, device, time, quality, and confirmation of the
 frontal subject and optical capture requirements. The shared PIV profile checks
-encoded facial metadata, including width greater than 420 pixels. The optional
-facial pipeline adds detection, landmarks, alignment, and
-[quality assessments](quality-assessment.md).
+encoded facial metadata, including width greater than 420 pixels. The portrait preparer adds detection, named landmarks, roll correction, and
+[geometry findings](PIV-PORTRAITS.md).
 
 ## Connect the application's signature services
 

@@ -7,10 +7,10 @@ namespace OpenPhysical.Biometrics.Formats.Fingerprints;
 /// <param name="X">Horizontal pixel coordinate measured from the left image edge.</param>
 /// <param name="Y">Vertical pixel coordinate measured from the top image edge.</param>
 /// <param name="Angle">Counterclockwise angle from positive X in two-degree units, from zero through 179.</param>
-/// <param name="Quality">Minutia quality from zero through 100; zero means quality was not reported.</param>
+/// <param name="Quality">Minutia quality from zero through 100; zero denotes unreported quality.</param>
 public sealed record FingerprintMinutia(byte Type, ushort X, ushort Y, byte Angle, byte Quality);
 
-/// <summary>Preserves an extended block, including unrecognized vendor data, without changing its bytes.</summary>
+/// <summary>Preserves the original bytes of an extended block, including unrecognized vendor data.</summary>
 /// <param name="Type">Two-byte block type identifier.</param>
 /// <param name="Data">Payload bytes following the four-byte type-and-length header.</param>
 public sealed record FingerprintExtendedBlock(ushort Type, ImmutableArray<byte> Data);

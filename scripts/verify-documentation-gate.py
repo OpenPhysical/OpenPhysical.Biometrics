@@ -43,7 +43,7 @@ with tempfile.TemporaryDirectory(prefix="documentation-gate-", dir=artifacts) as
     build(valid.replace('    /// <param name="value">Value returned unchanged.</param>\n', ''), "SA1611")
     build(valid.replace('    /// <returns>The supplied integer.</returns>\n', ''), "SA1615")
     build(valid.replace('Returns the supplied value.', 'Uses <see cref="TypeThatDoesNotExist"/>.'), "CS1574")
-    build(valid, "cannot be suppressed", ("-p:NoWarn=CS1591",))
+    build(valid, "must remain enabled", ("-p:NoWarn=CS1591",))
     build(valid, "Warnings must be treated as errors", ("-p:TreatWarningsAsErrors=false",))
     build(valid, "Documentation analyzers must run", ("-p:RunAnalyzers=false",))
 print("All public API documentation enforcement checks passed.")
