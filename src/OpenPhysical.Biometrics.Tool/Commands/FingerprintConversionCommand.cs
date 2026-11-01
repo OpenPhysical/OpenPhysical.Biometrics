@@ -2,7 +2,6 @@
 namespace OpenPhysical.Biometrics.Tool.Commands;
 
 using System.Globalization;
-using System.Security.Cryptography;
 using OpenPhysical.Biometrics.Fingerprints;
 using OpenPhysical.Biometrics.Formats.Fingerprints;
 using OpenPhysical.Biometrics.NBIS;
@@ -79,7 +78,7 @@ internal static class FingerprintConversionCommand
         finally
         {
             if (bytes is not null)
-                CryptographicOperations.ZeroMemory(bytes);
+                Array.Clear(bytes);
         }
     }
 }

@@ -28,3 +28,11 @@ detector/crop postprocessing retain Apache-2.0 terms. See
 `src/OpenPhysical.Biometrics.Onnx/Resources/provenance.json` and
 `LICENSE-MediaPipe-Apache-2.0.txt` for exact artifacts and notices. The
 first-party combination permission is part of the repository's `LICENSE`.
+
+## BouncyCastle.Cryptography
+
+SHA-256 digests (model integrity checks and input hashing) use
+BouncyCastle.Cryptography 2.6.1, distributed under the MIT license (Legion of
+the Bouncy Castle Inc.). Source and notices: https://github.com/bcgit/bc-csharp.
+All cryptographic operations in this repository use BouncyCastle; the
+`System.Security.Cryptography` namespace is banned at build time.

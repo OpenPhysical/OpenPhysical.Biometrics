@@ -2,7 +2,6 @@
 namespace OpenPhysical.Biometrics.Facial;
 
 using System.Collections.Immutable;
-using System.Security.Cryptography;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
@@ -39,7 +38,7 @@ public sealed class PortraitPreparer : IDisposable
         lock (gate)
         {
             ObjectDisposedException.ThrowIf(disposed, this);
-            var hash = Convert.ToHexString(SHA256.HashData(encodedImage)).ToLowerInvariant();
+            var hash = Sha256.HexDigest(encodedImage);
             var image = PortraitPixels.Decode(encodedImage);
             if (geometry is not null)
             {

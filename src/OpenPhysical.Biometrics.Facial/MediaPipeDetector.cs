@@ -4,7 +4,6 @@
 namespace OpenPhysical.Biometrics.Facial;
 
 using System.Collections.Immutable;
-using System.Security.Cryptography;
 using Microsoft.ML.OnnxRuntime;
 using Microsoft.ML.OnnxRuntime.Tensors;
 using OpenPhysical.Biometrics.Onnx;
@@ -50,11 +49,7 @@ internal sealed class MediaPipeDetector : IDisposable
         using var buffer = new MemoryStream();
         stream.CopyTo(buffer);
         var bytes = buffer.ToArray();
-        if (
-            !Convert
-                .ToHexString(SHA256.HashData(bytes))
-                .Equals(hash, StringComparison.OrdinalIgnoreCase)
-        )
+        if (!Sha256.HexDigest(bytes).Equals(hash, StringComparison.OrdinalIgnoreCase))
             throw new InvalidOperationException(
                 "The packaged MediaPipe model checksum is invalid."
             );

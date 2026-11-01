@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 using System.Collections.Immutable;
 using System.Globalization;
-using System.Security.Cryptography;
 using OpenPhysical.Biometrics.NBIS;
 using OpenPhysical.Biometrics.NFIQ1;
 using OpenPhysical.Biometrics.NFIQ2;
@@ -105,6 +104,6 @@ static FingerprintImage ReadCapture(string path, int width, int height)
     finally
     {
         // The immutable capture owns a copy, so clear this temporary file buffer.
-        CryptographicOperations.ZeroMemory(temporary);
+        Array.Clear(temporary);
     }
 }

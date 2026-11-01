@@ -2,7 +2,6 @@
 namespace OpenPhysical.Biometrics.Tool.Commands;
 
 using System.Globalization;
-using System.Security.Cryptography;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using OpenPhysical.Biometrics.Formats;
@@ -117,7 +116,7 @@ internal static class BiometricInspectionCommand
         finally
         {
             if (bytes is not null)
-                CryptographicOperations.ZeroMemory(bytes);
+                Array.Clear(bytes);
         }
     }
 }
