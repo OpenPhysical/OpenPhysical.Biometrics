@@ -22,9 +22,9 @@
         <PackageTags>biometrics;piv;cbeff;fingerprint;nbis;nfiq;facial;jpeg2000</PackageTags>
         <PackageIcon>icon.png</PackageIcon>
         <PackageReadmeFile>README.md</PackageReadmeFile>
-        <Version>3.0.0-beta.1</Version>
-        <NbisPackageVersion>0.1.0-beta.1</NbisPackageVersion>
-        <NfiqPackageVersion>0.1.0-beta.1</NfiqPackageVersion>
+        <Version>3.0.0-dev.20261104.2</Version>
+        <NbisPackageVersion>1.0.1</NbisPackageVersion>
+        <NfiqPackageVersion>1.0.1</NfiqPackageVersion>
         <!-- Build Output -->
         <BaseOutputPath>$(MSBuildThisFileDirectory)artifacts\bin\$(MSBuildProjectName)\</BaseOutputPath>
         <BaseIntermediateOutputPath>$(MSBuildThisFileDirectory)artifacts\obj\$(MSBuildProjectName)\</BaseIntermediateOutputPath>
