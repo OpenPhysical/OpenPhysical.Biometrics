@@ -158,3 +158,9 @@ return results. Reuse extracted templates through LINQ projections when making s
 comparisons. A canonical selected card view converts with
 `record.ToMatchingTemplate(FingerPosition.RightMiddle, viewNumber: 0)`, and the
 resulting `Result` composes with `Bind` and `Map`.
+
+## Qualified acquisition handoff
+
+`AcquiredFingerprintAdapter` maps a corrected plain `CaptureFrame` into the existing `FingerprintCapture` processing path. The caller supplies an externally approved `FingerprintAcquisitionProfile` with exact device identity, driver/correction versions, calibration digest, output geometry, qualification reference and registered equipment mapping. Constructing this profile does not authenticate policy or certify hardware; the Server/Workstation authority owns those decisions.
+
+This adapter requires measured corrected geometry at 500 ppi on both axes, matching the existing processing input. It preserves the original corrected pixels and capture time. Raw, rolled, experimental, unknown-resolution and unknown-equipment input fail with typed errors. This does not qualify the experimental FS50 geometry. Private experimental-record and prepared-evidence submission workflows remain separate work; no CA or operator authorization is added to Biometrics.

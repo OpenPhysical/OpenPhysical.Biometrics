@@ -6,6 +6,9 @@ namespace OpenPhysical.Biometrics.Fingerprints;
 /// <summary>Defines the stable error codes returned by fingerprint operations.</summary>
 public static class FingerprintErrorCodes
 {
+    /// <summary>The acquisition evidence does not match the approved profile.</summary>
+    public const string AcquisitionProfileMismatch = "AcquisitionProfileMismatch";
+
     /// <summary>The finger position is not an ANSI finger code.</summary>
     public const string InvalidFinger = "InvalidFinger";
 
