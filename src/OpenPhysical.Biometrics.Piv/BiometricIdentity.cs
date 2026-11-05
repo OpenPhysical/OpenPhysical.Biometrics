@@ -28,18 +28,30 @@ public sealed class BiometricIdentity : ValueObject
     public static Result<BiometricIdentity, PivError> Create(
         ReadOnlySpan<byte> fascN,
         Guid cardUuid
-    )
-    {
-        if (fascN.Length != 25)
-            return Result.Failure<BiometricIdentity, PivError>(
-                new PivError(PivErrorCodes.InvalidFascN, "A PIV FASC-N contains 25 bytes.")
-            );
-        return cardUuid == Guid.Empty
-            ? Result.Failure<BiometricIdentity, PivError>(
+    ) =>
+        WithUuid(fascN, cardUuid)
+            .Ensure(
+                identity => identity.CardUuid != Guid.Empty,
                 new PivError(PivErrorCodes.InvalidCardUuid, "A card UUID must be specified.")
+            );
+
+    /// <summary>Represents an existing reference whose external credential profile explicitly omits the UUID.</summary>
+    /// <param name="fascN">The complete 25-byte FASC-N authenticated by the credential workflow.</param>
+    /// <returns>An identity with an absent UUID, or a typed invalid-FASC-N failure.</returns>
+    /// <remarks>The caller authorizes this exception, such as Legacy TWIC. New PIV issuance uses Create.</remarks>
+    public static Result<BiometricIdentity, PivError> CreateWithoutCardUuid(
+        ReadOnlySpan<byte> fascN
+    ) => WithUuid(fascN, Guid.Empty);
+
+    private static Result<BiometricIdentity, PivError> WithUuid(
+        ReadOnlySpan<byte> fascN,
+        Guid cardUuid
+    ) =>
+        fascN.Length != 25
+            ? Result.Failure<BiometricIdentity, PivError>(
+                new PivError(PivErrorCodes.InvalidFascN, "A PIV FASC-N contains 25 bytes.")
             )
             : new BiometricIdentity(ImmutableArray.Create(fascN.ToArray()), cardUuid);
-    }
 
     /// <summary>Supplies the encoded values that define identity equality.</summary>
     /// <returns>The card UUID followed by each FASC-N byte.</returns>

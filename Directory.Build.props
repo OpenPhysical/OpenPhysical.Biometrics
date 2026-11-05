@@ -22,7 +22,7 @@
         <PackageTags>biometrics;piv;cbeff;fingerprint;nbis;nfiq;facial;jpeg2000</PackageTags>
         <PackageIcon>icon.png</PackageIcon>
         <PackageReadmeFile>README.md</PackageReadmeFile>
-        <Version>3.0.0-dev.20261104.2</Version>
+        <Version>3.0.0-dev.20261104.4</Version>
         <NbisPackageVersion>1.0.1</NbisPackageVersion>
         <NfiqPackageVersion>1.0.1</NfiqPackageVersion>
         <!-- Build Output -->
