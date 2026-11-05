@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <Description>Bounded USB transport edge for biometric capture devices.</Description>
+        <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+    </PropertyGroup>
+    <ItemGroup>
+        <ProjectReference Include="../OpenPhysical.Biometrics.Capture/OpenPhysical.Biometrics.Capture.csproj" />
+    </ItemGroup>
+</Project>

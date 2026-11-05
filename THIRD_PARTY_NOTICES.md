@@ -36,3 +36,15 @@ BouncyCastle.Cryptography 2.6.1, distributed under the MIT license (Legion of
 the Bouncy Castle Inc.). Source and notices: https://github.com/bcgit/bc-csharp.
 All cryptographic operations in this repository use BouncyCastle; the
 `System.Security.Cryptography` namespace is banned at build time.
+
+
+## FS50 numerical oracle (development only)
+
+The FS50 interpolation profile was characterized using `opencv-python-headless==5.0.0.93`
+and NumPy 2.4.6 on synthetic pixels. OpenCV 5 is Apache-2.0 licensed; it is used only by
+`tools/fs50/generate_resampler_oracle.py` in a separate development environment. Neither
+OpenCV binaries nor its new cubic-kernel source are included in the managed capture
+library. Numerical coefficient constants were recovered from observable synthetic
+outputs and common cubic mathematics. No upstream cubic implementation was copied or
+translated. See `docs/FS50-CAPTURE.md` and the immutable numerical oracle fixture for
+profile and provenance details.

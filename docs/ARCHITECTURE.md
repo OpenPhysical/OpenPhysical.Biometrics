@@ -88,3 +88,13 @@ Each migration keeps its release notes, explicit package versions, caller-owned
 trust policy, and tests at the layer that owns the behavior. Native parity belongs
 to µnit; managed ownership, conversions, services, and workflow composition belong
 to NUnit; card transactions belong to middleware integration tests.
+
+## Device acquisition boundary
+
+`OpenPhysical.Biometrics.Capture` is a native-free leaf library. It owns immutable device capabilities, acquisition settings, Gray8 frames, provenance, physical-resolution evidence and typed acquisition failures. It has no person, PIV record, USB or vendor SDK dependency; record preparation remains in Fingerprints/Formats. Driver implementations are separate packages.
+
+`CaptureDriverRegistry` verifies discovery metadata and applies one process-wide lease per canonical physical device identity, including across registry instances. Drivers must use the same canonical physical ID and enforce OS/device exclusivity across processes. Sessions serialize operations, have a finite lifetime of at most five minutes, propagate cancellation, and release leases only after driver cleanup. Cleanup failure quarantines the lease until restart. Drivers must honor cancellation and dispose partial opens before returning an error; forcibly releasing a device while native I/O continues is forbidden.
+
+A raw frame cannot carry correction metadata or changed output geometry. Corrected frames require a SHA-256 calibration digest and correction version. Resolution is explicitly unknown, manufacturer-declared or physically measured; unknown resolution never becomes 500 ppi implicitly. Qualified acquisition requires a measured resolution and a named qualification profile. These are evidence assertions, not automatic verification of an external qualification record. Immutable frames contain no person identity.
+
+The acquisition contract tests use a fake physical driver to exercise bounds, immutable copies, provenance, exclusive leases, cancellation, lifetime expiry, settings changes, repeated sequence values and disconnect cleanup. B1 adds no real device driver and makes no hardware qualification claim.

@@ -1,0 +1,42 @@
+{
+  "schemaVersion": 1,
+  "provenance": "Numeric synthetic-ramp oracle from output/fs50-capture/test_geometry.py; contains no fingerprint image or vendor runtime",
+  "descriptorHex": "0901340905000340000032000132000000010001005ff20701000801000001010801032002ee8f00000182010000000000000000000000000000000000000000",
+  "controlsHex": "010060f02070ff",
+  "coefficients": [
+    53043,
+    15444,
+    58,
+    203,
+    257,
+    -4,
+    -638210,
+    50,
+    10666,
+    647,
+    144,
+    185
+  ],
+  "firstHorizontalRampSamples": [
+    5,
+    5,
+    6,
+    6,
+    6,
+    7,
+    7,
+    7,
+    7,
+    8,
+    8,
+    8,
+    9,
+    9,
+    9,
+    10,
+    10,
+    10,
+    11,
+    11
+  ]
+}

@@ -1,0 +1,491 @@
+{
+  "schemaVersion": 1,
+  "profileId": "fs50-cubic-half128-v1",
+  "oracle": {
+    "package": "opencv-python-headless==5.0.0.93",
+    "numpy": "2.4.6",
+    "platform": "Darwin-arm64",
+    "mapType": "float32 exact factory coordinates (multiples of 1/128)",
+    "sourceType": "uint8 grayscale",
+    "operation": "255 - cv2.remap(source, map_x, map_y, INTER_CUBIC, BORDER_CONSTANT, 0)"
+  },
+  "coefficientRecovery": "Synthetic 8192-row 1D corpus, NumPy PCG64 seed 51; common cubic coefficients fitted to binary16 FMA observations. No upstream cubic source used.",
+  "coefficientBitsLittleEndianSha256": "b6d1a9297244b6f68adb198525339474e3f610531cac4347fa1306c043849c5a",
+  "mapXSha256": "a08f21e98cbcd31735804788e1eac244ed182d746cf5da9abd9dc5f9f4f7288a",
+  "mapYSha256": "f5709f71d99f908106b93a859e5e6e5ad099c64ff7b7c08ae4632b390638d569",
+  "randomGenerator": "uint32 state=seed; for each byte: state ^= state<<13; state ^= state>>17; state ^= state<<5; truncate each left shift to uint32; byte=state>>24",
+  "frames": [
+    {
+      "kind": "xorshift32",
+      "seed": 1179858224,
+      "geometryName": "factory",
+      "rawSha256": "5fb10bb7bd5f9759187e237fd79c4ed28c84088ab561977e92aef10c09930863",
+      "correctedSha256": "d6e8783c5fc69ecbcbab5faf1b50332f163084cffc4be3a145a27a7a298d10f5",
+      "samples": [
+        {
+          "offset": 0,
+          "value": 184
+        },
+        {
+          "offset": 1,
+          "value": 119
+        },
+        {
+          "offset": 18,
+          "value": 190
+        },
+        {
+          "offset": 19,
+          "value": 3
+        },
+        {
+          "offset": 127,
+          "value": 78
+        },
+        {
+          "offset": 799,
+          "value": 87
+        },
+        {
+          "offset": 800,
+          "value": 125
+        },
+        {
+          "offset": 12345,
+          "value": 194
+        },
+        {
+          "offset": 300000,
+          "value": 148
+        },
+        {
+          "offset": 599200,
+          "value": 255
+        },
+        {
+          "offset": 599999,
+          "value": 31
+        }
+      ]
+    },
+    {
+      "kind": "xorshift32",
+      "seed": 305419896,
+      "geometryName": "factory",
+      "rawSha256": "63501d4fc489fdf18e135ee946acc2dba7d0b872c98abc56e0d8b8c1c229d009",
+      "correctedSha256": "266fef1154eadaf2b372d27465239bbf4886a0c6be2fb509ecf7c1c0251f697b",
+      "samples": [
+        {
+          "offset": 0,
+          "value": 89
+        },
+        {
+          "offset": 1,
+          "value": 129
+        },
+        {
+          "offset": 18,
+          "value": 201
+        },
+        {
+          "offset": 19,
+          "value": 78
+        },
+        {
+          "offset": 127,
+          "value": 138
+        },
+        {
+          "offset": 799,
+          "value": 49
+        },
+        {
+          "offset": 800,
+          "value": 125
+        },
+        {
+          "offset": 12345,
+          "value": 103
+        },
+        {
+          "offset": 300000,
+          "value": 169
+        },
+        {
+          "offset": 599200,
+          "value": 73
+        },
+        {
+          "offset": 599999,
+          "value": 171
+        }
+      ]
+    },
+    {
+      "kind": "xorshift32",
+      "seed": 3735928559,
+      "geometryName": "factory",
+      "rawSha256": "b7ae94e55a9df47c92e3a0c235bc1d0dfb22651c3817241411e9428bbce83849",
+      "correctedSha256": "f75e4360edf714435fd737589c84c6412af93ac5895c741a3a9342f2518b2b0a",
+      "samples": [
+        {
+          "offset": 0,
+          "value": 117
+        },
+        {
+          "offset": 1,
+          "value": 163
+        },
+        {
+          "offset": 18,
+          "value": 98
+        },
+        {
+          "offset": 19,
+          "value": 61
+        },
+        {
+          "offset": 127,
+          "value": 103
+        },
+        {
+          "offset": 799,
+          "value": 0
+        },
+        {
+          "offset": 800,
+          "value": 100
+        },
+        {
+          "offset": 12345,
+          "value": 98
+        },
+        {
+          "offset": 300000,
+          "value": 135
+        },
+        {
+          "offset": 599200,
+          "value": 170
+        },
+        {
+          "offset": 599999,
+          "value": 206
+        }
+      ]
+    },
+    {
+      "kind": "horizontal-ramp",
+      "seed": 0,
+      "geometryName": "factory",
+      "rawSha256": "564132d225ee8ff9e90392b223f9469ae4b10386da3e5e1caf431d495602be63",
+      "correctedSha256": "8f7c751cc26c50d2f2d36d7aec71ea3286c57daecdb4b4da45648d437328446c",
+      "samples": [
+        {
+          "offset": 0,
+          "value": 250
+        },
+        {
+          "offset": 1,
+          "value": 250
+        },
+        {
+          "offset": 18,
+          "value": 244
+        },
+        {
+          "offset": 19,
+          "value": 244
+        },
+        {
+          "offset": 127,
+          "value": 211
+        },
+        {
+          "offset": 799,
+          "value": 5
+        },
+        {
+          "offset": 800,
+          "value": 250
+        },
+        {
+          "offset": 12345,
+          "value": 145
+        },
+        {
+          "offset": 300000,
+          "value": 250
+        },
+        {
+          "offset": 599200,
+          "value": 251
+        },
+        {
+          "offset": 599999,
+          "value": 2
+        }
+      ]
+    },
+    {
+      "kind": "vertical-ramp",
+      "seed": 0,
+      "geometryName": "factory",
+      "rawSha256": "c9e2e8cc46414eac83737765ae1f391687414b0da5541bebc5ed3f5c084433fd",
+      "correctedSha256": "147a2b8a467a6e4e948b281bfb4c2ca35091cc45979b81bc1e58b34e4efc546c",
+      "samples": [
+        {
+          "offset": 0,
+          "value": 235
+        },
+        {
+          "offset": 1,
+          "value": 235
+        },
+        {
+          "offset": 18,
+          "value": 236
+        },
+        {
+          "offset": 19,
+          "value": 236
+        },
+        {
+          "offset": 127,
+          "value": 241
+        },
+        {
+          "offset": 799,
+          "value": 236
+        },
+        {
+          "offset": 800,
+          "value": 234
+        },
+        {
+          "offset": 12345,
+          "value": 230
+        },
+        {
+          "offset": 300000,
+          "value": 96
+        },
+        {
+          "offset": 599200,
+          "value": 209
+        },
+        {
+          "offset": 599999,
+          "value": 201
+        }
+      ]
+    },
+    {
+      "kind": "checkerboard",
+      "seed": 0,
+      "geometryName": "factory",
+      "rawSha256": "8f6066accdde0bf67c91d649a956c29967b1b3f210c9af2f382bfc558f1a1750",
+      "correctedSha256": "73a75d631abe215d76f610b2728f8dac387c4a755574312cd7c2140037d4a07e",
+      "samples": [
+        {
+          "offset": 0,
+          "value": 57
+        },
+        {
+          "offset": 1,
+          "value": 92
+        },
+        {
+          "offset": 18,
+          "value": 130
+        },
+        {
+          "offset": 19,
+          "value": 36
+        },
+        {
+          "offset": 127,
+          "value": 187
+        },
+        {
+          "offset": 799,
+          "value": 191
+        },
+        {
+          "offset": 800,
+          "value": 210
+        },
+        {
+          "offset": 12345,
+          "value": 138
+        },
+        {
+          "offset": 300000,
+          "value": 117
+        },
+        {
+          "offset": 599200,
+          "value": 227
+        },
+        {
+          "offset": 599999,
+          "value": 31
+        }
+      ]
+    },
+    {
+      "kind": "xorshift32",
+      "seed": 324508639,
+      "geometryName": "near-origin",
+      "rawSha256": "eb05bef7a09700897520602c7f2ec538c5cfba1cadbbfc182f09cb26795206a1",
+      "correctedSha256": "586a84e7f434fc600e335aec095bd0b489913f5e2fe5f962611f08fba9e093d5",
+      "samples": [
+        {
+          "offset": 0,
+          "value": 75
+        },
+        {
+          "offset": 1,
+          "value": 231
+        },
+        {
+          "offset": 18,
+          "value": 53
+        },
+        {
+          "offset": 19,
+          "value": 113
+        },
+        {
+          "offset": 127,
+          "value": 120
+        },
+        {
+          "offset": 799,
+          "value": 78
+        },
+        {
+          "offset": 800,
+          "value": 24
+        },
+        {
+          "offset": 12345,
+          "value": 216
+        },
+        {
+          "offset": 300000,
+          "value": 159
+        },
+        {
+          "offset": 599200,
+          "value": 0
+        },
+        {
+          "offset": 599999,
+          "value": 196
+        }
+      ],
+      "geometry": {
+        "descriptorHex": "0901340905000340000032000132000000010001005ff20701000801000001010801032002ee8f00000182010000000000000000000000000000000000000000",
+        "controlsHex": "010060010170ff",
+        "coefficients": [
+          0,
+          10008,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          10008,
+          0,
+          0,
+          0
+        ]
+      },
+      "mapBounds": {
+        "minX": 0.53125,
+        "maxX": 800.1171875,
+        "minY": 0.6953125,
+        "maxY": 750.2421875
+      }
+    },
+    {
+      "kind": "xorshift32",
+      "seed": 610839777,
+      "geometryName": "far-border",
+      "rawSha256": "c8877d4645a1a7d26f8e66d9c1798e0e55cedb3e7658c7d7fce0f95fe94a83ec",
+      "correctedSha256": "40ac033d3a9666ad6a56ab64ee66804d3b23928df9f280dc0160c1199694cd9c",
+      "samples": [
+        {
+          "offset": 0,
+          "value": 165
+        },
+        {
+          "offset": 1,
+          "value": 66
+        },
+        {
+          "offset": 18,
+          "value": 116
+        },
+        {
+          "offset": 19,
+          "value": 102
+        },
+        {
+          "offset": 127,
+          "value": 204
+        },
+        {
+          "offset": 799,
+          "value": 0
+        },
+        {
+          "offset": 800,
+          "value": 221
+        },
+        {
+          "offset": 12345,
+          "value": 84
+        },
+        {
+          "offset": 300000,
+          "value": 63
+        },
+        {
+          "offset": 599200,
+          "value": 62
+        },
+        {
+          "offset": 599999,
+          "value": 86
+        }
+      ],
+      "geometry": {
+        "descriptorHex": "0901340905000340000032000132000000010001005ff20701000801000001010801032002ee8f00000182010000000000000000000000000000000000000000",
+        "controlsHex": "010060ff5270ff",
+        "coefficients": [
+          0,
+          15420,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          9995,
+          0,
+          0,
+          0
+        ]
+      },
+      "mapBounds": {
+        "minX": 46.3515625,
+        "maxX": 1278.359375,
+        "minY": 82.1796875,
+        "maxY": 830.765625
+      }
+    }
+  ]
+}
