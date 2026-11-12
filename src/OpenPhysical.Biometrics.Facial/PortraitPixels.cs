@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 namespace OpenPhysical.Biometrics.Facial;
 
+using System.Collections.Immutable;
 using CSharpFunctionalExtensions;
 
-internal sealed record PortraitPixels(int Width, int Height, byte[] Rgb)
+internal sealed record PortraitPixels(int Width, int Height, ImmutableArray<byte> Rgb)
 {
     internal Result<byte[], FacialError> Warp(
         int width,

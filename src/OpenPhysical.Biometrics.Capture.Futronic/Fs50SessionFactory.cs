@@ -106,6 +106,9 @@ internal sealed class Fs50SessionFactory(IUsbDeviceProvider provider, TimeProvid
         CancellationToken token
     )
     {
+        var synchronized = await protocol.SynchronizeAsync(token).ConfigureAwait(false);
+        if (synchronized.IsFailure)
+            return synchronized.Error;
         var descriptor = await protocol.ReadDescriptorAsync(token).ConfigureAwait(false);
         if (descriptor.IsFailure)
             return descriptor.Error;

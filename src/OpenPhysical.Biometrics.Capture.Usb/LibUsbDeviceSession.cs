@@ -155,14 +155,7 @@ internal sealed class LibUsbDeviceSession : IAsyncDisposable
             out var count,
             timeout
         );
-        if (status != 0 || count < 0 || count > buffer.Length)
-        {
-            return Result.Failure<int, CaptureError>(
-                new CaptureError(CaptureErrorCodes.DeviceUnavailable, "USB transfer failed.")
-            );
-        }
-
-        return count;
+        return LibUsbTransferResult.Decode(status, count, buffer.Length, (endpoint & 0x80) != 0);
     }
 
     private Result<bool, CaptureError> CloseHandle()

@@ -1,0 +1,146 @@
+{
+  "schemaVersion": 1,
+  "capturedAtUtc": "2026-11-10T21:50:01.046261+00:00",
+  "device": "Futronic FS50",
+  "vendorId": "1491",
+  "productId": "0050",
+  "calibrationReadPasses": 2,
+  "descriptorSha256": "9d5ac58ffef532fb22e6a3195b46804f14c41ff332014341dde57928d4482ff9",
+  "controlsSha256": "87dd4d5b089c5f2f850c08b00492fd2d39347ab5245e6bd0813d8c019a65afdf",
+  "calibrationSha256": "3b12af20e992e004c972ea6240128fd2ab67f9315848406c1d86b560b67db1c0",
+  "sourceWidth": 1280,
+  "sourceHeight": 832,
+  "correctedWidth": 800,
+  "correctedHeight": 750,
+  "profile": "fs50-cubic-half128-v1",
+  "points": [
+    {
+      "x": 0,
+      "y": 0,
+      "sourceX": 27.171875,
+      "sourceY": 19.734375
+    },
+    {
+      "x": 400,
+      "y": 0,
+      "sourceX": 637.7422,
+      "sourceY": 9.1640625
+    },
+    {
+      "x": 799,
+      "y": 0,
+      "sourceX": 1253.2422,
+      "sourceY": 19.242188
+    },
+    {
+      "x": 0,
+      "y": 375,
+      "sourceX": 25.53125,
+      "sourceY": 414.8203
+    },
+    {
+      "x": 400,
+      "y": 375,
+      "sourceX": 639.9453,
+      "sourceY": 406.39844
+    },
+    {
+      "x": 799,
+      "y": 375,
+      "sourceX": 1259.2812,
+      "sourceY": 418.6172
+    },
+    {
+      "x": 0,
+      "y": 749,
+      "sourceX": 23.796875,
+      "sourceY": 814.0156
+    },
+    {
+      "x": 400,
+      "y": 749,
+      "sourceX": 642.03906,
+      "sourceY": 807.7344
+    },
+    {
+      "x": 799,
+      "y": 749,
+      "sourceX": 1265.2031,
+      "sourceY": 822.08594
+    }
+  ],
+  "synthetic": [
+    {
+      "pattern": "horizontal-ramp",
+      "rawSha256": "ee194ed5fa8ad3c47cbf37c74fc9a8837d06141b962bf530303967e0d4d3a2a0",
+      "correctedSha256": "fa8aa452b00397c4f8b8091c62c726af237931c145cdbb577651c5c23d0d3ed9"
+    },
+    {
+      "pattern": "vertical-ramp",
+      "rawSha256": "c9e2e8cc46414eac83737765ae1f391687414b0da5541bebc5ed3f5c084433fd",
+      "correctedSha256": "147a2b8a467a6e4e948b281bfb4c2ca35091cc45979b81bc1e58b34e4efc546c"
+    },
+    {
+      "pattern": "checkerboard",
+      "rawSha256": "275d1644132926599327ca899e96b44e34cfb12060411bfb48a40c434cb523a8",
+      "correctedSha256": "bc317c9c3a560bcde782c84de88819f25516d2e208c836fd5f696894a08001b3"
+    }
+  ],
+  "empty": [
+    {
+      "exposure": 0,
+      "retained": true,
+      "rawSha256": "a20c35bbe882436fc76e7d9faa6d0c6b9fe6cd4338fce94ad0908b219022ef5b",
+      "correctedSha256": "7dbb59371d97c2e226f9c23eb2e396b40bd1d0a01ae0c3a83cafafc09b2aa978",
+      "contactArea": 0,
+      "minimum": 253,
+      "maximum": 255,
+      "mean": 254.48177666666666,
+      "elapsedMs": 173.6934
+    },
+    {
+      "exposure": 64,
+      "retained": true,
+      "rawSha256": "9457f0da882ed2cd98a46aea12ccebe29d8a1c662693cc8829c9fa94f8491c2a",
+      "correctedSha256": "52c57f2d3148efd86a0374620ee568edd6414519ff13f26aa7a6a394a910fad8",
+      "contactArea": 0,
+      "minimum": 214,
+      "maximum": 254,
+      "mean": 251.80528666666666,
+      "elapsedMs": 200.6296
+    },
+    {
+      "exposure": 128,
+      "retained": true,
+      "rawSha256": "75ae34d9562a0442677d708a496b30f784343447672b3fafa0b719c7b9611992",
+      "correctedSha256": "04f1aba948038969016cbf246d750601129be1fd0a1285160be4be4672e5c595",
+      "contactArea": 0,
+      "minimum": 173,
+      "maximum": 252,
+      "mean": 248.943925,
+      "elapsedMs": 259.1123
+    },
+    {
+      "exposure": 200,
+      "retained": true,
+      "rawSha256": "31a520d6386d66da519e5da511949b2a4c32be1b28a728ab434eda5eb8d58f62",
+      "correctedSha256": "21ce3cfe1ea26f79a747b9186da17702bc13475305c1ffa70f40ea17f3a36248",
+      "contactArea": 0,
+      "minimum": 129,
+      "maximum": 250,
+      "mean": 245.87645166666667,
+      "elapsedMs": 319.0569
+    },
+    {
+      "exposure": 255,
+      "retained": true,
+      "rawSha256": "0d4242b98767b560258975f1ad35f89ebc6792fb704e894e57425e532328b654",
+      "correctedSha256": "2f299a1a39e428ba42b46c57b1bde92fc8131b2a68c3d5c2eef1de45ad0e4bb4",
+      "contactArea": 0,
+      "minimum": 97,
+      "maximum": 249,
+      "mean": 243.49534333333332,
+      "elapsedMs": 370.7152
+    }
+  ]
+}

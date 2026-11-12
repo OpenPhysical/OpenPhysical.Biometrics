@@ -32,7 +32,9 @@ internal sealed class Sd04ComparisonPolicyTests
 
     private FingerprintRecord PrepareTwoFingerReferenceFromRealCaptures()
     {
-        var enrollment = new PivFingerprintEnrollmentService(engine, new FixtureQuality());
+        var enrollment = new PivFingerprintEnrollmentService(
+            new FingerprintPreparationService(engine, new FixtureQuality())
+        );
         return enrollment
             .CreateRecord(
                 enrollment.Prepare(Capture(Image("f0005_03"), FingerPosition.RightMiddle)).Value,
@@ -196,7 +198,7 @@ internal sealed class Sd04ComparisonPolicyTests
     private sealed class FixtureQuality : IFingerprintQualityProvider
     {
         public Result<FingerprintQualityAssessment, FingerprintError> Assess(
-            FingerprintCapture capture
+            FingerprintImage image
         ) => FingerprintQualityAssessment.Create(2, "sd04-workflow-fixture");
     }
 }

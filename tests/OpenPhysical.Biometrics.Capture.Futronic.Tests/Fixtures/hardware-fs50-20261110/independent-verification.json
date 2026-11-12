@@ -1,0 +1,37 @@
+{
+  "oracle": "existing geometry.py using OpenCV cubic remap",
+  "results": [
+    {
+      "pattern": "horizontal-ramp",
+      "independent_opencv_match": true
+    },
+    {
+      "pattern": "vertical-ramp",
+      "independent_opencv_match": true
+    },
+    {
+      "pattern": "checkerboard",
+      "independent_opencv_match": true
+    },
+    {
+      "exposure": 0,
+      "independent_corrected_bytes_match": true
+    },
+    {
+      "exposure": 64,
+      "independent_corrected_bytes_match": true
+    },
+    {
+      "exposure": 128,
+      "independent_corrected_bytes_match": true
+    },
+    {
+      "exposure": 200,
+      "independent_corrected_bytes_match": true
+    },
+    {
+      "exposure": 255,
+      "independent_corrected_bytes_match": true
+    }
+  ]
+}

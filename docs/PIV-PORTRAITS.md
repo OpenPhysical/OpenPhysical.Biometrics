@@ -112,6 +112,21 @@ var jpeg2000 = PortraitEncoding.EncodeJpeg2000(portrait.RgbPixels.AsSpan(), 480,
 [portrait example](../examples/OpenPhysical.Biometrics.Examples/PortraitExample.cs)
 chains `Prepare`, `Ensure`, and `FacialRecordPreparer.Prepare` with `Bind`.
 
+### Owned images and camera frames
+
+`PortraitImage.Decode(encoded)` returns immutable, orientation-corrected sRGB pixels.
+`PortraitImage.FromSrgb(rgb, width, height)` owns camera samples that the capture
+provider has already converted to opaque eight-bit sRGB. Neither method resizes the
+image. Pass that image to `PortraitPreparer.Prepare(image)` or the overload accepting
+reviewed geometry and a face index; both use the same detector and crop pipeline as
+encoded-image preparation.
+
+Use `image.SourceSha256` when binding reviewed geometry. For decoded files this is
+the original encoded-byte hash. For camera RGB it is a domain-separated hash of the
+oriented dimensions and exact owned samples. The capture provider retains camera,
+time, and color-conversion evidence separately. A pixel buffer alone does not prove
+optical resolution or the camera's color calibration.
+
 ## Troubleshooting
 
 `NoFace` asks for a capture with a clearly visible face. `SelectFace` asks for an

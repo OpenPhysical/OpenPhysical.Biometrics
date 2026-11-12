@@ -101,7 +101,12 @@ public sealed class Fs50ResamplerParityTests
             && last.Y == bounds.GetProperty("maxY").GetSingle();
     }
 
-    private static byte[] Generate(string kind, uint seed)
+    internal static byte[] Generate(
+        string kind,
+        uint seed,
+        int rampDivisor = 5,
+        int checkerSize = 1
+    )
     {
         var bytes = new byte[1280 * 832];
         uint state = seed;
@@ -120,9 +125,9 @@ public sealed class Fs50ResamplerParityTests
             {
                 bytes[index] = kind switch
                 {
-                    "horizontal-ramp" => (byte)(x / 5),
+                    "horizontal-ramp" => (byte)(x / rampDivisor),
                     "vertical-ramp" => (byte)(y % 256),
-                    "checkerboard" => (byte)(((x + y) & 1) * 255),
+                    "checkerboard" => (byte)((((x / checkerSize) + (y / checkerSize)) & 1) * 255),
                     _ => 0,
                 };
             }
@@ -131,7 +136,7 @@ public sealed class Fs50ResamplerParityTests
         return bytes;
     }
 
-    private static string Hash(ReadOnlySpan<byte> bytes)
+    internal static string Hash(ReadOnlySpan<byte> bytes)
     {
         var digest = new Sha256Digest();
         digest.BlockUpdate(bytes);

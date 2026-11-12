@@ -1,0 +1,55 @@
+{
+  "Cohort": "UNSW_2D",
+  "Source": "https://zenodo.org/records/10432121",
+  "ArchiveBytes": 614529117,
+  "ArchiveSha256": "6bae764887655e79f643d9aca925f79cd85274a011903a0031a3dd2ecb3b6560",
+  "PublishedMd5": "39ce44a51b016e55904e9899918c11df",
+  "PreinspectionSplitSha256": "df2fa2cb52ce6e1de3458ec7ad9813de0c29d70dc0ee6be1d129d745601c2e48",
+  "InventoryScriptSha256": "69e63f10e6aa50e54f87f1a8fb8d3dceb93fb5656f98585ebb32e178eee22a9d",
+  "ManifestSha256": {
+    "development.manifest.json": "353722e05469c346ee604910144617cc6b36902e6005ec399228268b17fb66fb",
+    "final.manifest.json": "80807d9ba9a1f232d00856104d1f81e3c31f367b9b5959b146e8e68b097543bc",
+    "integrity.json": "c70860d352b952421f1d55e4f5a05bd4ee3c8d43b893bf40d3effd220a22bf0c",
+    "manifest.json": "9199dd0f86071fa6cddf10eded925e0dcffc2c6be77a4149508cf8bea893dfff",
+    "reserved.manifest.json": "9870bb2f539b3b6ece5bb09ce4341b8a609c253790d1d65d25d76d9a1a5e1311"
+  },
+  "Images": 6000,
+  "MissingSlots": 0,
+  "UnexpectedArchiveMembers": 0,
+  "Geometry": [
+    640,
+    480
+  ],
+  "PixelMode": "L or exact identity grayscale palette; all decoded samples unchanged",
+  "HeaderPixelsPerMeter": [
+    19685,
+    19685
+  ],
+  "NominalResolutionPpi": 500,
+  "CenteredGeometry": [
+    800,
+    750
+  ],
+  "CenteringOffset": [
+    80,
+    135
+  ],
+  "Centering": "White padding only; no resampling",
+  "UniquePixelImages": 5975,
+  "ExactDuplicateGroups": 25,
+  "DuplicateGroupsByRole": {
+    "development": 22,
+    "final": 1,
+    "reserved": 2
+  },
+  "CrossPersonDuplicateGroups": 0,
+  "CrossPartitionDuplicateGroups": 0,
+  "DuplicateDisposition": "Preserve every declared slot and pair in the primary full-attempt denominator. Report identical-sample genuine pairs separately; no replacement subjects or score-dependent exclusions.",
+  "Python": "3.14.7",
+  "Pillow": "12.2.0",
+  "InspectionState": "Archive inventory, lossless decoding, headers and sample/hash duplicate checks only. No contact, NFIQ, minutiae, matching or visual fingerprint inspection.",
+  "LicenseSha256": "aea6bf963555126ae728a209fd294d487c93016b249c219c772b5b700a43c366",
+  "ResearchCitations": "docs/FINGERPRINT-EVALUATION-COHORTS.md",
+  "SharedDecoderSha256": "a76d1dfcf7dabb9c1f5f60974e907cf5d04b2b593836953e6dead4c2692ab69a",
+  "ArchiveReplayVerification": "A second inventory extracted directly from the SHA-256-pinned archive into a fresh temporary folder. All five manifests are byte-identical to the original census; no quality or matching analysis was performed."
+}

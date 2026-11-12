@@ -1,0 +1,64 @@
+<UserControl
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:OpenPhysical.Biometrics.Desktop"
+    x:Class="OpenPhysical.Biometrics.Desktop.BiometricImageView"
+    x:Name="Root"
+    x:DataType="local:BiometricImageView"
+>
+    <Grid RowDefinitions="*,Auto" RowSpacing="4">
+        <Border BorderBrush="{DynamicResource AppDivider}" BorderThickness="1" ClipToBounds="True">
+            <Grid>
+                <local:FingerprintCanvas
+                    x:Name="ImageCanvas"
+                    Scene="{Binding #Root.Scene}"
+                    Invert="{Binding #Root.Invert}"
+                    ShowOverlay="{Binding #Root.ShowFeatures}"
+                    ShowSegmentation="{Binding #Root.ShowArea}"
+                    AutomationProperties.Name="Fingerprint image, use plus and minus to zoom and arrows to pan"
+                />
+                <TextBlock
+                    Text="{Binding #Root.EmptyText}"
+                    Foreground="{Binding #ImageCanvas.PlaceholderBrush}"
+                    IsVisible="{Binding #Root.Scene.HasNoValue}"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+                    TextAlignment="Center"
+                    TextWrapping="Wrap"
+                    Margin="16"
+                    MaxWidth="320"
+                    AutomationProperties.LiveSetting="Polite"
+                />
+            </Grid>
+        </Border>
+        <WrapPanel Grid.Row="1" Orientation="Horizontal">
+            <ItemsControl Classes="zoomtoolbar" ItemsSource="{Binding #ImageCanvas.ZoomActions}" />
+            <CheckBox
+                Content="Invert"
+                IsChecked="{Binding #Root.Invert, Mode=TwoWay}"
+                Margin="8,0"
+            />
+            <Button
+                Classes="Flat compact"
+                Content="⋮"
+                AutomationProperties.Name="View options"
+                ToolTip.Tip="View options"
+            >
+                <Button.Flyout>
+                    <Flyout>
+                        <StackPanel Spacing="8">
+                            <CheckBox
+                                Content="{Binding #Root.FeatureLabel}"
+                                IsChecked="{Binding #Root.ShowFeatures, Mode=TwoWay}"
+                            />
+                            <CheckBox
+                                Content="Finger area"
+                                IsChecked="{Binding #Root.ShowArea, Mode=TwoWay}"
+                            />
+                        </StackPanel>
+                    </Flyout>
+                </Button.Flyout>
+            </Button>
+        </WrapPanel>
+    </Grid>
+</UserControl>

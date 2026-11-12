@@ -1,19 +1,15 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 namespace OpenPhysical.Biometrics.Facial;
 
+using System.Collections.Immutable;
 using CSharpFunctionalExtensions;
 using SkiaSharp;
 
 // Decodes the original capture to opaque sRGB pixels with EXIF orientation applied once.
 internal static class PortraitDecoder
 {
-    private const int MaxEncodedBytes = 64 * 1024 * 1024;
-    private const long MaxPixels = 32 * 1024 * 1024;
-
     internal static Result<PortraitPixels, FacialError> Decode(ReadOnlySpan<byte> encoded)
     {
-        if (encoded.Length is < 1 or > MaxEncodedBytes)
-            return FacialErrors.EncodedImageSize().Fail<PortraitPixels>();
         using var data = SKData.CreateCopy(encoded);
         return FacialEdge.TryBind(
             () => Open(data),
@@ -36,7 +32,7 @@ internal static class PortraitDecoder
     {
         var w = codec.Info.Width;
         var h = codec.Info.Height;
-        if (w < 1 || h < 1 || (long)w * h > MaxPixels)
+        if (w < 1 || h < 1 || (long)w * h > PortraitImage.MaximumPixels)
             return FacialErrors.ImageDimensionsExceeded().Fail<PortraitPixels>();
         using var color = SKColorSpace.CreateSrgb();
         using var bitmap = new SKBitmap(
@@ -70,7 +66,7 @@ internal static class PortraitDecoder
             for (var c = 0; c < 3; c++)
                 rgb[o + c] = rgba[i + c];
         }
-        return new PortraitPixels(width, height, rgb).Succeed();
+        return new PortraitPixels(width, height, ImmutableArray.Create(rgb)).Succeed();
     }
 
     // EXIF orientation is applied once, before any coordinates are exposed.

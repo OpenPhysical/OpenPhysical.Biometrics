@@ -6,7 +6,7 @@ using CSharpFunctionalExtensions;
 
 /// <summary>An owned portrait preparation result with immutable pixels and findings.</summary>
 /// <param name="Status">Preparation outcome.</param>
-/// <param name="SourceSha256">Hash of the encoded source.</param>
+/// <param name="SourceSha256">Identity of the encoded source or geometry-bound camera RGB input.</param>
 /// <param name="SourceWidth">Oriented source width.</param>
 /// <param name="SourceHeight">Oriented source height.</param>
 /// <param name="Faces">Detections in stable order.</param>

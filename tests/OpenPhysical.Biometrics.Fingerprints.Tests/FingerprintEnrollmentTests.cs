@@ -57,7 +57,9 @@ internal sealed class FingerprintEnrollmentTests
     )
     {
         var provider = new Nfiq1FingerprintQualityProvider(new PoorImageEngine(status));
-        var assessment = provider.Assess(TestCaptures.Capture(FingerPosition.RightIndex)).Value;
+        var assessment = provider
+            .Assess(TestCaptures.Capture(FingerPosition.RightIndex).Image)
+            .Value;
         using (new AssertionScope())
         {
             assessment.Nfiq1.Should().Be(5);
@@ -74,7 +76,7 @@ internal sealed class FingerprintEnrollmentTests
             new PoorImageEngine((Nfiq1AssessmentStatus)99)
         );
         provider
-            .Assess(TestCaptures.Capture(FingerPosition.RightIndex))
+            .Assess(TestCaptures.Capture(FingerPosition.RightIndex).Image)
             .Should()
             .Fail()
             .Which.Code.Should()
@@ -85,7 +87,9 @@ internal sealed class FingerprintEnrollmentTests
     public void CandidateRankingReusesTemplatesAndPrefersIndexFingersWithinQualityClass()
     {
         var engine = new TestEngine();
-        var service = new PivFingerprintEnrollmentService(engine, new TestQuality());
+        var service = new PivFingerprintEnrollmentService(
+            new FingerprintPreparationService(engine, new TestQuality())
+        );
         var candidates = new[]
         {
             FingerPosition.LeftThumb,

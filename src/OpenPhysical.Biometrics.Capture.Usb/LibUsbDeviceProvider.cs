@@ -9,6 +9,34 @@ using CSharpFunctionalExtensions;
 /// <param name="libraryPath">Approved absolute libusb library path.</param>
 public sealed class LibUsbDeviceProvider(string libraryPath) : IUsbDeviceProvider
 {
+    /// <summary>Locates the native runtime asset distributed by the pinned NuGet dependency.</summary>
+    /// <returns>An absolute published or development-output path, or a missing-runtime failure.</returns>
+    public static Result<string, CaptureError> LocateBundledLibrary()
+    {
+        var filename =
+            OperatingSystem.IsMacOS() ? "libusb-1.0.dylib"
+            : OperatingSystem.IsWindows() ? "libusb-1.0.dll"
+            : "libusb-1.0.so.0";
+        var candidates = new[]
+        {
+            Path.Combine(AppContext.BaseDirectory, filename),
+            Path.Combine(
+                AppContext.BaseDirectory,
+                "runtimes",
+                System.Runtime.InteropServices.RuntimeInformation.RuntimeIdentifier,
+                "native",
+                filename
+            ),
+        };
+        foreach (var candidate in candidates)
+            if (File.Exists(candidate))
+                return candidate;
+        return new CaptureError(
+            CaptureErrorCodes.DeviceUnavailable,
+            "The libusb native runtime asset is missing from the application output."
+        );
+    }
+
     /// <inheritdoc/>
     public ValueTask<Result<ImmutableArray<UsbDeviceInfo>, CaptureError>> DiscoverAsync(
         ushort vendorId,

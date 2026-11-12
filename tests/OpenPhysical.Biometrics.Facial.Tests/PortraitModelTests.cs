@@ -4,41 +4,10 @@ namespace OpenPhysical.Biometrics.Facial.Tests;
 using System.Text.Json;
 using AwesomeAssertions;
 using CSharpFunctionalExtensions;
-using Microsoft.ML.OnnxRuntime;
-using Microsoft.ML.OnnxRuntime.Tensors;
 using NUnit.Framework;
 
 internal sealed class PortraitModelTests
 {
-    private const string MeshModel = "face_landmarker_Nx3x256x256.onnx";
-    private const string MeshHash =
-        "111795f8703cdeb6d0c68a9f3cc966a0f23f8786bb00f4577a11f461fc4276ac";
-
-    [Test]
-    public void PublishedNetworkMatchesRecordedPythonTensor()
-    {
-        static float[] Floats(string name)
-        {
-            var bytes = TestFixtures.Bytes(name);
-            var values = new float[bytes.Length / 4];
-            Buffer.BlockCopy(bytes, 0, values, 0, bytes.Length);
-            return values;
-        }
-        var model = MediaPipeModelLoader.Load(MeshModel, MeshHash);
-        model.Should().Succeed();
-        using var session = new InferenceSession(model.Value);
-        using var output = session.Run([
-            NamedOnnxValue.CreateFromTensor(
-                "input",
-                new DenseTensor<float>(Floats("glenn.input.f32"), [1, 3, 256, 256])
-            ),
-        ]);
-        var actual = output.First(o => o.Name == "landmarks").AsTensor<float>().ToArray();
-        var expected = Floats("glenn.output0.f32");
-        actual.Should().HaveCount(1434);
-        actual.Zip(expected, (a, b) => Math.Abs(a - b)).Max().Should().BeLessThan(.002f);
-    }
-
     [Test]
     public void FullImageGeometryTracksThePinnedPythonReference()
     {

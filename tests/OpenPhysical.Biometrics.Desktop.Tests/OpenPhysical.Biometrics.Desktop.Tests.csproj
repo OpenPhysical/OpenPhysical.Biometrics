@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <IsTestProject>true</IsTestProject>
+        <IsPackable>false</IsPackable>
+        <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+    </PropertyGroup>
+    <ItemGroup>
+        <ProjectReference Include="../../src/OpenPhysical.Biometrics.Desktop/OpenPhysical.Biometrics.Desktop.csproj" />
+        <PackageReference Include="NUnit" Version="4.4.0" />
+        <PackageReference Include="NUnit3TestAdapter" Version="5.0.0" />
+        <PackageReference Include="Avalonia.Headless.NUnit" Version="11.3.6" />
+    </ItemGroup>
+    <ItemGroup>
+        <Content Include="Fixtures/fvc2002/manifest.json" CopyToOutputDirectory="PreserveNewest" />
+        <Content
+            Include="../../../OpenPhysical.Biometrics.NBIS/tests/fixtures/sd04/f0005_03.gray8"
+            Link="Fixtures/sd04-f0005_03.gray8"
+            CopyToOutputDirectory="PreserveNewest"
+        />
+        <Content
+            Include="../OpenPhysical.Biometrics.Capture.Futronic.Tests/Fixtures/hardware-fs50-20261110/empty-200.corrected.gray8.gz"
+            Link="Fixtures/fs50-empty.gray8.gz"
+            CopyToOutputDirectory="PreserveNewest"
+        />
+    </ItemGroup>
+</Project>

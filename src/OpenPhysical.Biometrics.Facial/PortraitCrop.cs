@@ -3,10 +3,17 @@ namespace OpenPhysical.Biometrics.Facial;
 
 using CSharpFunctionalExtensions;
 
-// Solves for the uniform crop that satisfies the Full Frontal profile, or reports the review finding.
-internal static class PortraitCrop
+/// <summary>Plans source-supported uniform portrait crops without repeating face detection.</summary>
+public static class PortraitCrop
 {
-    internal static Result<PortraitCropPlan, PortraitFinding> Calculate(
+    /// <summary>Calculates a uniform Full Frontal crop or reports the measurements requiring review.</summary>
+    /// <param name="face">Detected face in oriented source coordinates.</param>
+    /// <param name="features">Anatomical features derived from that face.</param>
+    /// <param name="review">Optional operator measurements in the same source coordinates.</param>
+    /// <param name="width">Oriented source width in pixels.</param>
+    /// <param name="height">Oriented source height in pixels.</param>
+    /// <returns>The source-to-portrait plan or a geometry review finding.</returns>
+    public static Result<PortraitCropPlan, PortraitFinding> Calculate(
         PortraitFace face,
         PortraitFeatures features,
         Maybe<ReviewedPortraitGeometry> review,

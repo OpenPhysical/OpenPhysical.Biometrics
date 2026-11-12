@@ -8,6 +8,8 @@ namespace OpenPhysical.Biometrics.Capture;
 /// <summary>An immutable, tightly packed Gray8 image with explicit sensor/correction stage.</summary>
 public sealed class CaptureFrame
 {
+    private readonly Lazy<string> pixelDigest;
+
     private CaptureFrame(
         ImmutableArray<byte> pixels,
         long sequence,
@@ -19,6 +21,10 @@ public sealed class CaptureFrame
         Sequence = sequence;
         CapturedAt = capturedAt;
         Provenance = provenance;
+        pixelDigest = new Lazy<string>(
+            () => CaptureProcessingDigest.Pixels(Pixels.AsSpan()),
+            LazyThreadSafetyMode.ExecutionAndPublication
+        );
     }
 
     /// <summary>Acquisition stage of the image.</summary>
@@ -33,6 +39,9 @@ public sealed class CaptureFrame
 
     /// <summary>Gets an owned immutable pixel copy, zero black and 255 white.</summary>
     public ImmutableArray<byte> Pixels { get; }
+
+    /// <summary>Gets the lowercase SHA-256 of the owned Gray8 samples, shared across image roles.</summary>
+    public string PixelDigest => pixelDigest.Value;
 
     /// <summary>Gets the pixel encoding.</summary>
     public string PixelFormat => "Gray8";
@@ -80,7 +89,7 @@ public sealed class CaptureFrame
                 "The delivered byte count does not match its geometry."
             );
         return new CaptureFrame(
-            ImmutableArray.Create(pixels.ToArray()),
+            ImmutableArray.Create(pixels),
             sequence,
             capturedAt.ToUniversalTime(),
             provenance

@@ -1,0 +1,16 @@
+<Application
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:themes="clr-namespace:Material.Styles.Themes;assembly=Material.Styles"
+    x:Class="OpenPhysical.Biometrics.Desktop.DesktopApplication"
+    RequestedThemeVariant="Light"
+>
+    <Application.Styles>
+        <themes:CustomMaterialTheme
+            BaseTheme="Light"
+            PrimaryColor="#006B56"
+            SecondaryColor="#4E6357"
+        />
+        <StyleInclude Source="avares://OpenPhysical.Biometrics.Desktop/Views/DesktopTheme.axaml" />
+    </Application.Styles>
+</Application>

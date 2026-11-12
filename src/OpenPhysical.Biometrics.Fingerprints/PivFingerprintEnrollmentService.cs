@@ -6,24 +6,17 @@ namespace OpenPhysical.Biometrics.Fingerprints;
 using System.Collections.Immutable;
 using CSharpFunctionalExtensions;
 using OpenPhysical.Biometrics.Formats.Fingerprints;
-using OpenPhysical.Biometrics.NBIS;
 
 /// <summary>Assesses captures and prepares the two selected fingers for PIV issuance.</summary>
 public sealed class PivFingerprintEnrollmentService
 {
-    private readonly IFingerprintEngine engine;
-    private readonly IFingerprintQualityProvider qualityProvider;
+    private readonly FingerprintPreparationService preparation;
 
-    /// <summary>Creates an enrollment service using explicit processing and NFIQ 1 providers.</summary>
-    /// <param name="engine">The extraction and comparison engine.</param>
-    /// <param name="qualityProvider">The parent-image NFIQ 1 provider.</param>
-    public PivFingerprintEnrollmentService(
-        IFingerprintEngine engine,
-        IFingerprintQualityProvider qualityProvider
-    )
+    /// <summary>Creates an enrollment service using shared image preparation.</summary>
+    /// <param name="preparation">The extraction and parent-image NFIQ 1 service.</param>
+    public PivFingerprintEnrollmentService(FingerprintPreparationService preparation)
     {
-        this.engine = engine;
-        this.qualityProvider = qualityProvider;
+        this.preparation = preparation;
     }
 
     /// <summary>Assesses and extracts a capture once for subsequent enrollment selection.</summary>
@@ -32,18 +25,10 @@ public sealed class PivFingerprintEnrollmentService
     public Result<FingerprintEnrollmentFinger, FingerprintError> Prepare(
         FingerprintCapture capture
     ) =>
-        qualityProvider
-            .Assess(capture)
-            .Bind(quality =>
-                FingerprintEdge
-                    .Try(
-                        () => engine.Extract(capture.Image),
-                        FingerprintErrorCodes.EngineFailed,
-                        "The fingerprint engine failed."
-                    )
-                    .Map(template =>
-                        FingerprintEnrollmentFinger.Available(capture, template, quality)
-                    )
+        preparation
+            .Prepare(capture.Image)
+            .Map(prepared =>
+                FingerprintEnrollmentFinger.Available(capture, prepared.Template, prepared.Quality)
             );
 
     /// <summary>Selects the best captured attempt for each finger, then ranks fingers for operator review.</summary>

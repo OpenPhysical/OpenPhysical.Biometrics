@@ -92,18 +92,8 @@ public sealed class FingerprintCapture
         ushort equipmentId
     ) =>
         FingerprintChecks
-            .Require(
-                Enum.IsDefined(finger),
-                FingerprintErrorCodes.InvalidFinger,
-                "The finger position is not an ANSI finger code."
-            )
-            .Bind(() =>
-                FingerprintChecks.Require(
-                    Enum.IsDefined(impression),
-                    FingerprintErrorCodes.InvalidImpression,
-                    "The impression type is not supported."
-                )
-            )
+            .Finger(finger)
+            .Bind(() => FingerprintChecks.Impression(impression))
             .Bind(() =>
                 FingerprintChecks.Require(
                     equipmentId is >= 1 and <= 4095,

@@ -11,6 +11,7 @@ internal sealed class FakeFs50UsbProvider : IUsbDeviceProvider, IUsbDeviceTransp
     internal static UsbDeviceInfo Device { get; } = new(0x1491, 0x0050, 1, 2);
     private byte[] response = [];
     private int offset;
+    private bool commandIssued;
     internal byte[] Descriptor { get; set; }
     internal byte[] Controls { get; set; }
     internal byte[] Calibration { get; set; }
@@ -59,6 +60,7 @@ internal sealed class FakeFs50UsbProvider : IUsbDeviceProvider, IUsbDeviceTransp
         CancellationToken cancellationToken
     )
     {
+        commandIssued = true;
         offset = 0;
         response = data[0] switch
         {
@@ -88,6 +90,12 @@ internal sealed class FakeFs50UsbProvider : IUsbDeviceProvider, IUsbDeviceTransp
         CancellationToken cancellationToken
     )
     {
+        if (!commandIssued)
+            return ValueTask.FromResult(
+                Result.Failure<ImmutableArray<byte>, CaptureError>(
+                    new(CaptureErrorCodes.TransferTimedOut, "Quiet fake endpoint.")
+                )
+            );
         int length = Math.Min(maximumBytes, response.Length - offset);
         var bytes = ImmutableArray.CreateRange(response.AsSpan(offset, length).ToArray());
         offset += length;
@@ -97,6 +105,7 @@ internal sealed class FakeFs50UsbProvider : IUsbDeviceProvider, IUsbDeviceTransp
     public ValueTask DisposeAsync()
     {
         Closed++;
+        commandIssued = false;
         Disposed.TrySetResult();
         return ValueTask.CompletedTask;
     }

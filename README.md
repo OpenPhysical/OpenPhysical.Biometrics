@@ -28,12 +28,57 @@ The libraries target **.NET 10**.
 - **OpenPhysical.Biometrics.Imaging** provides owned image buffers and Skia-backed
   decoding, encoding, and transforms.
 - **OpenPhysical.Biometrics.Tool** installs `biotool` for portrait preparation, text/JSON inspection, and selected-view template conversion.
+- **OpenPhysical.Biometrics.Desktop** provides OpenPhysical Biometric Studio, the Avalonia FS50 capture application,
+  unsigned fingerprint export, and template inspection with live-probe comparison.
 
 [NIST NBIS bindings](https://github.com/OpenPhysical/OpenPhysical.Biometrics.NBIS)
 provide MINDTCT extraction and Bozorth3 comparison. The independently versioned
 [NFIQ bindings](https://github.com/OpenPhysical/OpenPhysical.Biometrics.NFIQ) provide the original five-level NFIQ 1 assessment and the NFIQ 2
 unified quality score. Each algorithm package carries its native runtime assets,
 source provenance, model identity, and upstream notices.
+
+## Capture and inspect with an FS50
+
+Run OpenPhysical Biometric Studio on macOS with .NET 10 and the FS50 attached:
+
+```sh
+dotnet run --project src/OpenPhysical.Biometrics.Desktop
+```
+
+Enter a **Name or label** for the person and choose the required fingers. Each new
+person starts with one suggested finger from each hand; a single-finger plan can use any selected finger.
+Studio automatically connects to the FS50 at the manufacturer's nominal 500 ppi.
+Automatic capture selects one recent acknowledged image after the configured delay,
+initially one second; **Capture now** freezes the latest displayed image manually.
+NIST MINDTCT extraction and NFIQ 1 assessment run once on that exact image.
+The feature overlay shows the selected minutiae encoded in the exported template.
+Automatic and manual exposure controls are available in **Details**.
+
+Review the frozen capture and choose **Accept finger**. Studio retains the accepted
+finger and advances to the next required capture. Select either slot to review or
+work on it. **Reset capture** retries only the current slot while preserving the
+other accepted finger. Saving remains disabled until every required slot is accepted.
+Advanced metadata starts with Vendor ID `0x0103` (**Vendor Unknown**), as selected
+for the test workflow. It can be edited in decimal or `0x` hexadecimal. Product Type
+and Capture Equipment ID accept the same forms; zero records an unreported value.
+
+**Save person** creates a new capture directory containing an unsigned
+ANSI/INCITS 378-2004 `fingerprints.fmr`, each original Gray8 image as PNG, and
+`fingerprints.json` with capture timestamps, device/correction provenance,
+quality results and SHA-256 associations. The default macOS location is
+`~/Library/Application Support/OpenPhysical/Private Biometrics/Captures`.
+Capture directories and files have owner-only permissions.
+
+In **Compare**, open an FMR or unwrapped PIV CBEFF fingerprint file, or read the
+fingerprint object from an inserted credential after explicitly entering its PIN.
+Choose a finger view to inspect its fields and minutiae. Saved capture packages
+reopen their paired source images after validating the manifest, image geometry
+and hashes. Standalone templates display points on the record's coordinate canvas.
+Capture a fresh probe in the same workspace, assign its finger for comparison,
+and press **Compare** to see the Bozorth3 result at the configured threshold.
+The probe image displays geometrically aligned reference points. Each image has
+visible zoom, fit, inversion, and overlay controls. See the [desktop guide](docs/DESKTOP.md)
+for capture selection, private package storage, credential reading, and settings.
 
 ## Read and inspect a fingerprint record
 

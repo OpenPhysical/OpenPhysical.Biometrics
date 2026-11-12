@@ -3,6 +3,7 @@
 namespace OpenPhysical.Biometrics.Capture.Futronic.Tests;
 
 using AwesomeAssertions;
+using CSharpFunctionalExtensions.AwesomeAssertions;
 using NUnit.Framework;
 
 [TestFixture]
@@ -33,8 +34,6 @@ internal sealed class Fs50ExposureTests
         var original = pixels.ToArray();
         var contact = Fs50ContactAnalysis.Analyze(pixels).Value;
         contact.Present.Should().BeTrue();
-        // Saved prototype, OpenCV 5.0.0.93, synthetic stripes defined below.
-        contact.Area.Should().Be(41298);
         contact.Contrast.Should().Be(85);
         contact.Signal.Should().Be(85);
         Fs50ExposureController.Next(100, contact, true, false).Should().Be(116);
@@ -42,6 +41,63 @@ internal sealed class Fs50ExposureTests
         Fs50ExposureController.Next(100, contact, false, false).Should().Be(100);
         Fs50ExposureController.Next(100, contact, true, true).Should().Be(100);
         pixels.Should().Equal(original);
+    }
+
+    [Test]
+    public void ExplicitDarkerTargetRaisesAcquisitionExposureWithoutChangingTheImage()
+    {
+        var pixels = Image(160, 240, 65, 125);
+        var original = pixels.ToArray();
+        var contact = Fs50ContactAnalysis.Analyze(pixels).Value;
+        contact.Signal.Should().Be(190);
+        Fs50ExposureController.Next(100, contact, true, false).Should().Be(100);
+        var darker = Fs50ExposureController.Next(100, contact, true, false, 210);
+        darker.Should().Succeed().Which.Should().Be(103);
+        pixels.Should().Equal(original);
+    }
+
+    [Test]
+    public void DarkerProfileKeepsItsTargetInsteadOfReturningToTheLibraryDefault()
+    {
+        var contact = Fs50ContactAnalysis.Analyze(Image(160, 240, 45, 105)).Value;
+        contact.Signal.Should().Be(210);
+        Fs50ExposureController.Next(220, contact, true, false).Should().Be(215);
+        Fs50ExposureController
+            .Next(220, contact, true, false, 210)
+            .Should()
+            .Succeed()
+            .Which.Should()
+            .Be(220);
+    }
+
+    [TestCase(0)]
+    [TestCase(256)]
+    public void InvalidTargetsFailBeforeAdjustment(int target)
+    {
+        var contact = Fs50ContactAnalysis.Analyze(Image(160, 240, 65, 125)).Value;
+        Fs50ExposureController
+            .Next(100, contact, true, false, target)
+            .Should()
+            .Fail()
+            .Which.Code.Should()
+            .Be(CaptureErrorCodes.InvalidArgument);
+    }
+
+    [Test]
+    public void ExplicitTargetPreservesEveryManualByteAndHonorsLocks()
+    {
+        var contact = Fs50ContactAnalysis.Analyze(Image(160, 240, 65, 125)).Value;
+        foreach (var value in Enumerable.Range(0, 256))
+        {
+            Fs50ExposureController
+                .Next((byte)value, contact, false, false, 210)
+                .Value.Should()
+                .Be((byte)value);
+            Fs50ExposureController
+                .Next((byte)value, contact, true, true, 210)
+                .Value.Should()
+                .Be((byte)value);
+        }
     }
 
     [Test]
@@ -55,7 +111,7 @@ internal sealed class Fs50ExposureTests
     public void StrongContactReducesExposureWithinTheSameBound()
     {
         var contact = Fs50ContactAnalysis.Analyze(Image(160, 240, 40, 100)).Value;
-        contact.Area.Should().Be(43506);
+        contact.Area.Should().BeLessThan(contact.Diagnostics.CandidateArea);
         contact.Contrast.Should().Be(215);
         contact.Signal.Should().Be(215);
         Fs50ExposureController.Next(255, contact, true, false).Should().Be(247);

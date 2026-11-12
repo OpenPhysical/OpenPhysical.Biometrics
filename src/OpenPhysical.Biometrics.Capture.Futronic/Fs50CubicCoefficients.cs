@@ -45,8 +45,13 @@ internal static class Fs50CubicCoefficients
         + "91D0265E3BFCA5A28E9824B93BFCA44B89E822503BFEA1D082FA1E283C009DE8";
 
     private static readonly Half[] Weights = Decode();
+    private static readonly double[] ExactWeights = Weights
+        .Select(value => (double)value)
+        .ToArray();
 
     internal static Half Get(int fraction, int tap) => Weights[(fraction * 4) + tap];
+
+    internal static double GetExact(int fraction, int tap) => ExactWeights[(fraction * 4) + tap];
 
     private static Half[] Decode()
     {

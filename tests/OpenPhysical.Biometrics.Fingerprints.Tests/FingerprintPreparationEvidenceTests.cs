@@ -140,6 +140,8 @@ internal sealed class FingerprintPreparationEvidenceTests
     private static AcquiredFingerprintPreparationService Service(TestEngine engine) =>
         new(
             new AcquiredFingerprintAdapter(),
-            new PivFingerprintEnrollmentService(engine, new TestQuality())
+            new PivFingerprintEnrollmentService(
+                new FingerprintPreparationService(engine, new TestQuality())
+            )
         );
 }

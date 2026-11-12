@@ -100,17 +100,17 @@ public sealed class Fs50ProtocolTests
         transport.Commands.Should().BeEmpty();
     }
 
-    /// <summary>Does not publish or continue a capture after in-flight cancellation.</summary>
+    /// <summary>Discards the entire issued reply after cancellation without publishing or reusing it.</summary>
     /// <returns>Asynchronous regression check.</returns>
     [Test]
-    public async Task CancellationDuringTransferStopsFurtherReads()
+    public async Task CancellationDuringTransferDrainsTheIssuedReply()
     {
         using var cancellation = new CancellationTokenSource();
         await using var transport = new FakeTransport { CancelOnRead = cancellation };
         var protocol = new Fs50Protocol(transport);
         var result = await protocol.CaptureRawAsync(255, cancellation.Token);
         result.Should().Fail().Which.Code.Should().Be(CaptureErrorCodes.Cancelled);
-        transport.ReadCount.Should().Be(1);
+        transport.ReadCount.Should().Be(17);
         (await protocol.CaptureRawAsync(255, CancellationToken.None))
             .Should()
             .Fail()
@@ -162,7 +162,10 @@ public sealed class Fs50ProtocolTests
             }
 
             endpoint.Should().Be(0x82);
-            timeout.Should().Be(TimeSpan.FromSeconds(5));
+            timeout
+                .Should()
+                .BeGreaterThan(TimeSpan.Zero)
+                .And.BeLessThanOrEqualTo(TimeSpan.FromSeconds(5));
             MaximumRequest = Math.Max(MaximumRequest, maximumBytes);
             int length = Failure switch
             {

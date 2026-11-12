@@ -8,6 +8,7 @@ using AwesomeAssertions.Execution;
 using CSharpFunctionalExtensions.AwesomeAssertions;
 using NUnit.Framework;
 using OpenPhysical.Biometrics.Formats.Fingerprints;
+using Org.BouncyCastle.Security;
 
 [TestFixture]
 internal sealed class PivRecordCreationTests
@@ -15,7 +16,9 @@ internal sealed class PivRecordCreationTests
     [Test]
     public void IssuanceRequiresTheSuppliedEquipmentCertification()
     {
-        var service = new PivFingerprintEnrollmentService(new TestEngine(), new TestQuality());
+        var service = new PivFingerprintEnrollmentService(
+            new FingerprintPreparationService(new TestEngine(), new TestQuality())
+        );
         var first = service.Prepare(TestCaptures.Capture(FingerPosition.RightIndex)).Value;
         var second = service.Prepare(TestCaptures.Capture(FingerPosition.LeftIndex)).Value;
         var uncertified = PivFingerprintRecordMetadata
@@ -33,12 +36,18 @@ internal sealed class PivRecordCreationTests
     public void IssuanceSelectsHighestQualityAndPreservesSourceCoordinates()
     {
         var engine = new TestEngine();
-        var service = new PivFingerprintEnrollmentService(engine, new TestQuality());
+        var service = new PivFingerprintEnrollmentService(
+            new FingerprintPreparationService(engine, new TestQuality())
+        );
         var first = service.Prepare(TestCaptures.Capture(FingerPosition.RightIndex)).Value;
         var second = service.Prepare(TestCaptures.Capture(FingerPosition.LeftIndex)).Value;
         var record = service.CreateRecord(first, second, TestCaptures.Metadata()).Value;
         var encoded = Incits378Codec.Write(record).Value;
         var decoded = Incits378Codec.Parse(encoded).Value.Record;
+        Convert
+            .ToHexStringLower(DigestUtilities.CalculateDigest("SHA-256", encoded))
+            .Should()
+            .Be("584127b3bf34e52fc43ea8e6079e648356a65ff2ef5ba596062ce5cab1e94881");
         using (new AssertionScope())
         {
             decoded.Views.Should().HaveCount(2);
@@ -56,7 +65,9 @@ internal sealed class PivRecordCreationTests
     [Test]
     public void AvailableSecondaryRequiresExplicitPrimarySelection()
     {
-        var service = new PivFingerprintEnrollmentService(new TestEngine(), new TestQuality());
+        var service = new PivFingerprintEnrollmentService(
+            new FingerprintPreparationService(new TestEngine(), new TestQuality())
+        );
         var available = service.Prepare(TestCaptures.Capture(FingerPosition.LeftIndex)).Value;
         var unavailable = FingerprintEnrollmentFinger
             .Unavailable(FingerPosition.RightIndex, FingerprintAvailability.TemporarilyUnusable)
@@ -79,7 +90,9 @@ internal sealed class PivRecordCreationTests
     [Test]
     public void UnavailableFingersCarryTheirDistinctProfileStates()
     {
-        var service = new PivFingerprintEnrollmentService(new TestEngine(), new TestQuality());
+        var service = new PivFingerprintEnrollmentService(
+            new FingerprintPreparationService(new TestEngine(), new TestQuality())
+        );
         var record = service
             .CreateRecord(
                 FingerprintEnrollmentFinger
@@ -113,7 +126,9 @@ internal sealed class PivRecordCreationTests
     [Test]
     public void RecordCreationRejectsRepeatedFingersAndInconsistentMetadata()
     {
-        var service = new PivFingerprintEnrollmentService(new TestEngine(), new TestQuality());
+        var service = new PivFingerprintEnrollmentService(
+            new FingerprintPreparationService(new TestEngine(), new TestQuality())
+        );
         var first = service.Prepare(TestCaptures.Capture(FingerPosition.RightIndex)).Value;
         var second = service.Prepare(TestCaptures.Capture(FingerPosition.LeftIndex)).Value;
         var wrongSize = PivFingerprintRecordMetadata

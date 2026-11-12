@@ -1,0 +1,214 @@
+<Styles
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:OpenPhysical.Biometrics.Desktop"
+    xmlns:material="clr-namespace:Material.Styles.Controls;assembly=Material.Styles"
+    xmlns:assists="clr-namespace:Material.Styles.Assists;assembly=Material.Styles"
+>
+    <Styles.Resources>
+        <x:Double x:Key="BodyFontSize">16</x:Double>
+        <x:Double x:Key="SectionFontSize">18</x:Double>
+        <SolidColorBrush x:Key="AppBackground">#F5F6F7</SolidColorBrush>
+        <SolidColorBrush x:Key="AppSurface">#FFFFFF</SolidColorBrush>
+        <SolidColorBrush x:Key="AppSurfaceHigh">#F5F6F7</SolidColorBrush>
+        <SolidColorBrush x:Key="AppDivider">#CFD5D9</SolidColorBrush>
+        <SolidColorBrush x:Key="AppOutline">#939DA4</SolidColorBrush>
+        <SolidColorBrush x:Key="AppMuted">#53616A</SolidColorBrush>
+        <SolidColorBrush x:Key="AppAccent">#006B56</SolidColorBrush>
+        <SolidColorBrush x:Key="AppTonal">#D7EEE3</SolidColorBrush>
+    </Styles.Resources>
+    <Style Selector="Window, TextBlock, TextBox, ComboBox, ComboBoxItem, Button, RepeatButton, CheckBox, RadioButton, TabItem, MenuItem, ToolTip, FlyoutPresenter, NumericUpDown">
+        <Setter Property="TextElement.FontFamily" Value="{DynamicResource MaterialDesignFonts}" />
+        <Setter Property="TextElement.FontSize" Value="{StaticResource BodyFontSize}" />
+        <Setter Property="TextElement.FontWeight" Value="Normal" />
+    </Style>
+    <Style Selector="Window">
+        <Setter Property="Background" Value="{DynamicResource AppBackground}" />
+        <Setter Property="FontSize" Value="{StaticResource BodyFontSize}" />
+        <Setter Property="FontWeight" Value="Normal" />
+        <Setter Property="Foreground" Value="#17251D" />
+    </Style>
+    <Style Selector="TextBlock.section">
+        <Setter Property="FontSize" Value="{StaticResource SectionFontSize}" />
+        <Setter Property="FontWeight" Value="Medium" />
+    </Style>
+    <Style Selector="TextBlock.verdict">
+        <Setter Property="FontSize" Value="24" />
+        <Setter Property="FontWeight" Value="Normal" />
+    </Style>
+    <Style Selector="TextBlock.verdict.match">
+        <Setter Property="Foreground" Value="#176C3A" />
+    </Style>
+    <Style Selector="TextBlock.verdict.nomatch">
+        <Setter Property="Foreground" Value="#B3261E" />
+    </Style>
+    <Style Selector="TextBlock.caption">
+        <Setter Property="FontSize" Value="{StaticResource BodyFontSize}" />
+        <Setter Property="Foreground" Value="{DynamicResource AppMuted}" />
+        <Setter Property="TextWrapping" Value="Wrap" />
+    </Style>
+    <Style Selector="TextBlock.label">
+        <Setter Property="FontSize" Value="{StaticResource BodyFontSize}" />
+        <Setter Property="FontWeight" Value="Normal" />
+        <Setter Property="Foreground" Value="{DynamicResource AppMuted}" />
+    </Style>
+    <Style Selector="material|Card.surface">
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="Background" Value="{DynamicResource AppSurface}" />
+        <Setter Property="CornerRadius" Value="8" />
+        <Setter Property="assists:ShadowAssist.ShadowDepth" Value="Depth1" />
+        <Setter Property="ClipToBounds" Value="False" />
+        <Setter Property="InsideClipping" Value="True" />
+    </Style>
+    <Style Selector="Button">
+        <Setter Property="MinWidth" Value="48" />
+        <Setter Property="MinHeight" Value="48" />
+        <Setter Property="Padding" Value="14,8" />
+        <Setter Property="FontSize" Value="{StaticResource BodyFontSize}" />
+        <Setter Property="FontWeight" Value="Normal" />
+        <Setter Property="CornerRadius" Value="6" />
+        <Setter Property="assists:ShadowAssist.ShadowDepth" Value="Depth0" />
+    </Style>
+    <Style Selector="WrapPanel > Button">
+        <Setter Property="Margin" Value="4,0" />
+    </Style>
+    <Style Selector="Button:disabled">
+        <Setter Property="Background" Value="#E1E7E2" />
+        <Setter Property="Foreground" Value="#6B7C70" />
+        <Setter Property="BorderBrush" Value="Transparent" />
+    </Style>
+    <Style Selector="Button.compact">
+        <Setter Property="MinHeight" Value="48" />
+        <Setter Property="Padding" Value="14,7" />
+        <Setter Property="FontSize" Value="{StaticResource BodyFontSize}" />
+    </Style>
+    <Style Selector="Button.tonal">
+        <Setter Property="Background" Value="{DynamicResource AppTonal}" />
+        <Setter Property="Foreground" Value="#154D38" />
+    </Style>
+    <Style Selector="TextBox">
+        <Setter Property="Theme" Value="{StaticResource SoloTextBox}" />
+        <Setter Property="MinHeight" Value="48" />
+        <Setter Property="FontSize" Value="{StaticResource BodyFontSize}" />
+        <Setter Property="Background" Value="{DynamicResource AppSurfaceHigh}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource AppOutline}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="4" />
+    </Style>
+    <Style Selector="TextBox /template/ TextBlock#PART_PlaceholderText">
+        <Setter Property="Foreground" Value="{DynamicResource AppMuted}" />
+        <Setter Property="Opacity" Value="1" />
+    </Style>
+    <Style Selector="TextBox /template/ Panel#PART_TextContainer">
+        <Setter Property="Margin" Value="12,8" />
+    </Style>
+    <Style Selector="TextBox:focus-within, ComboBox:focus-within">
+        <Setter Property="BorderBrush" Value="{DynamicResource AppAccent}" />
+        <Setter Property="BorderThickness" Value="2" />
+    </Style>
+    <Style Selector="ComboBox">
+        <Setter Property="MinHeight" Value="48" />
+        <Setter Property="FontSize" Value="{StaticResource BodyFontSize}" />
+        <Setter Property="Padding" Value="12,8" />
+        <Setter Property="Background" Value="{DynamicResource AppSurfaceHigh}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource AppOutline}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="4" />
+        <Setter Property="HorizontalAlignment" Value="Stretch" />
+    </Style>
+    <Style Selector="ComboBox /template/ material|MaterialUnderline#PART_Underline">
+        <Setter Property="IsVisible" Value="False" />
+    </Style>
+    <Style Selector="ComboBox /template/ Panel#PART_RootPanel">
+        <Setter Property="Height" Value="48" />
+    </Style>
+    <Style Selector="CheckBox">
+        <Setter Property="MinWidth" Value="48" />
+        <Setter Property="FontSize" Value="{StaticResource BodyFontSize}" />
+        <Setter Property="MinHeight" Value="48" />
+    </Style>
+    <Style Selector="TabControl.segmented">
+        <Setter Property="ItemsPanel">
+            <ItemsPanelTemplate>
+                <StackPanel Orientation="Horizontal" Spacing="8" />
+            </ItemsPanelTemplate>
+        </Setter>
+    </Style>
+    <Style Selector="TabControl.segmented /template/ ItemsPresenter#PART_ItemsPresenter">
+        <Setter Property="HorizontalAlignment" Value="Left" />
+        <Setter Property="Margin" Value="0,0,0,18" />
+    </Style>
+    <Style Selector="TabControl.navigation /template/ ItemsPresenter#PART_ItemsPresenter">
+        <Setter Property="HorizontalAlignment" Value="Left" />
+        <Setter Property="Margin" Value="0,0,0,12" />
+    </Style>
+    <Style Selector="TabControl.segmented /template/ Rectangle#PART_Separator">
+        <Setter Property="IsVisible" Value="False" />
+    </Style>
+    <Style Selector="TabControl.segmented > TabItem">
+        <Setter Property="MinHeight" Value="48" />
+        <Setter Property="FontSize" Value="{StaticResource BodyFontSize}" />
+        <Setter Property="FontWeight" Value="Normal" />
+        <Setter Property="CornerRadius" Value="8" />
+        <Setter Property="ClipToBounds" Value="True" />
+    </Style>
+    <Style Selector="TabControl.segmented > TabItem /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Margin" Value="16,8" />
+    </Style>
+    <Style Selector="TabControl.segmented > TabItem /template/ Rectangle#PART_Separator">
+        <Setter Property="IsVisible" Value="False" />
+    </Style>
+    <Style Selector="TabControl.segmented > TabItem:selected">
+        <Setter Property="Background" Value="{DynamicResource AppTonal}" />
+        <Setter Property="TextBlock.Foreground" Value="#154D38" />
+    </Style>
+    <Style Selector="TabControl.segmented > TabItem:focus-visible">
+        <Setter Property="BorderBrush" Value="{DynamicResource AppAccent}" />
+        <Setter Property="BorderThickness" Value="2" />
+    </Style>
+    <Style Selector="ItemsControl.zoomtoolbar">
+        <Setter Property="ItemsPanel">
+            <ItemsPanelTemplate>
+                <StackPanel Orientation="Horizontal" Spacing="8" />
+            </ItemsPanelTemplate>
+        </Setter>
+        <Setter Property="ItemTemplate">
+            <DataTemplate x:DataType="local:CanvasZoomAction">
+                <Button
+                    Classes="Flat compact"
+                    Content="{Binding Label}"
+                    Command="{Binding Command}"
+                    AutomationProperties.Name="{Binding AccessibleName}"
+                    ToolTip.Tip="{Binding AccessibleName}"
+                    MinWidth="48"
+                    Padding="10,6"
+                />
+            </DataTemplate>
+        </Setter>
+    </Style>
+    <Style Selector="NumericUpDown">
+        <Setter Property="MinHeight" Value="104" />
+        <Setter Property="Foreground" Value="#17251D" />
+    </Style>
+    <Style Selector="NumericUpDown /template/ ButtonSpinner /template/ RepeatButton">
+        <Setter Property="MinWidth" Value="48" />
+        <Setter Property="MinHeight" Value="48" />
+    </Style>
+    <Style Selector="NumericUpDown /template/ ButtonSpinner /template/ RepeatButton#PART_DecreaseButton">
+        <Setter Property="Margin" Value="0,8,0,0" />
+    </Style>
+    <Style Selector="Slider">
+        <Setter Property="MinHeight" Value="48" />
+        <Setter Property="Focusable" Value="True" />
+        <!-- Material thumbs extend beyond the track at both endpoints. -->
+        <Setter Property="Margin" Value="20,0" />
+    </Style>
+    <Style Selector="Slider:focus-visible /template/ Thumb#PART_SliderThumb /template/ Border#PART_HoverEffect">
+        <Setter Property="Opacity" Value="0.20" />
+    </Style>
+    <Style Selector="FlyoutPresenter">
+        <Setter Property="Background" Value="{DynamicResource AppSurfaceHigh}" />
+        <Setter Property="CornerRadius" Value="8" />
+        <Setter Property="Padding" Value="24" />
+    </Style>
+</Styles>

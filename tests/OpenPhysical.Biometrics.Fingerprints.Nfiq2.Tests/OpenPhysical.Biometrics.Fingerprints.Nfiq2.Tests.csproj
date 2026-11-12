@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <IsTestProject>true</IsTestProject>
+        <IsPackable>false</IsPackable>
+    </PropertyGroup>
+    <ItemGroup>
+        <ProjectReference Include="../../src/OpenPhysical.Biometrics.Fingerprints.Nfiq2/OpenPhysical.Biometrics.Fingerprints.Nfiq2.csproj" />
+        <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.0" />
+        <PackageReference Include="NUnit" Version="4.4.0" />
+        <PackageReference Include="NUnit3TestAdapter" Version="5.0.0" />
+    </ItemGroup>
+    <ItemGroup>
+        <Content
+            Include="../../../OpenPhysical.Biometrics.NFIQ/tests/fixtures/SFinGe_Test01.gray8"
+            Link="Fixtures/SFinGe_Test01.gray8"
+            CopyToOutputDirectory="PreserveNewest"
+        />
+    </ItemGroup>
+</Project>

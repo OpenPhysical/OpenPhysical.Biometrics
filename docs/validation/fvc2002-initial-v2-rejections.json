@@ -1,0 +1,92 @@
+[
+  {
+    "Id": "101_4",
+    "ContactVersion": "fs50-supported-contact-v2",
+    "Original": {
+      "Nfiq1": [
+        {
+          "Nfiq1": 1,
+          "Status": "Assessed",
+          "AlgorithmVersion": "NFIQ 1; NBIS 5.0.0 default weights"
+        }
+      ],
+      "Nfiq1Errors": [],
+      "Nfiq2": [
+        {
+          "Score": 24,
+          "AlgorithmVersion": "NFIQ 2.3.0; embedded optical/ink model"
+        }
+      ],
+      "Nfiq2Errors": []
+    },
+    "Processed": {
+      "Nfiq1": [
+        {
+          "Nfiq1": 2,
+          "Status": "Assessed",
+          "AlgorithmVersion": "NFIQ 1; NBIS 5.0.0 default weights"
+        }
+      ],
+      "Nfiq1Errors": [],
+      "Nfiq2": [],
+      "Nfiq2Errors": [
+        {
+          "Code": "QualityImageNotAssessable",
+          "Message": "NFIQ 2 could not assess the usable fingerprint area (upstream code 3)."
+        }
+      ]
+    },
+    "CandidateArea": 51522,
+    "RidgeSupportArea": 14162,
+    "AcceptedArea": 24587,
+    "InnerArea": 17007,
+    "PolicyDigest": "de8699e1fee932842a77714929234aaf89048bb2e950d31fec99c4a471e9b27e",
+    "OriginalDigest": "4b5133250991bf08b6babfd71c4ce5793df71e1eecb2bf26079695bacfedc106",
+    "ProcessedDigest": "5fbd58b760af48d8a970a4a34d0c151188f83fee072ff0e6f7fb41a2b251b4e9"
+  },
+  {
+    "Id": "109_6",
+    "ContactVersion": "fs50-supported-contact-v2",
+    "Original": {
+      "Nfiq1": [
+        {
+          "Nfiq1": 3,
+          "Status": "Assessed",
+          "AlgorithmVersion": "NFIQ 1; NBIS 5.0.0 default weights"
+        }
+      ],
+      "Nfiq1Errors": [],
+      "Nfiq2": [
+        {
+          "Score": 11,
+          "AlgorithmVersion": "NFIQ 2.3.0; embedded optical/ink model"
+        }
+      ],
+      "Nfiq2Errors": []
+    },
+    "Processed": {
+      "Nfiq1": [
+        {
+          "Nfiq1": 2,
+          "Status": "Assessed",
+          "AlgorithmVersion": "NFIQ 1; NBIS 5.0.0 default weights"
+        }
+      ],
+      "Nfiq1Errors": [],
+      "Nfiq2": [],
+      "Nfiq2Errors": [
+        {
+          "Code": "QualityImageNotAssessable",
+          "Message": "NFIQ 2 could not assess the usable fingerprint area (upstream code 3)."
+        }
+      ]
+    },
+    "CandidateArea": 34078,
+    "RidgeSupportArea": 6613,
+    "AcceptedArea": 16027,
+    "InnerArea": 10361,
+    "PolicyDigest": "de8699e1fee932842a77714929234aaf89048bb2e950d31fec99c4a471e9b27e",
+    "OriginalDigest": "f795e4c513a822e5f3d8fb984e0497a59e0208e916620d96ca11750bb1645c4f",
+    "ProcessedDigest": "35600c906343fe046eac2b129407c53c3a00b03121f3ef28f1ddb37242e68bbe"
+  }
+]

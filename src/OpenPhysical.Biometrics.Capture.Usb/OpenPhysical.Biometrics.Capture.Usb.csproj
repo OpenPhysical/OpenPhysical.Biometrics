@@ -5,6 +5,11 @@
         <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
     </PropertyGroup>
     <ItemGroup>
+        <PackageReference
+            Include="UsbDotNet.LibUsbNative"
+            Version="1.4.2"
+            IncludeAssets="runtime;native"
+        />
         <ProjectReference Include="../OpenPhysical.Biometrics.Capture/OpenPhysical.Biometrics.Capture.csproj" />
     </ItemGroup>
 </Project>

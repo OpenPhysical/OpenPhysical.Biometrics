@@ -3,12 +3,17 @@
 
 namespace OpenPhysical.Biometrics.Fingerprints.Tests;
 
+using CSharpFunctionalExtensions;
 using OpenPhysical.Biometrics.NBIS;
 using MatchingMinutia = OpenPhysical.Biometrics.NBIS.FingerprintMinutia;
 
 internal sealed class TestEngine : IFingerprintEngine
 {
     internal int Extractions { get; private set; }
+
+    internal int Comparisons { get; private set; }
+
+    internal Maybe<FingerprintTemplate> ComparedProbe { get; private set; }
 
     public FingerprintTemplate Extract(
         ReadOnlySpan<byte> pixels,
@@ -34,5 +39,10 @@ internal sealed class TestEngine : IFingerprintEngine
         );
     }
 
-    public int Match(FingerprintTemplate probe, FingerprintTemplate gallery) => 42;
+    public int Match(FingerprintTemplate probe, FingerprintTemplate gallery)
+    {
+        Comparisons++;
+        ComparedProbe = probe;
+        return 42;
+    }
 }

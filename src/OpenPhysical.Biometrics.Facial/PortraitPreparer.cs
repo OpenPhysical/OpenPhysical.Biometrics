@@ -63,19 +63,51 @@ public sealed class PortraitPreparer : IDisposable
         {
             if (disposed)
                 return FacialErrors.Disposed().Fail<PortraitPreparationResult>();
-            var hash = Sha256.HexDigest(encodedImage);
-            var decoded = PortraitDecoder.Decode(encodedImage);
-            if (decoded.IsFailure)
-                return decoded.Error.Fail<PortraitPreparationResult>();
-            var source = new PortraitSource(hash, decoded.Value);
-            return ReviewedGeometryCheck
-                .Resolve(geometry, source, faceIndex)
-                .Bind(index =>
-                    detector
-                        .Value.Bind(model => model.Detect(source.Image))
-                        .Bind(faces => Complete(source, geometry, index, faces))
-                );
+            return PortraitImage
+                .Decode(encodedImage)
+                .Bind(image => PrepareImage(image, geometry, faceIndex));
         }
+    }
+
+    /// <summary>Detects and prepares a portrait from owned camera or decoded image samples.</summary>
+    /// <param name="image">The exact owned source image.</param>
+    /// <returns>Owned pixels and measurements, an expected review outcome, or a failure.</returns>
+    public Result<PortraitPreparationResult, FacialError> Prepare(PortraitImage image) =>
+        Prepare(image, Maybe<ReviewedPortraitGeometry>.None, Maybe<int>.None);
+
+    /// <summary>Prepares an owned image with explicit review and face selection.</summary>
+    /// <param name="image">The exact owned source image.</param>
+    /// <param name="geometry">Reviewed measurements bound to this image identity.</param>
+    /// <param name="faceIndex">Explicit face selection when more than one face is detected.</param>
+    /// <returns>Owned pixels and measurements, an expected review outcome, or a failure.</returns>
+    public Result<PortraitPreparationResult, FacialError> Prepare(
+        PortraitImage image,
+        Maybe<ReviewedPortraitGeometry> geometry,
+        Maybe<int> faceIndex
+    )
+    {
+        lock (gate)
+        {
+            return disposed
+                ? FacialErrors.Disposed().Fail<PortraitPreparationResult>()
+                : PrepareImage(image, geometry, faceIndex);
+        }
+    }
+
+    private Result<PortraitPreparationResult, FacialError> PrepareImage(
+        PortraitImage image,
+        Maybe<ReviewedPortraitGeometry> geometry,
+        Maybe<int> faceIndex
+    )
+    {
+        var source = new PortraitSource(image.SourceSha256, image.Pixels);
+        return ReviewedGeometryCheck
+            .Resolve(geometry, source, faceIndex)
+            .Bind(index =>
+                detector
+                    .Value.Bind(model => model.Detect(source.Image))
+                    .Bind(faces => Complete(source, geometry, index, faces))
+            );
     }
 
     /// <summary>Releases native ONNX sessions after any running call completes.</summary>

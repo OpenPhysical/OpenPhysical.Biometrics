@@ -75,8 +75,14 @@ public sealed class RgbImageLifecycleTests
         using (new AssertionScope())
         {
             result.Should().Fail().Which.Code.Should().Be(ImagingErrorCodes.CropOutOfRange);
-            observed.Should().ContainSingle().Which.IsDisposed.Should().BeTrue();
-            image.IsDisposed.Should().BeFalse();
+            observed.Should().ContainSingle();
+            observed[0]
+                .GetPixel(0, 0)
+                .Should()
+                .Fail()
+                .Which.Code.Should()
+                .Be(ImagingErrorCodes.Disposed);
+            image.GetPixel(0, 0).Should().Succeed();
             image.At(0, 0).R.Should().Be(255);
         }
     }

@@ -3,8 +3,10 @@ namespace OpenPhysical.Biometrics.Facial;
 
 using CSharpFunctionalExtensions;
 
-// The selected source-to-portrait transform and the measurements that justify it.
-internal sealed record PortraitCropPlan(
+/// <summary>The source-to-portrait transform and the measurements that justify it.</summary>
+/// <param name="Transform">Uniform source-to-output mapping.</param>
+/// <param name="Measurements">Resulting head and eye measurements.</param>
+public sealed record PortraitCropPlan(
     PortraitTransform Transform,
     PortraitMeasurements Measurements
 )

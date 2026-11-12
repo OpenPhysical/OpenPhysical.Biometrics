@@ -61,6 +61,9 @@ public sealed class CaptureContractTests
         var result = CaptureFrame.Create(pixels, 0, DateTimeOffset.UtcNow, provenance);
         pixels[0] = 99;
         result.Should().Succeed().Which.Pixels[0].Should().Be(1);
+        result
+            .Value.PixelDigest.Should()
+            .Be("9f64a747e1b97f131fabb6b447296c9b6f0201e79fb3c5356e6c77e89b6a806a");
         result.Value.Stage.Should().Be(CaptureFrame.FrameStage.RawSensor);
         result.Value.Provenance.Resolution.Kind.Should().Be(CaptureResolution.EvidenceKind.Unknown);
         CaptureFrame

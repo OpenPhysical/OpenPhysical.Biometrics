@@ -16,6 +16,13 @@ public sealed class Fs50Protocol
     public Fs50Protocol(IUsbDeviceTransport transport) =>
         exchange = new Fs50ProtocolExchange(transport);
 
+    /// <summary>Drains stale input to a verified quiet timeout before the first command on a fresh transport.</summary>
+    /// <param name="cancellationToken">Cancellation of opening; cleanup has an independent finite budget.</param>
+    /// <returns>Success only after synchronization, or a bounded failure with no command sent.</returns>
+    public ValueTask<UnitResult<CaptureError>> SynchronizeAsync(
+        CancellationToken cancellationToken
+    ) => exchange.SynchronizeAsync(cancellationToken);
+
     /// <summary>Reads the 64-byte sensor descriptor.</summary>
     /// <param name="cancellationToken">Cancellation.</param>
     /// <returns>Descriptor bytes or a transport failure.</returns>

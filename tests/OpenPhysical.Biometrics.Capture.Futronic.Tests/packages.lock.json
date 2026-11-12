@@ -183,6 +183,19 @@
         "resolved": "6.0.0",
         "contentHash": "lcyUiXTsETK2ALsZrX+nWuHSIQeazhqPphLfaRxzdGaG93+0kELqpgEHtwWOlQe7+jSFnKwaCAgL4kjeZCQJnw=="
       },
+      "UsbDotNet.Core": {
+        "type": "Transitive",
+        "resolved": "1.4.2",
+        "contentHash": "p5BIwX5V92XcoIUUYiemTfBjNHwGTO6mtsSGS/IvkRY6mgQD3Iejhxz3oOCphR5OjHpkgJ0xcvT9UcbGN1EJwA=="
+      },
+      "UsbDotNet.LibUsbNative": {
+        "type": "Transitive",
+        "resolved": "1.4.2",
+        "contentHash": "8rmqg/KqUT0XgHU3EtZx/6T4B+UDpleR7QL6R1zUqozbwdi9fAqI74f/rCxnbo/c+VlY6LJM+uB5KKv/W411vA==",
+        "dependencies": {
+          "UsbDotNet.Core": "1.4.2"
+        }
+      },
       "openphysical.biometrics.capture": {
         "type": "Project",
         "dependencies": {
@@ -194,14 +207,15 @@
         "dependencies": {
           "BouncyCastle.Cryptography": "[2.6.1, )",
           "Microsoft.Extensions.DependencyInjection.Abstractions": "[10.0.0, )",
-          "OpenPhysical.Biometrics.Capture": "[3.0.0-dev.20261104.2, )",
-          "OpenPhysical.Biometrics.Capture.Usb": "[3.0.0-dev.20261104.2, )"
+          "OpenPhysical.Biometrics.Capture": "[3.0.0-dev.20261105.2, )",
+          "OpenPhysical.Biometrics.Capture.Usb": "[3.0.0-dev.20261105.2, )"
         }
       },
       "openphysical.biometrics.capture.usb": {
         "type": "Project",
         "dependencies": {
-          "OpenPhysical.Biometrics.Capture": "[3.0.0-dev.20261104.2, )"
+          "OpenPhysical.Biometrics.Capture": "[3.0.0-dev.20261105.2, )",
+          "UsbDotNet.LibUsbNative": "[1.4.2, )"
         }
       }
     }

@@ -1,0 +1,174 @@
+<Window
+    xmlns="https://github.com/avaloniaui"
+    xmlns:local="using:OpenPhysical.Biometrics.Desktop"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    x:Class="OpenPhysical.Biometrics.Desktop.MainWindow"
+    x:DataType="local:WorkspaceViewModel"
+    Title="OpenPhysical Biometric Studio"
+    Icon="/Assets/Fingerprint.png"
+    Width="1100"
+    Height="760"
+    MinWidth="800"
+    MinHeight="600"
+>
+    <Grid Margin="16">
+        <TabControl Classes="segmented navigation">
+            <TabItem Header="Capture">
+                <local:EnrollmentView />
+            </TabItem>
+            <TabItem
+                Header="Compare"
+                IsEnabled="{Binding !Export.Enrollment.Fingerprints.Adjustment.IsOpen}"
+            >
+                <local:VerificationView />
+            </TabItem>
+        </TabControl>
+        <StackPanel
+            Orientation="Horizontal"
+            Spacing="8"
+            HorizontalAlignment="Right"
+            VerticalAlignment="Top"
+        >
+            <Button
+                Classes="Flat compact"
+                Content="Image adjustments"
+                IsEnabled="{Binding !Export.Enrollment.Fingerprints.Adjustment.IsOpen}"
+                AutomationProperties.Name="Image adjustments"
+                ToolTip.Tip="Brightness and contrast preview live. Segmentation and enhancement run after capture. Use Adjust capture before accepting the finger."
+            >
+                <Button.Flyout>
+                    <Flyout Placement="BottomEdgeAlignedRight">
+                        <local:ImageAdjustmentPanel DataContext="{Binding Settings}" />
+                    </Flyout>
+                </Button.Flyout>
+            </Button>
+            <Button
+                x:Name="SettingsButton"
+                Classes="Flat compact"
+                Content="Settings"
+                IsEnabled="{Binding !Export.Enrollment.Fingerprints.Adjustment.IsOpen}"
+                AutomationProperties.Name="Settings"
+            >
+                <Button.Flyout>
+                    <Flyout Placement="BottomEdgeAlignedRight">
+                        <ScrollViewer MaxHeight="480" HorizontalScrollBarVisibility="Disabled">
+                            <StackPanel Width="360" Spacing="16">
+                                <TextBlock Classes="section" Text="Settings" />
+                                <StackPanel Spacing="8">
+                                    <TextBlock Classes="label" Text="Comparison score threshold" />
+                                    <TextBox
+                                        Text="{Binding Settings.Threshold}"
+                                        AutomationProperties.Name="Comparison score threshold"
+                                    />
+                                </StackPanel>
+                                <CheckBox
+                                    Content="Auto capture"
+                                    IsChecked="{Binding Settings.AutoCapture}"
+                                />
+                                <StackPanel Spacing="8">
+                                    <TextBlock
+                                        Classes="label"
+                                        Text="Auto capture delay (seconds)"
+                                    />
+                                    <NumericUpDown
+                                        Text="{Binding Settings.AutoCaptureDelaySeconds, Mode=TwoWay}"
+                                        Minimum="0"
+                                        Maximum="10"
+                                        Increment="0.1"
+                                        FormatString="0.0"
+                                        ClipValueToMinMax="False"
+                                        AutomationProperties.Name="Auto capture delay (seconds)"
+                                    />
+                                </StackPanel>
+                                <CheckBox
+                                    Content="Invert fingerprint images"
+                                    IsChecked="{Binding Settings.Invert}"
+                                />
+                                <Expander Header="Advanced capture policy">
+                                    <StackPanel Spacing="8">
+                                        <CheckBox
+                                            Content="Local normalization after capture"
+                                            IsChecked="{Binding Settings.ImageAdjustments.AutomaticEnhancement}"
+                                        />
+                                        <TextBlock Text="Enhancement blend (%)" />
+                                        <Slider
+                                            Minimum="0"
+                                            Maximum="100"
+                                            MinHeight="48"
+                                            TickFrequency="1"
+                                            IsSnapToTickEnabled="True"
+                                            Value="{Binding Settings.CapturePolicy.EnhancementPercent}"
+                                            AutomationProperties.Name="Enhancement blend (%)"
+                                        />
+                                        <TextBlock Text="{Binding Settings.CapturePolicy.EnhancementPercent}" />
+                                        <TextBlock Text="Minimum NFIQ 2 improvement" />
+                                        <NumericUpDown
+                                            Minimum="1"
+                                            Maximum="100"
+                                            Increment="1"
+                                            Value="{Binding Settings.CapturePolicy.MinimumQualityGain}"
+                                            AutomationProperties.Name="Minimum NFIQ 2 improvement"
+                                        />
+                                        <TextBlock
+                                            Classes="caption"
+                                            Text="Application selection margin. Neither quality score may get worse."
+                                            TextWrapping="Wrap"
+                                        />
+                                        <TextBlock Text="Image context margin (pixels)" />
+                                        <NumericUpDown
+                                            Minimum="0"
+                                            Maximum="128"
+                                            Increment="1"
+                                            Value="{Binding Settings.CapturePolicy.ContextMargin}"
+                                            AutomationProperties.Name="Image context margin (pixels)"
+                                        />
+                                        <TextBlock
+                                            Classes="caption"
+                                            Text="Image context; template features stay inside the contact area."
+                                            TextWrapping="Wrap"
+                                        />
+                                        <TextBlock Text="Processing edge guard (pixels)" />
+                                        <NumericUpDown
+                                            Minimum="0"
+                                            Maximum="32"
+                                            Increment="1"
+                                            Value="{Binding Settings.CapturePolicy.EdgeGuardPixels}"
+                                            AutomationProperties.Name="Processing edge guard (pixels)"
+                                        />
+                                    </StackPanel>
+                                </Expander>
+                                <TextBlock
+                                    Classes="caption"
+                                    Text="{Binding Settings.Status}"
+                                    AutomationProperties.LiveSetting="Polite"
+                                />
+                                <StackPanel
+                                    Orientation="Horizontal"
+                                    Spacing="8"
+                                    HorizontalAlignment="Right"
+                                >
+                                    <Button
+                                        Classes="Flat"
+                                        Content="Defaults"
+                                        Command="{Binding Settings.DefaultsCommand}"
+                                    />
+                                    <Button Classes="Flat" Content="Close" Click="CloseSettings" />
+                                    <Button
+                                        Content="Save"
+                                        Command="{Binding Settings.SaveCommand}"
+                                    />
+                                </StackPanel>
+                            </StackPanel>
+                        </ScrollViewer>
+                    </Flyout>
+                </Button.Flyout>
+            </Button>
+            <Button
+                Classes="Flat compact"
+                Content="Clear person"
+                Command="{Binding Export.ClearPersonCommand}"
+                IsEnabled="{Binding !Export.SaveCommand.IsRunning}"
+            />
+        </StackPanel>
+    </Grid>
+</Window>

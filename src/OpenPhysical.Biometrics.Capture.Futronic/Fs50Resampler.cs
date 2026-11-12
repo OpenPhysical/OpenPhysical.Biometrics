@@ -3,6 +3,7 @@
 namespace OpenPhysical.Biometrics.Capture.Futronic;
 
 using System.Collections.Immutable;
+using System.Runtime.InteropServices;
 using CSharpFunctionalExtensions;
 
 /// <summary>Managed cubic remapping and explicit grayscale inversion; input pixels are unchanged.</summary>
@@ -37,7 +38,7 @@ public static class Fs50Resampler
             output[i] = (byte)(255 - Interpolate(raw, point.X, point.Y));
         }
 
-        return ImmutableArray.CreateRange(output);
+        return ImmutableCollectionsMarshal.AsImmutableArray(output);
     }
 
     private static int Interpolate(ReadOnlySpan<byte> raw, float x, float y)
@@ -50,31 +51,42 @@ public static class Fs50Resampler
         int fractionX = fixedX & 127;
         int fractionY = fixedY & 127;
         var firstRow = Horizontal(raw, baseX, baseY - 1, fractionX);
-        Half value = (Half)((double)firstRow * (double)Fs50CubicCoefficients.Get(fractionY, 0));
+        double value = RoundToHalf(firstRow * Fs50CubicCoefficients.GetExact(fractionY, 0));
         for (var row = 1; row < 4; row++)
         {
             var sample = Horizontal(raw, baseX, baseY + row - 1, fractionX);
-            value = MultiplyAdd(sample, Fs50CubicCoefficients.Get(fractionY, row), value);
+            value = MultiplyAdd(sample, Fs50CubicCoefficients.GetExact(fractionY, row), value);
         }
 
-        return Math.Clamp((int)Math.Round((double)value, MidpointRounding.ToEven), 0, 255);
+        return Math.Clamp((int)Math.Round(value, MidpointRounding.ToEven), 0, 255);
     }
 
-    private static Half Horizontal(ReadOnlySpan<byte> raw, int x, int y, int fraction)
+    private static double Horizontal(ReadOnlySpan<byte> raw, int x, int y, int fraction)
     {
-        Half value = (Half)(
-            (double)Sample(raw, x - 1, y) * (double)Fs50CubicCoefficients.Get(fraction, 0)
+        if (x >= 1 && x < Fs50Descriptor.RawWidth - 2 && y >= 0 && y < Fs50Descriptor.RawHeight)
+            return InteriorHorizontal(raw, (y * Fs50Descriptor.RawWidth) + x, fraction);
+        double value = RoundToHalf(
+            Sample(raw, x - 1, y) * Fs50CubicCoefficients.GetExact(fraction, 0)
         );
-        for (var column = 1; column < 4; column++)
-        {
-            value = MultiplyAdd(
-                (Half)Sample(raw, x + column - 1, y),
-                Fs50CubicCoefficients.Get(fraction, column),
-                value
-            );
-        }
+        value = MultiplyAdd(Sample(raw, x, y), Fs50CubicCoefficients.GetExact(fraction, 1), value);
+        value = MultiplyAdd(
+            Sample(raw, x + 1, y),
+            Fs50CubicCoefficients.GetExact(fraction, 2),
+            value
+        );
+        return MultiplyAdd(
+            Sample(raw, x + 2, y),
+            Fs50CubicCoefficients.GetExact(fraction, 3),
+            value
+        );
+    }
 
-        return value;
+    private static double InteriorHorizontal(ReadOnlySpan<byte> raw, int offset, int fraction)
+    {
+        double value = RoundToHalf(raw[offset - 1] * Fs50CubicCoefficients.GetExact(fraction, 0));
+        value = MultiplyAdd(raw[offset], Fs50CubicCoefficients.GetExact(fraction, 1), value);
+        value = MultiplyAdd(raw[offset + 1], Fs50CubicCoefficients.GetExact(fraction, 2), value);
+        return MultiplyAdd(raw[offset + 2], Fs50CubicCoefficients.GetExact(fraction, 3), value);
     }
 
     private static byte Sample(ReadOnlySpan<byte> raw, int x, int y) =>
@@ -83,6 +95,18 @@ public static class Fs50Resampler
             : (byte)0;
 
     // Double holds the exact product/sum of these bounded binary16 values before one Half rounding.
-    private static Half MultiplyAdd(Half left, Half right, Half sum) =>
-        (Half)(((double)left * (double)right) + (double)sum);
+    private static double MultiplyAdd(double left, double right, double sum) =>
+        RoundToHalf((left * right) + sum);
+
+    private static double RoundToHalf(double value)
+    {
+        // These byte/weight sums stay finite and far below binary16 overflow.
+        // Keep the exact binary16 value in double form without repeated Half conversions.
+        long bits = BitConverter.DoubleToInt64Bits(value);
+        if ((bits & 0x7FF0000000000000L) < 0x3F10000000000000L)
+            return Math.Round(value * 16777216, MidpointRounding.ToEven) / 16777216;
+        const long discarded = (1L << 42) - 1;
+        long rounding = (1L << 41) - 1 + ((bits >> 42) & 1);
+        return BitConverter.Int64BitsToDouble((bits + rounding) & ~discarded);
+    }
 }

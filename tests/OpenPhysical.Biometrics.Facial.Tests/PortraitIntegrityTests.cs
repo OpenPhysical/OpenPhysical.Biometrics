@@ -9,40 +9,6 @@ using NUnit.Framework;
 internal sealed class PortraitIntegrityTests
 {
     [Test]
-    public void MissingModelResourceFailsWithAStableCode()
-    {
-        MediaPipeModelLoader
-            .Load("absent.onnx", "00")
-            .Should()
-            .Fail()
-            .Which.Code.Should()
-            .Be(FacialErrorCodes.ModelMissing);
-    }
-
-    [Test]
-    public void TamperedModelChecksumFailsWithAStableCode()
-    {
-        MediaPipeModelLoader
-            .Load("face_detection_short_range.onnx", "00")
-            .Should()
-            .Fail()
-            .Which.Code.Should()
-            .Be(FacialErrorCodes.ModelChecksum);
-    }
-
-    [Test]
-    public void CorrectModelChecksumIsAcceptedRegardlessOfCase()
-    {
-        MediaPipeModelLoader
-            .Load(
-                "face_detection_short_range.onnx",
-                "2F2689B040BECF555706D2CB978D2F0E3296EA82413734FBA9A856C66C5F2B17"
-            )
-            .Should()
-            .Succeed();
-    }
-
-    [Test]
     public void DisposedPreparerFailsInsteadOfThrowing()
     {
         var service = TestFixtures.NewPreparer();
@@ -65,8 +31,8 @@ internal sealed class PortraitIntegrityTests
             .Fail()
             .Which.Code.Should()
             .Be(FacialErrorCodes.SingularTransform);
-        new PortraitPixels(2, 2, new byte[12])
-            .Warp(4, 4, new PortraitTransform(double.NaN, 0, 0, 0))
+        new PortraitTransform(double.NaN, 0, 0, 0)
+            .Inverse(new(1, 1))
             .Should()
             .Fail()
             .Which.Code.Should()

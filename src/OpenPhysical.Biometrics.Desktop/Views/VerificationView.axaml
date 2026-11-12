@@ -1,0 +1,206 @@
+<UserControl
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:OpenPhysical.Biometrics.Desktop"
+    xmlns:material="clr-namespace:Material.Styles.Controls;assembly=Material.Styles"
+    x:Class="OpenPhysical.Biometrics.Desktop.VerificationView"
+    x:DataType="local:WorkspaceViewModel"
+>
+    <material:Card Classes="surface">
+        <Grid RowDefinitions="Auto,*,Auto" RowSpacing="12" Margin="12">
+            <TabControl Classes="segmented" SelectionChanged="ReferenceSourceChanged">
+                <TabItem Header="File">
+                    <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
+                        <TextBox
+                            Text="{Binding Inspection.FilePath}"
+                            Watermark="Fingerprint template file"
+                            AutomationProperties.Name="Template file path"
+                            VerticalAlignment="Center"
+                        >
+                            <TextBox.KeyBindings>
+                                <KeyBinding
+                                    Gesture="Return"
+                                    Command="{Binding Inspection.LoadCommand}"
+                                />
+                            </TextBox.KeyBindings>
+                        </TextBox>
+                        <Button
+                            Grid.Column="1"
+                            Classes="tonal"
+                            Content="Choose file"
+                            Command="{Binding Inspection.BrowseCommand}"
+                        />
+                        <Button
+                            Grid.Column="2"
+                            Classes="Flat compact"
+                            Content="Open"
+                            Command="{Binding Inspection.LoadCommand}"
+                        />
+                    </Grid>
+                </TabItem>
+                <TabItem Header="Credential">
+                    <StackPanel Spacing="8">
+                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                            <ComboBox
+                                ItemsSource="{Binding Inspection.Credential.ReaderNames}"
+                                SelectedItem="{Binding Inspection.Credential.SelectedReader}"
+                                AutomationProperties.Name="Card reader"
+                                PlaceholderText="Card reader"
+                            />
+                            <Button
+                                Grid.Column="1"
+                                Classes="Flat compact"
+                                Content="Refresh"
+                                Command="{Binding Inspection.Credential.RefreshCommand}"
+                                AutomationProperties.Name="Refresh card readers"
+                            />
+                        </Grid>
+                        <WrapPanel Orientation="Horizontal">
+                            <TextBox
+                                Text="{Binding Inspection.Credential.Pin}"
+                                PasswordChar="●"
+                                Watermark="Card PIN"
+                                AutomationProperties.Name="Card PIN"
+                                MaxLength="8"
+                                Width="160"
+                                Margin="0,0,8,0"
+                            />
+                            <Button
+                                Classes="tonal"
+                                Content="Read card"
+                                Command="{Binding Inspection.Credential.ReadCommand}"
+                                Margin="0,0,12,0"
+                            />
+                            <TextBlock
+                                Classes="caption"
+                                Text="{Binding Inspection.Credential.Status}"
+                                VerticalAlignment="Center"
+                                MaxWidth="400"
+                                AutomationProperties.LiveSetting="Polite"
+                            />
+                        </WrapPanel>
+                    </StackPanel>
+                </TabItem>
+            </TabControl>
+            <Grid Grid.Row="1" ColumnDefinitions="*,*" ColumnSpacing="12">
+                <Grid RowDefinitions="Auto,Auto,*" RowSpacing="8">
+                    <TextBlock Text="Reference" Classes="section" />
+                    <ComboBox
+                        Grid.Row="1"
+                        ItemsSource="{Binding Inspection.Reference.Views}"
+                        SelectedItem="{Binding Inspection.Reference.SelectedView}"
+                        AutomationProperties.Name="Reference finger"
+                        IsEnabled="{Binding Inspection.Scene.HasValue}"
+                        PlaceholderText="Reference finger"
+                    />
+                    <local:BiometricImageView
+                        Grid.Row="2"
+                        Scene="{Binding Inspection.Scene}"
+                        EmptyText="Choose a file or read a card"
+                        Invert="{Binding Settings.Invert, Mode=TwoWay}"
+                        ShowFeatures="{Binding Inspection.ShowOverlay, Mode=TwoWay}"
+                        ShowArea="{Binding Inspection.ShowSegmentation, Mode=TwoWay}"
+                        FeatureLabel="Reference features"
+                    />
+                </Grid>
+                <Grid Grid.Column="1" RowDefinitions="Auto,Auto,*" RowSpacing="8">
+                    <TextBlock Text="Comparison finger" Classes="section" />
+                    <ComboBox
+                        Grid.Row="1"
+                        ItemsSource="{Binding Capture.Fingers}"
+                        SelectedItem="{Binding Inspection.AssignedProbeFinger}"
+                        AutomationProperties.Name="Finger assigned for comparison"
+                    />
+                    <local:BiometricImageView
+                        Grid.Row="2"
+                        Scene="{Binding Inspection.ProbeScene}"
+                        EmptyText="{Binding Capture.CaptureGuidance}"
+                        Invert="{Binding Settings.Invert, Mode=TwoWay}"
+                        ShowFeatures="{Binding Inspection.ShowReferenceOverlay, Mode=TwoWay}"
+                        ShowArea="{Binding Capture.ShowSegmentation, Mode=TwoWay}"
+                        FeatureLabel="Reference overlay"
+                    />
+                </Grid>
+            </Grid>
+            <Border
+                Grid.Row="2"
+                BorderBrush="{DynamicResource AppDivider}"
+                BorderThickness="0,1,0,0"
+                Padding="0,8,0,0"
+            >
+                <StackPanel Spacing="4">
+                    <TextBlock
+                        Classes="verdict"
+                        Classes.match="{Binding Inspection.Decision.IsMatch}"
+                        Classes.nomatch="{Binding Inspection.Decision.IsNoMatch}"
+                        Text="{Binding Inspection.Decision.Label}"
+                        IsVisible="{Binding Inspection.Decision.HasDecision}"
+                        AutomationProperties.LiveSetting="Assertive"
+                    />
+                    <TextBlock
+                        Classes="caption"
+                        Text="{Binding Capture.AcquisitionMessage}"
+                        IsVisible="{Binding Capture.HasAcquisitionMessage}"
+                        AutomationProperties.LiveSetting="Polite"
+                    />
+                    <TextBlock
+                        Text="{Binding Inspection.Summary}"
+                        IsVisible="{Binding !Inspection.Decision.HasDecision}"
+                        TextWrapping="Wrap"
+                        AutomationProperties.LiveSetting="Polite"
+                    />
+                    <WrapPanel HorizontalAlignment="Right">
+                        <Button
+                            Classes="Flat compact"
+                            Content="Reset scanner"
+                            Command="{Binding Capture.ResetScannerCommand}"
+                            IsVisible="{Binding Capture.ScannerResetRequired}"
+                        />
+                        <Button Classes="Flat compact" Content="Details">
+                            <Button.Flyout>
+                                <Flyout Placement="TopEdgeAlignedRight">
+                                    <ScrollViewer MaxHeight="350">
+                                        <StackPanel Spacing="12" Width="350">
+                                            <TextBlock
+                                                Text="{Binding Inspection.AlignmentStatus}"
+                                                Classes="caption"
+                                            />
+                                            <TextBlock
+                                                Text="{Binding Inspection.Report}"
+                                                Classes="caption"
+                                            />
+                                            <TextBlock
+                                                Text="{Binding Inspection.ProbeSummary}"
+                                                Classes="caption"
+                                            />
+                                        </StackPanel>
+                                    </ScrollViewer>
+                                </Flyout>
+                            </Button.Flyout>
+                        </Button>
+                        <CheckBox
+                            Content="Auto capture"
+                            IsChecked="{Binding Settings.AutoCapture}"
+                            Margin="8,0"
+                        />
+                        <Button
+                            Classes="Flat compact"
+                            Content="Reset capture"
+                            Command="{Binding Capture.ResetCaptureCommand}"
+                        />
+                        <Button
+                            Content="Capture now"
+                            Command="{Binding Capture.CaptureCommand}"
+                            IsVisible="{Binding Capture.Captured.HasNoValue}"
+                        />
+                        <Button
+                            Content="Compare"
+                            Command="{Binding Inspection.CompareCommand}"
+                            IsVisible="{Binding Capture.Captured.HasValue}"
+                        />
+                    </WrapPanel>
+                </StackPanel>
+            </Border>
+        </Grid>
+    </material:Card>
+</UserControl>

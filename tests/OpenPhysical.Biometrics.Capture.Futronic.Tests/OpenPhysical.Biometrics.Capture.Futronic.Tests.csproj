@@ -17,5 +17,28 @@
             Update="Fixtures/fs50-resampler-half128-v1.json"
             CopyToOutputDirectory="PreserveNewest"
         />
+        <None Update="Fixtures/hardware-fs50-20261110/**" CopyToOutputDirectory="PreserveNewest" />
+        <Content
+            Include="../../../OpenPhysical.Biometrics.NBIS/tests/fixtures/sd04/*.gray8;../../../OpenPhysical.Biometrics.NBIS/tests/fixtures/sd04/manifest.json"
+            Link="Fixtures/sd04/%(Filename)%(Extension)"
+            CopyToOutputDirectory="PreserveNewest"
+        />
     </ItemGroup>
+    <PropertyGroup>
+        <ScriptedUsbFileName Condition="$([MSBuild]::IsOSPlatform('OSX'))"
+            >libscripted_libusb.dylib</ScriptedUsbFileName>
+        <ScriptedUsbFileName Condition="$([MSBuild]::IsOSPlatform('Linux'))"
+            >libscripted_libusb.so</ScriptedUsbFileName>
+        <ScriptedUsbFileName Condition="$([MSBuild]::IsOSPlatform('Windows'))"
+            >scripted_libusb.dll</ScriptedUsbFileName>
+    </PropertyGroup>
+    <Target
+        Name="BuildScriptedUsbFixture"
+        AfterTargets="Build"
+        Inputs="Fixtures/scripted-libusb/scripted-libusb.c;Fixtures/scripted-libusb/CMakeLists.txt"
+        Outputs="$(TargetDir)$(ScriptedUsbFileName)"
+    >
+        <Exec Command="cmake -S &quot;$(MSBuildProjectDirectory)/Fixtures/scripted-libusb&quot; -B &quot;$(IntermediateOutputPath)scripted-usb&quot; -DCMAKE_BUILD_TYPE=Release -DCMAKE_LIBRARY_OUTPUT_DIRECTORY=&quot;$(TargetDir)&quot; -DCMAKE_RUNTIME_OUTPUT_DIRECTORY=&quot;$(TargetDir)&quot; -DCMAKE_LIBRARY_OUTPUT_DIRECTORY_RELEASE=&quot;$(TargetDir)&quot; -DCMAKE_RUNTIME_OUTPUT_DIRECTORY_RELEASE=&quot;$(TargetDir)&quot;" />
+        <Exec Command="cmake --build &quot;$(IntermediateOutputPath)scripted-usb&quot; --config Release" />
+    </Target>
 </Project>

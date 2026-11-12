@@ -35,9 +35,9 @@ internal sealed class PortraitEncodingTests
         new Random(5).NextBytes(pixels);
         var png = PortraitEncoding.EncodePng(pixels, 16, 16);
         png.Should().Succeed();
-        var decoded = PortraitDecoder.Decode(png.Value);
+        var decoded = PortraitImage.Decode(png.Value);
         decoded.Should().Succeed();
-        decoded.Value.Rgb.Should().Equal(pixels);
+        decoded.Value.RgbPixels.Should().Equal(pixels);
     }
 
     [TestCase(0, 640, 3)]

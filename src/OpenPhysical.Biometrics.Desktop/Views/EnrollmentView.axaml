@@ -1,0 +1,340 @@
+<UserControl
+    xmlns="https://github.com/avaloniaui"
+    xmlns:material="clr-namespace:Material.Styles.Controls;assembly=Material.Styles"
+    xmlns:local="using:OpenPhysical.Biometrics.Desktop"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    x:Class="OpenPhysical.Biometrics.Desktop.EnrollmentView"
+    x:DataType="local:WorkspaceViewModel"
+>
+    <Grid ColumnDefinitions="240,*" ColumnSpacing="16">
+        <Border
+            BorderBrush="{DynamicResource AppDivider}"
+            BorderThickness="0,0,1,0"
+            Padding="0,4,16,0"
+        >
+            <Grid>
+                <Border IsVisible="{Binding Export.Enrollment.Fingerprints.Adjustment.IsOpen}">
+                    <local:CaptureAdjustmentPanel DataContext="{Binding Export.Enrollment.Fingerprints.Adjustment}" />
+                </Border>
+                <ScrollViewer
+                    HorizontalScrollBarVisibility="Disabled"
+                    IsVisible="{Binding !Export.Enrollment.Fingerprints.Adjustment.IsOpen}"
+                >
+                    <StackPanel Spacing="16">
+                        <StackPanel Spacing="6">
+                            <Grid ColumnDefinitions="*,Auto">
+                                <TextBlock
+                                    Text="Person"
+                                    Classes="section"
+                                    VerticalAlignment="Center"
+                                />
+                                <Button Grid.Column="1" Classes="Flat compact" Content="Add ID">
+                                    <Button.Flyout>
+                                        <Flyout>
+                                            <StackPanel Spacing="8" Width="260">
+                                                <TextBlock Text="Identifier" />
+                                                <TextBox
+                                                    Text="{Binding Export.Enrollment.Person.Identifier}"
+                                                    AutomationProperties.Name="Person identifier"
+                                                    MaxLength="256"
+                                                />
+                                            </StackPanel>
+                                        </Flyout>
+                                    </Button.Flyout>
+                                </Button>
+                            </Grid>
+                            <TextBox
+                                Text="{Binding Export.Enrollment.Person.Name}"
+                                Watermark="Name or alias"
+                                AutomationProperties.Name="Name or label"
+                                MaxLength="128"
+                            />
+                        </StackPanel>
+                        <StackPanel Spacing="8">
+                            <TextBlock Text="Fingerprints" Classes="section" />
+                            <CheckBox
+                                Content="Two fingers"
+                                IsChecked="{Binding Export.Enrollment.Fingerprints.TwoFingers}"
+                                IsEnabled="{Binding !Export.Enrollment.Fingerprints.IsBusy}"
+                            />
+                            <Grid ColumnDefinitions="48,*" ColumnSpacing="4">
+                                <RadioButton
+                                    GroupName="EnrollmentFinger"
+                                    Command="{Binding Export.Enrollment.Fingerprints.PrimarySlotCommand}"
+                                    IsChecked="{Binding Export.Enrollment.Fingerprints.PrimaryActive, Mode=OneWay}"
+                                    AutomationProperties.Name="Work on first finger"
+                                    MinWidth="48"
+                                    MinHeight="48"
+                                    VerticalAlignment="Center"
+                                />
+                                <ComboBox
+                                    ItemsSource="{Binding Export.Enrollment.Fingerprints.Fingers}"
+                                    SelectedItem="{Binding Export.Enrollment.Fingerprints.PrimaryFinger}"
+                                    IsEnabled="{Binding !Export.Enrollment.Fingerprints.IsBusy}"
+                                    AutomationProperties.Name="First required finger"
+                                    Grid.Column="1"
+                                />
+                            </Grid>
+                            <TextBlock
+                                Text="{Binding Export.Enrollment.Fingerprints.PrimaryLabel}"
+                                Classes="caption"
+                            />
+                            <StackPanel
+                                Spacing="8"
+                                IsVisible="{Binding Export.Enrollment.Fingerprints.TwoFingers}"
+                            >
+                                <Grid ColumnDefinitions="48,*" ColumnSpacing="4">
+                                    <RadioButton
+                                        GroupName="EnrollmentFinger"
+                                        Command="{Binding Export.Enrollment.Fingerprints.SecondarySlotCommand}"
+                                        IsChecked="{Binding Export.Enrollment.Fingerprints.SecondaryActive, Mode=OneWay}"
+                                        AutomationProperties.Name="Work on second finger"
+                                        MinWidth="48"
+                                        MinHeight="48"
+                                        VerticalAlignment="Center"
+                                    />
+                                    <ComboBox
+                                        ItemsSource="{Binding Export.Enrollment.Fingerprints.Fingers}"
+                                        SelectedItem="{Binding Export.Enrollment.Fingerprints.SecondaryFinger}"
+                                        IsEnabled="{Binding !Export.Enrollment.Fingerprints.IsBusy}"
+                                        AutomationProperties.Name="Second required finger"
+                                        Grid.Column="1"
+                                    />
+                                </Grid>
+                                <TextBlock
+                                    Text="{Binding Export.Enrollment.Fingerprints.SecondaryLabel}"
+                                    Classes="caption"
+                                />
+                            </StackPanel>
+                        </StackPanel>
+                        <Button
+                            Classes="Flat compact"
+                            Content="Save options"
+                            HorizontalAlignment="Left"
+                        >
+                            <Button.Flyout>
+                                <Flyout>
+                                    <ScrollViewer MaxHeight="420">
+                                        <StackPanel Spacing="8" Width="320">
+                                            <TextBlock Text="Vendor ID" />
+                                            <TextBox
+                                                Text="{Binding Export.ProductOwner}"
+                                                AutomationProperties.Name="Vendor ID"
+                                            />
+                                            <TextBlock Text="Product type" />
+                                            <TextBox
+                                                Text="{Binding Export.ProductType}"
+                                                AutomationProperties.Name="Product type"
+                                            />
+                                            <TextBlock Text="Capture equipment ID" />
+                                            <TextBox
+                                                Text="{Binding Export.EquipmentId}"
+                                                AutomationProperties.Name="Capture equipment ID"
+                                            />
+                                            <TextBlock Text="Save folder" />
+                                            <TextBox
+                                                Text="{Binding Export.Folder}"
+                                                AutomationProperties.Name="Save folder"
+                                                TextWrapping="Wrap"
+                                            />
+                                            <CheckBox
+                                                Content="Include processing diagnostics"
+                                                IsChecked="{Binding Export.IncludeDiagnostics}"
+                                            />
+                                        </StackPanel>
+                                    </ScrollViewer>
+                                </Flyout>
+                            </Button.Flyout>
+                        </Button>
+                    </StackPanel>
+                </ScrollViewer>
+            </Grid>
+        </Border>
+        <material:Card Grid.Column="1" Classes="surface">
+            <Grid RowDefinitions="Auto,*,Auto" RowSpacing="8" Margin="12">
+                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                    <TextBlock
+                        Text="{Binding Capture.SelectedFinger.Label}"
+                        Classes="section"
+                        VerticalAlignment="Center"
+                    />
+                    <CheckBox
+                        Grid.Column="1"
+                        Content="Auto capture"
+                        IsChecked="{Binding Settings.AutoCapture}"
+                        IsVisible="{Binding !Export.Enrollment.Fingerprints.Adjustment.IsOpen}"
+                    />
+                </Grid>
+                <local:BiometricImageView
+                    Grid.Row="1"
+                    Scene="{Binding Capture.Scene}"
+                    EmptyText="{Binding Capture.CaptureGuidance}"
+                    Invert="{Binding Settings.Invert, Mode=TwoWay}"
+                    ShowFeatures="{Binding Capture.ShowOverlay, Mode=TwoWay}"
+                    ShowArea="{Binding Capture.ShowSegmentation, Mode=TwoWay}"
+                />
+                <Border
+                    Grid.Row="2"
+                    IsVisible="{Binding !Export.Enrollment.Fingerprints.Adjustment.IsOpen}"
+                    BorderBrush="{DynamicResource AppDivider}"
+                    BorderThickness="0,1,0,0"
+                    Padding="0,8,0,0"
+                >
+                    <StackPanel Spacing="4">
+                        <TextBlock
+                            Classes="caption"
+                            Text="{Binding Capture.AcquisitionMessage}"
+                            TextWrapping="Wrap"
+                            IsVisible="{Binding Capture.HasAcquisitionMessage}"
+                            AutomationProperties.LiveSetting="Polite"
+                        />
+                        <WrapPanel IsVisible="{Binding Capture.Captured.HasValue}">
+                            <TextBlock
+                                Classes="caption"
+                                Text="{Binding Capture.Diagnostics.FeaturesInTemplateText}"
+                                Margin="0,0,16,0"
+                            />
+                            <TextBlock
+                                Classes="caption"
+                                Text="{Binding Capture.Diagnostics.QualityText}"
+                                Margin="0,0,16,0"
+                            />
+                            <TextBlock
+                                Classes="caption"
+                                Text="{Binding Capture.Diagnostics.Nfiq2Text}"
+                                IsVisible="{Binding Capture.Diagnostics.HasNfiq2}"
+                            />
+                        </WrapPanel>
+                        <TextBlock
+                            Classes="caption"
+                            Text="{Binding Capture.Diagnostics.CaptureAdvice}"
+                            IsVisible="{Binding Capture.Captured.HasValue}"
+                        />
+                        <TextBlock
+                            Classes="caption"
+                            Text="{Binding Export.Readiness}"
+                            IsVisible="{Binding Capture.Captured.HasValue}"
+                            AutomationProperties.LiveSetting="Polite"
+                        />
+                        <TextBlock
+                            Classes="caption"
+                            Text="{Binding Export.Status}"
+                            IsVisible="{Binding Export.Enrollment.Ready}"
+                        />
+                        <WrapPanel
+                            HorizontalAlignment="Right"
+                            Orientation="Horizontal"
+                            IsVisible="{Binding !Export.Enrollment.Fingerprints.Adjustment.IsOpen}"
+                        >
+                            <Button
+                                Classes="Flat compact"
+                                Content="Reset scanner"
+                                Command="{Binding Capture.ResetScannerCommand}"
+                                IsVisible="{Binding Capture.ScannerResetRequired}"
+                            />
+                            <Button Classes="Flat compact" Content="Details">
+                                <Button.Flyout>
+                                    <Flyout
+                                        Placement="TopEdgeAlignedRight"
+                                        Opened="DetailsOpened"
+                                        Closed="DetailsClosed"
+                                    >
+                                        <ScrollViewer MaxHeight="480">
+                                            <StackPanel Spacing="10" Width="420">
+                                                <TextBlock
+                                                    Text="{Binding Capture.Status}"
+                                                    Classes="caption"
+                                                />
+                                                <TextBlock
+                                                    Text="{Binding Capture.Diagnostics.FeaturesFoundText}"
+                                                    Classes="caption"
+                                                    IsVisible="{Binding Capture.Captured.HasValue}"
+                                                />
+                                                <TextBlock
+                                                    Text="{Binding Capture.Diagnostics.OriginalQualityText}"
+                                                    Classes="caption"
+                                                    TextWrapping="Wrap"
+                                                />
+                                                <StackPanel
+                                                    IsVisible="{Binding Capture.ProcessingDetails.Available}"
+                                                    Spacing="8"
+                                                >
+                                                    <ComboBox
+                                                        ItemsSource="{Binding Capture.ProcessingDetails.Stages}"
+                                                        SelectedItem="{Binding Capture.ProcessingDetails.Selected}"
+                                                        AutomationProperties.Name="Processing stage"
+                                                    />
+                                                    <local:BiometricImageView
+                                                        Height="240"
+                                                        Scene="{Binding Capture.ProcessingDetails.Scene}"
+                                                    />
+                                                    <TextBlock
+                                                        Text="{Binding Capture.ProcessingDetails.Description}"
+                                                        Classes="caption"
+                                                        TextWrapping="Wrap"
+                                                    />
+                                                </StackPanel>
+                                                <CheckBox
+                                                    Content="Automatic exposure"
+                                                    IsChecked="{Binding Capture.AutomaticExposure}"
+                                                />
+                                                <TextBlock Text="Exposure" />
+                                                <Slider
+                                                    Minimum="0"
+                                                    Maximum="255"
+                                                    Value="{Binding Capture.Exposure}"
+                                                    AutomationProperties.Name="Scanner exposure"
+                                                />
+                                                <Button
+                                                    Classes="Flat"
+                                                    Content="Apply exposure"
+                                                    Command="{Binding Capture.ExposureCommand}"
+                                                />
+                                                <TextBlock
+                                                    Text="Marker center: detected location. One line: ending; two: bifurcation; cross: other. Lines indicate direction, not measured branch paths."
+                                                    TextWrapping="Wrap"
+                                                    Classes="caption"
+                                                />
+                                            </StackPanel>
+                                        </ScrollViewer>
+                                    </Flyout>
+                                </Button.Flyout>
+                            </Button>
+                            <Button
+                                Classes="Flat compact"
+                                Content="Adjust capture"
+                                Command="{Binding Export.Enrollment.Fingerprints.AdjustCaptureCommand}"
+                                IsVisible="{Binding Export.Enrollment.Fingerprints.CanAdjustCapture}"
+                            />
+                            <Button
+                                Classes="Flat compact"
+                                Content="Reset capture"
+                                Command="{Binding Export.Enrollment.Fingerprints.ResetCaptureCommand}"
+                            />
+                            <StackPanel
+                                Orientation="Horizontal"
+                                IsVisible="{Binding !Export.Enrollment.Fingerprints.ActiveAccepted}"
+                            >
+                                <Button
+                                    Content="Capture now"
+                                    Command="{Binding Capture.CaptureCommand}"
+                                    IsVisible="{Binding Capture.Captured.HasNoValue}"
+                                />
+                                <Button
+                                    Content="Accept finger"
+                                    Command="{Binding Export.Enrollment.AcceptCommand}"
+                                    IsVisible="{Binding Capture.Captured.HasValue}"
+                                />
+                            </StackPanel>
+                            <Button
+                                Content="Save person"
+                                Command="{Binding Export.SaveCommand}"
+                                IsVisible="{Binding Export.Enrollment.Ready}"
+                            />
+                        </WrapPanel>
+                    </StackPanel>
+                </Border>
+            </Grid>
+        </material:Card>
+    </Grid>
+</UserControl>

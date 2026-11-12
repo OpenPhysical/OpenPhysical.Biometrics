@@ -23,6 +23,12 @@ public static class CaptureErrorCodes
     /// <summary>The image byte count is incomplete.</summary>
     public const string TransferIncomplete = "capture.TransferIncomplete";
 
+    /// <summary>A bounded transfer timed out without transferring any bytes.</summary>
+    public const string TransferTimedOut = "capture.TransferTimedOut";
+
+    /// <summary>The scanner endpoint could not be synchronized within its cleanup budget.</summary>
+    public const string SynchronizationFailed = "capture.SynchronizationFailed";
+
     /// <summary>Acquisition was cancelled.</summary>
     public const string Cancelled = "capture.Cancelled";
 
