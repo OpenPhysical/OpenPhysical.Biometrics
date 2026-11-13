@@ -25,6 +25,6 @@ internal sealed class AcquisitionPolicyPackageTests
         loaded.Should().Succeed();
         var actual = loaded.Value.Images.Single().Processing.Value.OriginalAcquisitionPolicy.Value;
         actual.ToJson().GetRawText().Should().Be(policy.ToJson().GetRawText());
-        Directory.Delete(folder, true);
+        System.IO.Directory.Delete(folder, true);
     }
 }

@@ -1,0 +1,33 @@
+{
+  "solution": {
+    "path": "OpenPhysical.Biometrics.sln",
+    "projects": [
+      "src\\OpenPhysical.Biometrics.Tool\\OpenPhysical.Biometrics.Tool.csproj",
+      "src\\OpenPhysical.Biometrics\\OpenPhysical.Biometrics.csproj",
+      "src\\OpenPhysical.Biometrics.Formats\\OpenPhysical.Biometrics.Formats.csproj",
+      "src\\OpenPhysical.Biometrics.Piv\\OpenPhysical.Biometrics.Piv.csproj",
+      "src\\OpenPhysical.Biometrics.Fingerprints\\OpenPhysical.Biometrics.Fingerprints.csproj",
+      "tests\\OpenPhysical.Biometrics.Formats.Tests\\OpenPhysical.Biometrics.Formats.Tests.csproj",
+      "tests\\OpenPhysical.Biometrics.Piv.Tests\\OpenPhysical.Biometrics.Piv.Tests.csproj",
+      "tests\\OpenPhysical.Biometrics.Fingerprints.Tests\\OpenPhysical.Biometrics.Fingerprints.Tests.csproj",
+      "src\\OpenPhysical.Biometrics.Facial\\OpenPhysical.Biometrics.Facial.csproj",
+      "tests\\OpenPhysical.Biometrics.Facial.Tests\\OpenPhysical.Biometrics.Facial.Tests.csproj",
+      "examples\\OpenPhysical.Biometrics.Examples\\OpenPhysical.Biometrics.Examples.csproj",
+      "src\\OpenPhysical.Biometrics.Imaging\\OpenPhysical.Biometrics.Imaging.csproj",
+      "tests\\OpenPhysical.Biometrics.Imaging.Tests\\OpenPhysical.Biometrics.Imaging.Tests.csproj",
+      "src\\OpenPhysical.Biometrics.Onnx\\OpenPhysical.Biometrics.Onnx.csproj",
+      "src\\OpenPhysical.Biometrics.Capture\\OpenPhysical.Biometrics.Capture.csproj",
+      "tests\\OpenPhysical.Biometrics.Capture.Tests\\OpenPhysical.Biometrics.Capture.Tests.csproj",
+      "src\\OpenPhysical.Biometrics.Capture.Futronic\\OpenPhysical.Biometrics.Capture.Futronic.csproj",
+      "tests\\OpenPhysical.Biometrics.Capture.Futronic.Tests\\OpenPhysical.Biometrics.Capture.Futronic.Tests.csproj",
+      "src\\OpenPhysical.Biometrics.Capture.Usb\\OpenPhysical.Biometrics.Capture.Usb.csproj",
+      "src\\OpenPhysical.Biometrics.Fingerprints.Nfiq2\\OpenPhysical.Biometrics.Fingerprints.Nfiq2.csproj",
+      "tests\\OpenPhysical.Biometrics.Fingerprints.Nfiq2.Tests\\OpenPhysical.Biometrics.Fingerprints.Nfiq2.Tests.csproj",
+      "src\\OpenPhysical.Biometrics.Capture.Camera\\OpenPhysical.Biometrics.Capture.Camera.csproj",
+      "tests\\OpenPhysical.Biometrics.Capture.Camera.Tests\\OpenPhysical.Biometrics.Capture.Camera.Tests.csproj",
+      "src\\OpenPhysical.Biometrics.Packages\\OpenPhysical.Biometrics.Packages.csproj",
+      "tests\\OpenPhysical.Biometrics.Packages.Tests\\OpenPhysical.Biometrics.Packages.Tests.csproj",
+      "src\\OpenPhysical.Biometrics.Presentation\\OpenPhysical.Biometrics.Presentation.csproj"
+    ]
+  }
+}

@@ -44,7 +44,7 @@ internal sealed class ProcessingPackageTests
             await File.ReadAllBytesAsync(Path.ChangeExtension(saved.Value, ".json"))
         )!;
         _ = PackageTestFiles.AssertAdvertisedPngs(PrivateCaptureDirectory(saved.Value), manifest);
-        Directory.Delete(folder, true);
+        System.IO.Directory.Delete(folder, true);
     }
 
     [TestCase("Original")]
@@ -58,7 +58,7 @@ internal sealed class ProcessingPackageTests
             Path.Combine(Path.GetDirectoryName(path)!, descriptor["FileName"]!.GetValue<string>())
         );
         (await new TemplateStorage().LoadAsync(path, CancellationToken.None)).Should().Fail();
-        Directory.Delete(folder, true);
+        System.IO.Directory.Delete(folder, true);
     }
 
     [Test]
@@ -72,7 +72,7 @@ internal sealed class ProcessingPackageTests
             .Fail()
             .Which.Code.Should()
             .Be("Storage.Manifest");
-        Directory.Delete(folder, true);
+        System.IO.Directory.Delete(folder, true);
     }
 
     [Test]
@@ -86,7 +86,7 @@ internal sealed class ProcessingPackageTests
             .Fail()
             .Which.Code.Should()
             .Be("Storage.Manifest");
-        Directory.Delete(folder, true);
+        System.IO.Directory.Delete(folder, true);
     }
 
     private static string PrivateCaptureDirectory(string path)

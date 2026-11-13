@@ -64,4 +64,29 @@ internal static class DesktopEdge
             return new DesktopError(code, $"{message} {error.Message}");
         }
     }
+
+    internal static async Task<Result<T, DesktopError>> TryValidatedAsync<T>(
+        Func<Task<T>> operation,
+        string invalidCode,
+        string unavailableCode,
+        string message
+    )
+    {
+        try
+        {
+            return await operation().ConfigureAwait(false);
+        }
+        catch (InvalidDataException)
+        {
+            return new DesktopError(invalidCode, message);
+        }
+        catch (OperationCanceledException)
+        {
+            return new DesktopError("Cancelled", "The operation was cancelled.");
+        }
+        catch (Exception)
+        {
+            return new DesktopError(unavailableCode, message);
+        }
+    }
 }

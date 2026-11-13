@@ -41,8 +41,8 @@ internal static class PackageTestFiles
         var advertised = FileNames(manifest)
             .Where(name => name.EndsWith(".png", StringComparison.Ordinal))
             .Distinct(StringComparer.Ordinal);
-        Directory
-            .GetFiles(directory, "*.png")
+        System
+            .IO.Directory.GetFiles(directory, "*.png")
             .Select(Path.GetFileName)
             .Should()
             .BeEquivalentTo(advertised);

@@ -42,7 +42,7 @@ internal sealed class UnifiedQualityMetadataTests
         var loaded = await store.LoadAsync(saved.Value, CancellationToken.None);
         loaded.Should().Succeed();
         AssertReopened(loaded.Value, original, record, include);
-        Directory.Delete(folder, true);
+        System.IO.Directory.Delete(folder, true);
     }
 
     private static CapturedFingerprint WithAssessment(CapturedFingerprint original, bool include)
@@ -119,7 +119,7 @@ internal sealed class UnifiedQualityMetadataTests
             .Fail()
             .Which.Code.Should()
             .Be("Storage.Manifest");
-        Directory.Delete(folder, true);
+        System.IO.Directory.Delete(folder, true);
     }
 
     private static string NewFolder() =>

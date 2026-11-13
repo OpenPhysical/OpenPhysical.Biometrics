@@ -40,6 +40,12 @@ public static class DesktopServices
         AddWorkspace(services);
         services.AddSingleton<StudioPersonSelection>();
         services.AddSingleton<StudioFeatureCoordinator>();
+        services.AddSingleton<
+            IStudioVerificationBackendFactory,
+            StudioVerificationRuntimeFactory
+        >();
+        services.AddSingleton<StudioCardVerificationViewModel>();
+        services.AddSingleton<IStudioWorkspaceFeature, StudioVerificationFeature>();
         configure(services);
         return builder.Build();
     }

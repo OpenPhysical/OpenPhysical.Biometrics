@@ -16,7 +16,7 @@ internal sealed class SettingsRecoveryTests
     )
     {
         using var location = new SettingsTestFile();
-        Directory.CreateDirectory(location.Folder);
+        System.IO.Directory.CreateDirectory(location.Folder);
         await File.WriteAllTextAsync(location.Path, invalid);
         var applied = DesktopPreferences.Create(75, false, true, 2).Value;
         var view = new SettingsViewModel(
@@ -49,7 +49,7 @@ internal sealed class SettingsRecoveryTests
         if (OperatingSystem.IsWindows())
             return;
         using var location = new SettingsTestFile();
-        Directory.CreateDirectory(location.Folder);
+        System.IO.Directory.CreateDirectory(location.Folder);
         await File.WriteAllBytesAsync(
             location.Path,
             DesktopPreferences.Create(75, false, true, 2).Value.ToJsonBytes()
@@ -79,7 +79,7 @@ internal sealed class SettingsRecoveryTests
     public async Task FailedRecoveryStillAppliesDefaultsAndDoesNotClaimTheyWereSaved()
     {
         using var location = new SettingsTestFile();
-        Directory.CreateDirectory(location.Path);
+        System.IO.Directory.CreateDirectory(location.Path);
         var applied = DesktopPreferences.Create(75, false, true, 2).Value;
         var view = new SettingsViewModel(
             new SettingsStorage(location.Path),
@@ -93,7 +93,7 @@ internal sealed class SettingsRecoveryTests
         (await view.InitializeAsync()).Should().Fail();
         applied.Should().Be(DesktopPreferences.Default);
         view.Status.Should().Contain("could not be saved").And.NotContain("Settings.");
-        Directory.Exists(location.Path).Should().BeTrue();
+        System.IO.Directory.Exists(location.Path).Should().BeTrue();
         view.Notice.Value.IsError.Should().BeTrue();
     }
 
@@ -121,7 +121,7 @@ internal sealed class SettingsRecoveryTests
             Microsoft.Extensions.Logging.Abstractions.NullLogger<SettingsViewModel>.Instance
         );
         await view.InitializeAsync();
-        Directory.CreateDirectory(location.Path);
+        System.IO.Directory.CreateDirectory(location.Path);
         view.Threshold = "95";
         await view.SaveCommand.ExecuteAsync(default);
         view.Status.Should()
@@ -129,7 +129,7 @@ internal sealed class SettingsRecoveryTests
             .And.Contain("this session")
             .And.NotContain("Settings.Write");
         view.Notice.Value.IsError.Should().BeTrue();
-        Directory.Exists(location.Path).Should().BeTrue();
+        System.IO.Directory.Exists(location.Path).Should().BeTrue();
     }
 
     [TestCase(false)]
@@ -141,7 +141,7 @@ internal sealed class SettingsRecoveryTests
         using var location = new SettingsTestFile();
         if (invalidFile)
         {
-            Directory.CreateDirectory(location.Folder);
+            System.IO.Directory.CreateDirectory(location.Folder);
             await File.WriteAllTextAsync(location.Path, "{");
         }
         var failure = new DesktopError(

@@ -39,7 +39,7 @@ internal sealed class SpatialAdmissionPackageTests
         }
         finally
         {
-            Directory.Delete(folder, true);
+            System.IO.Directory.Delete(folder, true);
         }
     }
 
@@ -70,7 +70,7 @@ internal sealed class SpatialAdmissionPackageTests
         }
         finally
         {
-            Directory.Delete(folder, true);
+            System.IO.Directory.Delete(folder, true);
         }
     }
 

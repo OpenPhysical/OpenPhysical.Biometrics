@@ -44,7 +44,7 @@ internal sealed class ContactContourPackageTests
         }
         finally
         {
-            Directory.Delete(folder, true);
+            System.IO.Directory.Delete(folder, true);
         }
     }
 }

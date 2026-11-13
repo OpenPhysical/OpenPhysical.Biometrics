@@ -98,6 +98,7 @@ internal sealed class ContactRejectionTests
         )
         {
             AutomaticExposure = false,
+            AutoCapture = true,
         };
     }
 

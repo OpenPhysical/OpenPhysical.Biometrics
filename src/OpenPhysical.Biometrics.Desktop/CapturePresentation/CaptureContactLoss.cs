@@ -12,6 +12,7 @@ internal sealed class CaptureContactLoss(TimeProvider clock)
     private ImmutableArray<byte> footprint = [];
     private int supported,
         area,
+        spatialArea,
         dark,
         absent;
     private double threshold;
@@ -29,6 +30,7 @@ internal sealed class CaptureContactLoss(TimeProvider clock)
         footprint = contact.ContactMask;
         supported = contact.Diagnostics.RidgeSupportArea;
         area = contact.Diagnostics.AcceptedArea;
+        spatialArea = contact.SpatialStatistics.Match(value => value.Area, () => 0);
         threshold = 255 - contact.Diagnostics.AcceptedStatistics.Signal / 2;
         dark = DarkPixels(frame);
         return Interrupt();
@@ -45,10 +47,13 @@ internal sealed class CaptureContactLoss(TimeProvider clock)
             && key == proof.Record.Identity.SessionKeyDigest
             && supported > 0
             && area > 0
+            && spatialArea > 0
             && dark > 0
             && contact.Diagnostics.SourceDigest == frame.PixelDigest
             && contact.Diagnostics.RidgeSupportArea <= supported * .1
             && contact.Diagnostics.AcceptedArea <= area * .1
+            // Weak coherent ridges remain present even when darkness-based acceptance collapses.
+            && contact.SpatialStatistics.Match(value => value.Area, () => 0) <= spatialArea * .1
             && DarkPixels(frame) <= dark * .1;
         if (!lost)
         {
@@ -81,7 +86,7 @@ internal sealed class CaptureContactLoss(TimeProvider clock)
     {
         key = string.Empty;
         footprint = [];
-        supported = area = dark = 0;
+        supported = area = spatialArea = dark = 0;
         return Interrupt();
     }
 

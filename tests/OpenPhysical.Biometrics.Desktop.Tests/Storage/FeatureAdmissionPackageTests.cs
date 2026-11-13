@@ -22,7 +22,7 @@ internal sealed class FeatureAdmissionPackageTests
             CancellationToken.None
         );
         saved.Should().Fail().Which.Code.Should().Be("Storage.Manifest");
-        Directory.Exists(folder).Should().BeFalse();
+        System.IO.Directory.Exists(folder).Should().BeFalse();
     }
 
     [Test]
@@ -47,7 +47,7 @@ internal sealed class FeatureAdmissionPackageTests
         }
         finally
         {
-            Directory.Delete(folder, true);
+            System.IO.Directory.Delete(folder, true);
         }
     }
 

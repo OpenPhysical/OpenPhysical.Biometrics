@@ -75,11 +75,14 @@ jobs:
       - name: Prove public API documentation gate
         working-directory: OpenPhysical.Biometrics
         run: python scripts/verify-documentation-gate.py
+      - name: Verify component-only coverage boundary
+        working-directory: OpenPhysical.Biometrics
+        run: python scripts/check-component-solution.py
       - name: Modern contracts and workflow coverage
         working-directory: OpenPhysical.Biometrics
         run: |
-          dotnet build OpenPhysical.Biometrics.sln -c Release -m:1 -nr:false -p:UseSharedCompilation=false
-          dotnet test OpenPhysical.Biometrics.sln -c Release --no-build -m:1 -nr:false --collect:"XPlat Code Coverage" --results-directory artifacts/test-results/modern
+          dotnet build OpenPhysical.Biometrics.Components.slnf -c Release -m:1 -nr:false -p:UseSharedCompilation=false
+          dotnet test OpenPhysical.Biometrics.Components.slnf -c Release --no-build -m:1 -nr:false --collect:"XPlat Code Coverage" --results-directory artifacts/test-results/modern
       - name: Portrait CLI workflows
         working-directory: OpenPhysical.Biometrics
         run: python scripts/test-portrait-cli.py dotnet artifacts/bin/OpenPhysical.Biometrics.Tool/Release/net10.0/OpenPhysical.Biometrics.Tool.dll

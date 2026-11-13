@@ -246,3 +246,21 @@ This adapter requires measured corrected geometry at 500 ppi on both axes, match
 Each captured view retains the approved acquisition mapping, original calibration/driver/geometry provenance, capture time and sequence, corrected Gray8 pixel SHA-256, actual quality assessment and extraction description. Every evidence entry binds to the SHA-256 of the complete encoded record. `ProcessingVersion` identifies the selection/conversion algorithm independently of provider provenance. The returned record contains no raw pixels; callers control the lifetime of their local prepared selections. Evidence is sensitive metadata and is not a device attestation, operator authorization or CA signature. Server policy verifies the submitted workflow context separately before signing.
 
 `PreparedAcquiredFingerprint.Unavailable` preserves temporary and permanent unavailability with no capture, calibration, pixel hash or quality claims. It cannot express an available finger without processing a capture. Omission remains a separate issuance policy choice, not an unavailable-finger marker. The existing PIV equipment, dimension, finger-order and certification requirements still apply.
+
+## Scanner removal regression
+
+An isolated run of baseline `6075eb73583e31915e84710f4ceb34a5932fa113` reproduced
+`CaptureAutomationTests.RejectedContactCannotSatisfyTheRemovalRequiredForAnotherCapture`:
+repeated pale contact could release the removal gate and recapture the same finger.
+The fix also compares the coherent spatial footprint, which remains available before
+darkness rejection, with the last qualified footprint. It uses the existing residual
+fraction, exact frame/session association, two-frame requirement and maximum gap.
+Fingerprint quality and matching policies are unchanged.
+
+Existing public-image regressions cover repeated weak contact, empty-frame removal,
+manual and automatic capture, and faint incoherent residue that permits a new finger
+without becoming an accepted capture or an empty-sensor reference. These deterministic
+checks do not qualify scanner hardware. Before deploying this change to a physical
+scanner, check lightened contact without lifting, actual removal with faint residue,
+and the next finger at the configured exposure in both capture modes. Confirm that
+only an actual new presentation can rearm, while cancellation still drains acquisition.

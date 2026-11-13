@@ -29,6 +29,25 @@ public sealed class DesktopFilePicker
     public Task<Result<string, DesktopError>> OpenPackageAsync() =>
         PickAsync("Open person package", "Encrypted biometric packages", ["*.opbio"]);
 
+    /// <summary>Requests one administrator-issued pairing invitation.</summary>
+    /// <returns>The selected local path or typed cancellation.</returns>
+    public Task<Result<string, DesktopError>> OpenVerificationInvitationAsync() =>
+        PickAsync("Connect this computer", "Server invitations", ["*.json"]);
+
+    /// <summary>Requests a public certificate used only as an untrusted path-building candidate.</summary>
+    /// <returns>The selected local path or typed cancellation.</returns>
+    public Task<Result<string, DesktopError>> OpenVerificationCertificateAsync() =>
+        PickAsync(
+            "Add issuer or content signer certificate",
+            "Public certificates",
+            ["*.cer", "*.crt", "*.der", "*.pem"]
+        );
+
+    /// <summary>Requests a separately acquired TWIC privacy-key container.</summary>
+    /// <returns>The selected local path or typed cancellation.</returns>
+    public Task<Result<string, DesktopError>> OpenTwicPrivacyKeyAsync() =>
+        PickAsync("Open TWIC privacy key", "TWIC privacy-key containers", ["*.bin"]);
+
     private async Task<Result<string, DesktopError>> PickAsync(
         string title,
         string label,

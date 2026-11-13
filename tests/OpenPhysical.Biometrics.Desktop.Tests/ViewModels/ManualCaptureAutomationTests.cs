@@ -45,9 +45,8 @@ internal sealed class ManualCaptureAutomationTests
         var pending = await rig.Driver.NextAsync();
         pending.Complete(pixels).Should().BeTrue();
         pending = await rig.Driver.NextAsync();
-        rig.View.CaptureGuidance.Should()
-            .Contain("Lift your finger")
-            .And.Contain("clean the sensor");
+        rig.View.CaptureGuidance.Should().Be("Lift your finger, then place the next finger.");
+        rig.View.CaptureCommand.CanExecute(default).Should().BeFalse();
         pending.Complete(empty).Should().BeTrue();
         pending = await rig.Driver.NextAsync();
         pending.Complete(empty).Should().BeTrue();

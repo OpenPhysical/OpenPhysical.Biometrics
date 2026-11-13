@@ -11,6 +11,9 @@
     </PropertyGroup>
     <ItemGroup>
         <ProjectReference Include="../OpenPhysical.Biometrics.Presentation/OpenPhysical.Biometrics.Presentation.csproj" />
+        <ProjectReference Include="../../../OpenPhysical.Net/src/OpenPhysical.Verification/OpenPhysical.Verification.csproj" />
+        <ProjectReference Include="../../../OpenPhysical.Net/src/OpenPhysical.CardEdge/OpenPhysical.CardEdge.csproj" />
+        <ProjectReference Include="../../../OpenPhysical.Net/src/OpenPhysical.Hosting/OpenPhysical.Hosting.csproj" />
     </ItemGroup>
     <ItemGroup>
         <PackageReference Include="Avalonia.Desktop" Version="11.3.6" />

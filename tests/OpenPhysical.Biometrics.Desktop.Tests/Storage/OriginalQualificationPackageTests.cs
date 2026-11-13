@@ -27,7 +27,7 @@ internal sealed class OriginalQualificationPackageTests
         }
         finally
         {
-            Directory.Delete(folder, true);
+            System.IO.Directory.Delete(folder, true);
         }
     }
 
@@ -52,7 +52,7 @@ internal sealed class OriginalQualificationPackageTests
         }
         finally
         {
-            Directory.Delete(folder, true);
+            System.IO.Directory.Delete(folder, true);
         }
     }
 
@@ -75,6 +75,6 @@ internal sealed class OriginalQualificationPackageTests
             CancellationToken.None
         );
         saved.Should().Fail().Which.Code.Should().Be("Storage.Manifest");
-        Directory.Exists(folder).Should().BeFalse();
+        System.IO.Directory.Exists(folder).Should().BeFalse();
     }
 }

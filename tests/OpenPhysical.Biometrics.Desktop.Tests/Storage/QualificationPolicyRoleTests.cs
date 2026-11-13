@@ -30,7 +30,7 @@ internal sealed class QualificationPolicyRoleTests
         }
         finally
         {
-            Directory.Delete(folder, true);
+            System.IO.Directory.Delete(folder, true);
         }
     }
 
@@ -66,7 +66,7 @@ internal sealed class QualificationPolicyRoleTests
             CancellationToken.None
         );
         saved.Should().Fail().Which.Code.Should().Be("Storage.Manifest");
-        Directory.Exists(folder).Should().BeFalse();
+        System.IO.Directory.Exists(folder).Should().BeFalse();
     }
 
     private static CapturedFingerprint WidenContext(CapturedFingerprint capture)

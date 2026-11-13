@@ -26,8 +26,8 @@ internal sealed class CaptureAutoFreezeTests
         var view = new CaptureViewModel(coordinator, processor, dispatcher, clock)
         {
             AutomaticExposure = false,
+            AutoCapture = true,
         };
-        view.AutoCapture.Should().BeTrue();
         await view.StartAsync(CancellationToken.None);
         var pixels = ProcessingFrameFixtures.PublicFinger();
         var pending = await EmptySensorTestFrames.PrimeAsync(driver, clock);

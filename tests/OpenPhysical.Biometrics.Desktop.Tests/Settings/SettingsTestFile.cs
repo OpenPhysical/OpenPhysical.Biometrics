@@ -12,7 +12,7 @@ internal sealed class SettingsTestFile : IDisposable
 
     public void Dispose()
     {
-        if (Directory.Exists(Folder))
-            Directory.Delete(Folder, true);
+        if (System.IO.Directory.Exists(Folder))
+            System.IO.Directory.Delete(Folder, true);
     }
 }

@@ -23,6 +23,6 @@ internal sealed class ContactManifestSafetyTests
             .Fail()
             .Which.Code.Should()
             .Be("Storage.Size");
-        Directory.Delete(folder, true);
+        System.IO.Directory.Delete(folder, true);
     }
 }

@@ -66,15 +66,16 @@ internal sealed class DesktopCompositionTests
         var feature = new StudioTestFeature();
         var host = DesktopServices.CreateHost(services =>
             services
-                .AddSingleton(new DesktopApplicationIdentity("OpenPhysical Signing", 2))
+                .AddSingleton(new DesktopApplicationIdentity("Studio feature review", 3))
                 .AddSingleton<IStudioWorkspaceFeature>(feature)
         );
         var window = new MainWindow(host);
-        window.Title.Should().Be("OpenPhysical Signing");
+        window.Title.Should().Be("Studio feature review");
         var tabs = window.FindControl<Avalonia.Controls.TabControl>("WorkspaceTabs");
         tabs.Should().NotBeNull();
-        tabs!.Items.Should().HaveCount(3);
-        tabs.SelectedIndex.Should().Be(2);
+        tabs!.Items.Should().HaveCount(4);
+        tabs.SelectedIndex.Should().Be(3);
+        tabs.Items.OfType<TabItem>().ElementAt(2).Header.Should().Be("Check card");
         var task = tabs.Items.OfType<Avalonia.Controls.TabItem>().Last();
         task.Header.Should().Be(feature.Title);
         task.Content.Should().BeSameAs(feature.Content);

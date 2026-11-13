@@ -21,7 +21,7 @@ internal sealed class CurrentCapturePackageTests
             CancellationToken.None
         );
         result.Should().Fail().Which.Code.Should().Be("Storage.Manifest");
-        Directory.Exists(folder).Should().BeFalse();
+        System.IO.Directory.Exists(folder).Should().BeFalse();
     }
 
     [Test]
@@ -40,7 +40,7 @@ internal sealed class CurrentCapturePackageTests
             CancellationToken.None
         );
         result.Should().Fail().Which.Code.Should().Be("Storage.Manifest");
-        Directory.Exists(folder).Should().BeFalse();
+        System.IO.Directory.Exists(folder).Should().BeFalse();
     }
 
     [TestCase("Processing")]
@@ -69,7 +69,7 @@ internal sealed class CurrentCapturePackageTests
             .Fail()
             .Which.Code.Should()
             .Be("Storage.Manifest");
-        Directory.Delete(folder, true);
+        System.IO.Directory.Delete(folder, true);
     }
 
     [Test]
@@ -85,7 +85,7 @@ internal sealed class CurrentCapturePackageTests
             .Fail()
             .Which.Code.Should()
             .Be("Storage.Manifest");
-        Directory.Delete(folder, true);
+        System.IO.Directory.Delete(folder, true);
     }
 
     [Test]
@@ -114,6 +114,6 @@ internal sealed class CurrentCapturePackageTests
             .Fail()
             .Which.Code.Should()
             .Be("Storage.Manifest");
-        Directory.Delete(folder, true);
+        System.IO.Directory.Delete(folder, true);
     }
 }

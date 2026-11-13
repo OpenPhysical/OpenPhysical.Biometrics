@@ -208,14 +208,14 @@
         "dependencies": {
           "BouncyCastle.Cryptography": "[2.6.1, )",
           "Microsoft.Extensions.DependencyInjection.Abstractions": "[10.0.0, )",
-          "OpenPhysical.Biometrics.Capture": "[3.0.0-dev.20261105.2, )",
-          "OpenPhysical.Biometrics.Capture.Usb": "[3.0.0-dev.20261105.2, )"
+          "OpenPhysical.Biometrics.Capture": "[3.0.0-dev.20261113.1, )",
+          "OpenPhysical.Biometrics.Capture.Usb": "[3.0.0-dev.20261113.1, )"
         }
       },
       "openphysical.biometrics.capture.usb": {
         "type": "Project",
         "dependencies": {
-          "OpenPhysical.Biometrics.Capture": "[3.0.0-dev.20261105.2, )",
+          "OpenPhysical.Biometrics.Capture": "[3.0.0-dev.20261113.1, )",
           "UsbDotNet.LibUsbNative": "[1.4.2, )"
         }
       }

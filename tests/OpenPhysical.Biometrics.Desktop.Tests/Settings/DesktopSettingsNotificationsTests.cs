@@ -21,7 +21,7 @@ internal sealed class DesktopSettingsNotificationsTests
     public async Task RecoveryQueuedBeforeOpeningShowsOneNonblockingMaterialNotice()
     {
         using var location = new SettingsTestFile();
-        Directory.CreateDirectory(location.Folder);
+        System.IO.Directory.CreateDirectory(location.Folder);
         await File.WriteAllTextAsync(location.Path, "{");
         var settings = new SettingsViewModel(
             new SettingsStorage(location.Path),

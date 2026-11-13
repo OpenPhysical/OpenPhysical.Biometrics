@@ -190,8 +190,8 @@
       },
       "BouncyCastle.Cryptography": {
         "type": "Transitive",
-        "resolved": "2.6.1",
-        "contentHash": "vZsG2YILhthgRqO+ZVgRff4ZFKKTl0v7kqaVBLCtRvpREhfBP33pcWrdA3PRYgWuFL1RxiUFvjMUHTdBZlJcoA=="
+        "resolved": "2.7.0",
+        "contentHash": "U+12df8UEWHgBi04YVf/Lgi2dy3SItlIYvHjjEVa/BngCQIzDCDRBk50DDByCfDvSbe5pRNFr3b7UrVK2kMcLw=="
       },
       "Castle.Core": {
         "type": "Transitive",
@@ -238,6 +238,28 @@
         "resolved": "1.13.0",
         "contentHash": "BwlGr96lEib6nwdhgADjdFAaMFd1+aFmZZT1V2xxjRwRKuLbww/UsH3uFaNPWe9r5qgnR/L2/KDnma+jvMd+Fg=="
       },
+      "FluentEmail.Core": {
+        "type": "Transitive",
+        "resolved": "3.0.2",
+        "contentHash": "uQFFbJgMhhCFUti7pfMi429fMNi7fLGMj+7uDtD7POlQzLxlhXJ6tmt4Y1SI51sZsA36GO5b7+o29eY/dKiICQ==",
+        "dependencies": {
+          "Microsoft.Extensions.DependencyInjection.Abstractions": "5.0.0"
+        }
+      },
+      "FluentEmail.MailKit": {
+        "type": "Transitive",
+        "resolved": "3.0.2",
+        "contentHash": "RkaHMbYL+tU3Eaj2JjOOGo94/mu2LbCRVCwtGEnQdQAzYWJqxST6KSXYVl816gHTB7jnAS1JDDuXY2jvwMHsug==",
+        "dependencies": {
+          "FluentEmail.Core": "3.0.2",
+          "MailKit": "2.10.1"
+        }
+      },
+      "FluentValidation": {
+        "type": "Transitive",
+        "resolved": "12.0.0",
+        "contentHash": "8NVLxtMUXynRHJIX3Hn1ACovaqZIJASufXIIFkD0EUbcd5PmMsL1xUD5h548gCezJ5BzlITaR9CAMrGe29aWpA=="
+      },
       "HarfBuzzSharp": {
         "type": "Transitive",
         "resolved": "8.3.1.1",
@@ -267,6 +289,29 @@
         "resolved": "8.3.1.1",
         "contentHash": "UsJtQsfAJoFDZrXc4hCUfRPMqccfKZ0iumJ/upcUjz/cmsTgVFGNEL5yaJWmkqsuFYdMWbj/En5/kS4PFl9hBA=="
       },
+      "JetBrains.Annotations": {
+        "type": "Transitive",
+        "resolved": "2025.2.2",
+        "contentHash": "0X56ZRizuHdrnPpgXjWV7f2tQO1FlQg5O1967OGKnI/4ZRNOK642J8L7brM1nYvrxTTU5TP1yRyXLRLaXLPQ8A=="
+      },
+      "Kdf108": {
+        "type": "Transitive",
+        "resolved": "2.0.0",
+        "contentHash": "DCKQagc4EAity3HKGSpS3Oaoxu7SDn4Uqe2VKsUqAl2YBgumP5VS7mVy+gyEPvIojC696u9L9osEB5YRUyDuTg==",
+        "dependencies": {
+          "BouncyCastle.Cryptography": "2.6.1",
+          "FluentValidation": "11.11.0",
+          "JetBrains.Annotations": "2024.3.0"
+        }
+      },
+      "MailKit": {
+        "type": "Transitive",
+        "resolved": "4.18.2",
+        "contentHash": "ofqddpSbdrD00NqTD0ZyVfKvrl/ZZ70VFFEQ+DuR8r8CdbY3U02/sdb0CSQBNUqJifsXfVHIwRe1ToR2MvJJkw==",
+        "dependencies": {
+          "MimeKit": "4.18.2"
+        }
+      },
       "Material.Avalonia": {
         "type": "Transitive",
         "resolved": "3.14.2",
@@ -290,10 +335,161 @@
         "resolved": "2.22.0",
         "contentHash": "3AOM9bZtku7RQwHyMEY3tQMrHIgjcfRDa6YQpd/QG2LDGvMydSlL9Di+8LLMt7J2RDdfJ7/2jdYv6yHcMJAnNw=="
       },
+      "Microsoft.AspNetCore.Connections.Abstractions": {
+        "type": "Transitive",
+        "resolved": "10.0.14",
+        "contentHash": "qNwcP2ZssaZpEN3ufsgYKu9Hg0BlWePd9OGpVH0NUJHUlzeHiEXywH49NkxDnxCkZ7oKUExeYs355HHMG7YgSA==",
+        "dependencies": {
+          "Microsoft.Extensions.Features": "10.0.14"
+        }
+      },
+      "Microsoft.AspNetCore.Http.Connections.Client": {
+        "type": "Transitive",
+        "resolved": "10.0.14",
+        "contentHash": "z5HhaD3m3nHcXY/nQi2j72a3KmM6lIvT0c9hdIm9nzvI1Zrv1GVpi+K6fySMFBouDw+2Ud8RRaqs+QCKYhvodA==",
+        "dependencies": {
+          "Microsoft.AspNetCore.Http.Connections.Common": "10.0.14",
+          "Microsoft.Extensions.Logging.Abstractions": "10.0.14",
+          "Microsoft.Extensions.Options": "10.0.14"
+        }
+      },
+      "Microsoft.AspNetCore.Http.Connections.Common": {
+        "type": "Transitive",
+        "resolved": "10.0.14",
+        "contentHash": "y7H5ZNVzJEEfM9vwN6/CGbjllym6ZWztYADt7V8j6RmuW1kU/RlEDMFLyfYSzZWIzRVT1asvHxlm4o98AaIEtA==",
+        "dependencies": {
+          "Microsoft.AspNetCore.Connections.Abstractions": "10.0.14"
+        }
+      },
+      "Microsoft.AspNetCore.SignalR.Client": {
+        "type": "Transitive",
+        "resolved": "10.0.14",
+        "contentHash": "AdKnYJ7U+GYJfbL5siSN17lzA3mMC44rAK+UXq3qN7u0GB+0s327GihUN7PS8UvFxyo7MnTME5PtPQV6ZRQDHA==",
+        "dependencies": {
+          "Microsoft.AspNetCore.Http.Connections.Client": "10.0.14",
+          "Microsoft.AspNetCore.SignalR.Client.Core": "10.0.14"
+        }
+      },
+      "Microsoft.AspNetCore.SignalR.Client.Core": {
+        "type": "Transitive",
+        "resolved": "10.0.14",
+        "contentHash": "VqJeoJoI2LZrG3hic5p5nBo9FOdt8nwJswKVff+7Zl7L/Bo9YQ5vpuPzyQn3/a0y4eIP7KX7Gq3cb4cXYecbFA==",
+        "dependencies": {
+          "Microsoft.AspNetCore.SignalR.Common": "10.0.14",
+          "Microsoft.AspNetCore.SignalR.Protocols.Json": "10.0.14",
+          "Microsoft.Extensions.DependencyInjection": "10.0.14",
+          "Microsoft.Extensions.Logging": "10.0.14"
+        }
+      },
+      "Microsoft.AspNetCore.SignalR.Common": {
+        "type": "Transitive",
+        "resolved": "10.0.14",
+        "contentHash": "JqB0FIZ5EVSuAqS01z4of3rLdaqYeZ5nunIg8Ewr56qZe9C0t51xCXEa2p6rjofDyTGJmP3sbGH29q7aqIUQVg==",
+        "dependencies": {
+          "Microsoft.AspNetCore.Connections.Abstractions": "10.0.14",
+          "Microsoft.Extensions.Options": "10.0.14"
+        }
+      },
+      "Microsoft.AspNetCore.SignalR.Protocols.Json": {
+        "type": "Transitive",
+        "resolved": "10.0.14",
+        "contentHash": "LW9ac7pxOcKp22wnX3IrA1oZL97k4bEym3za6qEInZEoS3vxVv1Pukjg7z4LsrdwvnXYAMOMQik6kyhckvo0ig==",
+        "dependencies": {
+          "Microsoft.AspNetCore.SignalR.Common": "10.0.14"
+        }
+      },
       "Microsoft.CodeCoverage": {
         "type": "Transitive",
         "resolved": "17.8.0",
         "contentHash": "KC8SXWbGIdoFVdlxKk9WHccm0llm9HypcHMLUUFabRiTS3SO2fQXNZfdiF3qkEdTJhbRrxhdRxjL4jbtwPq4Ew=="
+      },
+      "Microsoft.Data.Sqlite.Core": {
+        "type": "Transitive",
+        "resolved": "10.0.14",
+        "contentHash": "1p9rO3Q2X/L/9YrYog3vaDzi8u+WZfJCOkDYoHqmofqYP0DLPLPyZcS2Rnh/79JXAodgbs1AgsaNwLpIvC3Xew==",
+        "dependencies": {
+          "SQLitePCLRaw.core": "2.1.13"
+        }
+      },
+      "Microsoft.EntityFrameworkCore": {
+        "type": "Transitive",
+        "resolved": "10.0.14",
+        "contentHash": "vY3931PYPIDBbKovGHbACmpOWvURvKNyRXfCjMh5yLW+FH6vLWeqUu2xzSCRo4Oz4tgx9GYpd0JlV5LDyAoQdg==",
+        "dependencies": {
+          "Microsoft.EntityFrameworkCore.Abstractions": "10.0.14",
+          "Microsoft.EntityFrameworkCore.Analyzers": "10.0.14",
+          "Microsoft.Extensions.Caching.Memory": "10.0.14",
+          "Microsoft.Extensions.Logging": "10.0.14"
+        }
+      },
+      "Microsoft.EntityFrameworkCore.Abstractions": {
+        "type": "Transitive",
+        "resolved": "10.0.14",
+        "contentHash": "/SaznoTTFfKzxYEbCPAwwKBR3XT92DZgH4jJ3/cqs2skP3o2D+TL6i9Aaj+8Azwtu6/sRd0ve4P2mN12nfVmCw=="
+      },
+      "Microsoft.EntityFrameworkCore.Analyzers": {
+        "type": "Transitive",
+        "resolved": "10.0.14",
+        "contentHash": "gaANlGNTxkgODX2eeVT8jjd3AmlFilQV4DFf8qoW30+wUCm2o4N7nEHtZvnHIwfhaJni2DqcjE47Au7tC0Q5jA=="
+      },
+      "Microsoft.EntityFrameworkCore.Relational": {
+        "type": "Transitive",
+        "resolved": "10.0.14",
+        "contentHash": "Ut0kgtfoKX9QElQVEXSEAgdQc79jISWStVWSOhfPDDHNSKMwFzSXG3gtdYFTAbsBoV+8NtXdVaj4xwdqeky8UA==",
+        "dependencies": {
+          "Microsoft.EntityFrameworkCore": "10.0.14",
+          "Microsoft.Extensions.Caching.Memory": "10.0.14",
+          "Microsoft.Extensions.Configuration.Abstractions": "10.0.14",
+          "Microsoft.Extensions.Logging": "10.0.14"
+        }
+      },
+      "Microsoft.EntityFrameworkCore.Sqlite": {
+        "type": "Transitive",
+        "resolved": "10.0.14",
+        "contentHash": "lxrwnVwvlIfQD4IF4WUVupE6Qxfj3MfFftDVwo7tsGAWCKLL8Ttb8UjIt+gE4e9nRlH7EgdC6TrsArFGnNYREw==",
+        "dependencies": {
+          "Microsoft.EntityFrameworkCore.Sqlite.Core": "10.0.14",
+          "Microsoft.Extensions.Caching.Memory": "10.0.14",
+          "Microsoft.Extensions.Configuration.Abstractions": "10.0.14",
+          "Microsoft.Extensions.DependencyModel": "10.0.14",
+          "Microsoft.Extensions.Logging": "10.0.14",
+          "SQLitePCLRaw.bundle_e_sqlite3": "2.1.13",
+          "SQLitePCLRaw.core": "2.1.13"
+        }
+      },
+      "Microsoft.EntityFrameworkCore.Sqlite.Core": {
+        "type": "Transitive",
+        "resolved": "10.0.14",
+        "contentHash": "08VGlMQ9WbK869as9Ho+VZQbM5Qu6zdorgeh6ShVwQgLYgfUBiaIm02T7spfW7Xc1MBHCvclwPgGWpvx5BYGXQ==",
+        "dependencies": {
+          "Microsoft.Data.Sqlite.Core": "10.0.14",
+          "Microsoft.EntityFrameworkCore.Relational": "10.0.14",
+          "Microsoft.Extensions.Caching.Memory": "10.0.14",
+          "Microsoft.Extensions.Configuration.Abstractions": "10.0.14",
+          "Microsoft.Extensions.DependencyModel": "10.0.14",
+          "Microsoft.Extensions.Logging": "10.0.14",
+          "SQLitePCLRaw.core": "2.1.13"
+        }
+      },
+      "Microsoft.Extensions.Caching.Abstractions": {
+        "type": "Transitive",
+        "resolved": "10.0.14",
+        "contentHash": "enSfqeENnSjGH3YAYKsCtsa5ob0HNiwF2nwJiC2yhilNXTlD/0prxrgPkWjoAp9svJcu04AiEIKtdh/A54P2fA==",
+        "dependencies": {
+          "Microsoft.Extensions.Primitives": "10.0.14"
+        }
+      },
+      "Microsoft.Extensions.Caching.Memory": {
+        "type": "Transitive",
+        "resolved": "10.0.14",
+        "contentHash": "AxK3kyD6sWNpYKf+66huE7wHHjgKHONlD1dUaD/CxjZVBLEpH5N4jaqgszTcZvaM9/XVeXF28K3E0wsTyTA4Xg==",
+        "dependencies": {
+          "Microsoft.Extensions.Caching.Abstractions": "10.0.14",
+          "Microsoft.Extensions.DependencyInjection.Abstractions": "10.0.14",
+          "Microsoft.Extensions.Logging.Abstractions": "10.0.14",
+          "Microsoft.Extensions.Options": "10.0.14",
+          "Microsoft.Extensions.Primitives": "10.0.14"
+        }
       },
       "Microsoft.Extensions.Configuration": {
         "type": "Transitive",
@@ -306,10 +502,10 @@
       },
       "Microsoft.Extensions.Configuration.Abstractions": {
         "type": "Transitive",
-        "resolved": "10.0.0",
-        "contentHash": "d2kDKnCsJvY7mBVhcjPSp9BkJk48DsaHPg5u+Oy4f8XaOqnEedRy/USyvnpHL92wpJ6DrTPy7htppUUzskbCXQ==",
+        "resolved": "10.0.14",
+        "contentHash": "4YdfvaoWn3tB1xQQHGrhRTFWJ8fGOqxThxduynSZy9ZFTiSaUi3vX4EK/kj8h2HQMwTlks9MWV1fv2WRBv5/1w==",
         "dependencies": {
-          "Microsoft.Extensions.Primitives": "10.0.0"
+          "Microsoft.Extensions.Primitives": "10.0.14"
         }
       },
       "Microsoft.Extensions.Configuration.Binder": {
@@ -375,16 +571,21 @@
       },
       "Microsoft.Extensions.DependencyInjection": {
         "type": "Transitive",
-        "resolved": "10.0.0",
-        "contentHash": "f0RBabswJq+gRu5a+hWIobrLWiUYPKMhCD9WO3sYBAdSy3FFH14LMvLVFZc2kPSCimBLxSuitUhsd6tb0TAY6A==",
+        "resolved": "10.0.14",
+        "contentHash": "2LzcuVjemeXR+WdY9wGIr8iGb7fYsDAit+IScxXX2XJnX0b++mWcE/WO6fEGIqhdMfSQM2ZS5JGMHYZix7YXZg==",
         "dependencies": {
-          "Microsoft.Extensions.DependencyInjection.Abstractions": "10.0.0"
+          "Microsoft.Extensions.DependencyInjection.Abstractions": "10.0.14"
         }
       },
       "Microsoft.Extensions.DependencyInjection.Abstractions": {
         "type": "Transitive",
-        "resolved": "10.0.0",
-        "contentHash": "L3AdmZ1WOK4XXT5YFPEwyt0ep6l8lGIPs7F5OOBZc77Zqeo01Of7XXICy47628sdVl0v/owxYJTe86DTgFwKCA=="
+        "resolved": "10.0.14",
+        "contentHash": "QtpQzuSZVyTPCuHW058yCs9Nj0394uUkNyFHS813nOmK9UgUdBdaprJ5PPsBgsQIpxADTsTkbaMMonykem6qdw=="
+      },
+      "Microsoft.Extensions.DependencyModel": {
+        "type": "Transitive",
+        "resolved": "10.0.14",
+        "contentHash": "N8OcqM0370wSXMJ3ZxO66rSElHrIgxvpfUn0vV7zRj7NvKo0nfwgEoTmC3Yz3860o60IaQ4KIPyeLIGX9EeNWA=="
       },
       "Microsoft.Extensions.Diagnostics": {
         "type": "Transitive",
@@ -404,6 +605,11 @@
           "Microsoft.Extensions.DependencyInjection.Abstractions": "10.0.0",
           "Microsoft.Extensions.Options": "10.0.0"
         }
+      },
+      "Microsoft.Extensions.Features": {
+        "type": "Transitive",
+        "resolved": "10.0.14",
+        "contentHash": "9vA1iNpzEFaoqUD4VE97LZuwqWICEdz1GiUv9C3V4cS3iEA4mbTv1p9qAVlcide0jpskDsOyjE6qCn98rWQIJw=="
       },
       "Microsoft.Extensions.FileProviders.Abstractions": {
         "type": "Transitive",
@@ -471,20 +677,20 @@
       },
       "Microsoft.Extensions.Logging": {
         "type": "Transitive",
-        "resolved": "10.0.0",
-        "contentHash": "BStFkd5CcnEtarlcgYDBcFzGYCuuNMzPs02wN3WBsOFoYIEmYoUdAiU+au6opzoqfTYJsMTW00AeqDdnXH2CvA==",
+        "resolved": "10.0.14",
+        "contentHash": "O2fXL6JmtkFwkigxS8fPTQpLXxGDjgZco5D+h88s++Cl0bDCs023PVkpNoifciJ+f30I82jnp8tpwF0wCLdFtA==",
         "dependencies": {
-          "Microsoft.Extensions.DependencyInjection": "10.0.0",
-          "Microsoft.Extensions.Logging.Abstractions": "10.0.0",
-          "Microsoft.Extensions.Options": "10.0.0"
+          "Microsoft.Extensions.DependencyInjection": "10.0.14",
+          "Microsoft.Extensions.Logging.Abstractions": "10.0.14",
+          "Microsoft.Extensions.Options": "10.0.14"
         }
       },
       "Microsoft.Extensions.Logging.Abstractions": {
         "type": "Transitive",
-        "resolved": "10.0.0",
-        "contentHash": "FU/IfjDfwaMuKr414SSQNTIti/69bHEMb+QKrskRb26oVqpx3lNFXMjs/RC9ZUuhBhcwDM2BwOgoMw+PZ+beqQ==",
+        "resolved": "10.0.14",
+        "contentHash": "SwcbEBtkECq3D2oywvHkm46fyrX9Dd2JPWphDnHUc2+cUWR1Mdo41atAjh/9iZjgQxuvbKfZKXqostT/LZfefA==",
         "dependencies": {
-          "Microsoft.Extensions.DependencyInjection.Abstractions": "10.0.0"
+          "Microsoft.Extensions.DependencyInjection.Abstractions": "10.0.14"
         }
       },
       "Microsoft.Extensions.Logging.Configuration": {
@@ -550,11 +756,11 @@
       },
       "Microsoft.Extensions.Options": {
         "type": "Transitive",
-        "resolved": "10.0.0",
-        "contentHash": "8oCAgXOow5XDrY9HaXX1QmH3ORsyZO/ANVHBlhLyCeWTH5Sg4UuqZeOTWJi6484M+LqSx0RqQXDJtdYy2BNiLQ==",
+        "resolved": "10.0.14",
+        "contentHash": "EeN/33S418m9oWEaZY4N5T+BNxtOqNTIFoFbIgBKwylh4OJPKIWFAzbIhpTdNbwUs26MhkmbLCAbdY+YCJ1dIQ==",
         "dependencies": {
-          "Microsoft.Extensions.DependencyInjection.Abstractions": "10.0.0",
-          "Microsoft.Extensions.Primitives": "10.0.0"
+          "Microsoft.Extensions.DependencyInjection.Abstractions": "10.0.14",
+          "Microsoft.Extensions.Primitives": "10.0.14"
         }
       },
       "Microsoft.Extensions.Options.ConfigurationExtensions": {
@@ -571,8 +777,8 @@
       },
       "Microsoft.Extensions.Primitives": {
         "type": "Transitive",
-        "resolved": "10.0.0",
-        "contentHash": "inRnbpCS0nwO/RuoZIAqxQUuyjaknOOnCEZB55KSMMjRhl0RQDttSmLSGsUJN3RQ3ocf5NDLFd2mOQViHqMK5w=="
+        "resolved": "10.0.14",
+        "contentHash": "1bbZqqCJTPba3inTADExbp/9PsGVyvGOX3zr6tFr7ySCgVkX9Lpw7BV0TizktNItd3SsbUu1sQfSAYm1GZMoNw=="
       },
       "Microsoft.ML.OnnxRuntime": {
         "type": "Transitive",
@@ -643,10 +849,19 @@
           "Newtonsoft.Json": "13.0.1"
         }
       },
+      "MimeKit": {
+        "type": "Transitive",
+        "resolved": "4.18.2",
+        "contentHash": "aYnwCCq+ZgQIsnHSJd3TMeGqf/Rz/9jYEItXpOoG3E2REOCZtLishwBSDFl2wQ/W2SB5wBsvE38DgHZ0IEyz4Q==",
+        "dependencies": {
+          "BouncyCastle.Cryptography": "2.7.0",
+          "System.Security.Cryptography.Pkcs": "10.0.13"
+        }
+      },
       "Newtonsoft.Json": {
         "type": "Transitive",
-        "resolved": "13.0.1",
-        "contentHash": "ppPFpBcvxdsfUonNcvITKqLl3bqxWbDCZIzDWHzjpdAHRFfZe0Dw9HmA0+za13IdyrgJwpkDTDA9fHaxOrt20A=="
+        "resolved": "13.0.3",
+        "contentHash": "HrC5BXdl00IP9zeV+0Z848QWPAoCr9P3bDEZguI+gkLcBKAOxix/tLEAAHC+UvDNPv4a2d18lOReHMOagPa+zQ=="
       },
       "OpenPhysical.Biometrics.NBIS": {
         "type": "Transitive",
@@ -669,7 +884,7 @@
       "OpenPhysical.Biometrics.NFIQ2": {
         "type": "Transitive",
         "resolved": "1.0.1",
-        "contentHash": "5xfcHfGfY9u1gpVCUH3kv5KZFJkO+Nrpb4wV8ilXAswOiNQ/HUboDCTGWRag+MGudxyPv78674s9rebPbsq4TA==",
+        "contentHash": "cpuFyrRQR0owgOyEYEoC9JHffr4ucrrR8SNFw3SEC0GzqKy0Bv5cMWBmUduyVWPmP/aL9ZRyJ2qSqPGn7LNh3A==",
         "dependencies": {
           "Microsoft.Extensions.DependencyInjection.Abstractions": "10.0.0",
           "Microsoft.Extensions.Logging.Abstractions": "10.0.0"
@@ -679,6 +894,117 @@
         "type": "Transitive",
         "resolved": "7.0.1",
         "contentHash": "J7LdZ4ICGeFBpIQA2y2TrsUM0juWU3lvNUY6Em164F33hlLmsnnDmqVSa4fwp9sGCfKawRK3FkSFh7GYnXt7bA=="
+      },
+      "PCSC.Iso7816": {
+        "type": "Transitive",
+        "resolved": "7.0.1",
+        "contentHash": "woFy0SZbE9o0Lh8LpzEOM/I0wTEy9/3sMHBaYWQ8a59C/4a68LJp+eCGu/0ZZAbYBxF+OrRZGmwP2Ldl85FvJQ==",
+        "dependencies": {
+          "PCSC": "7.0.1"
+        }
+      },
+      "runtime.android-arm.runtime.native.System.IO.Ports": {
+        "type": "Transitive",
+        "resolved": "9.0.10",
+        "contentHash": "KUeHD0wRFCTS9QHantD5Cv/RzDzVY/mQP1Z/eKLtlX5A5SZvsqeomAoayPdh/QmgSzquoHeIDMAMp8VVU+Xzag=="
+      },
+      "runtime.android-arm64.runtime.native.System.IO.Ports": {
+        "type": "Transitive",
+        "resolved": "9.0.10",
+        "contentHash": "b+z8JoBrZ5TMXiXeh0s+s9/uIVx6PmulEuMaN81JLM68aAb4DWHi7t5CL+8bWJhsFhd8VAYoZ9pi5miNTFPeuA=="
+      },
+      "runtime.android-x64.runtime.native.System.IO.Ports": {
+        "type": "Transitive",
+        "resolved": "9.0.10",
+        "contentHash": "K7u+/G2gPoRLNc974p1Tnp44VRLlpQWZrKEQofBTpyJZPgd46ayvXayqT4jyGodG4O6Q6+yY2pYUYlqv1K2l6w=="
+      },
+      "runtime.android-x86.runtime.native.System.IO.Ports": {
+        "type": "Transitive",
+        "resolved": "9.0.10",
+        "contentHash": "TGT4P40ockzrZf/K46A3VAl2dC2PWAS6WhqqtZJbH5G7XgBMX/FoaoY6DtFtz6u7RVl4zhjdG3QWXEv/u/1Hlg=="
+      },
+      "runtime.linux-arm.runtime.native.System.IO.Ports": {
+        "type": "Transitive",
+        "resolved": "9.0.10",
+        "contentHash": "Y2EEaUtO1JolypkFcqgsDxjmOleHa7d9OxBY4Osw5vIdQpOfP0Qj30czQfkN7cZTQH8NxsSr5WawVbk5yFabFg=="
+      },
+      "runtime.linux-arm64.runtime.native.System.IO.Ports": {
+        "type": "Transitive",
+        "resolved": "9.0.10",
+        "contentHash": "nIFQGoz22wdgtmS4Ce+weqGUBh1kpO4XbNEgCU01+7P/+yZAb+gbRSeJUyUmCPhyW0S8FhX1xgJDH/SiJgP05Q=="
+      },
+      "runtime.linux-bionic-arm64.runtime.native.System.IO.Ports": {
+        "type": "Transitive",
+        "resolved": "9.0.10",
+        "contentHash": "jV3esGC4j69yPlRzj50EbJq4syweBm4rOWKYJ3nWCMbVzTW1YQ2o4QhiVjCDOEKEf6q5eVGEaa6fyVXQ/K95Hw=="
+      },
+      "runtime.linux-bionic-x64.runtime.native.System.IO.Ports": {
+        "type": "Transitive",
+        "resolved": "9.0.10",
+        "contentHash": "UfoiSWuf75mYJPknRXSezDoFYaCp5dWoUjASjg6gQSa7FD2G59Mee6vMEzHFS+x8N+H8oNnL9TCIZUD4/8e/2Q=="
+      },
+      "runtime.linux-musl-arm.runtime.native.System.IO.Ports": {
+        "type": "Transitive",
+        "resolved": "9.0.10",
+        "contentHash": "CWwqjMVVtYiW4I9wk9YuUaSxxkPZKZ/BKj5ppAsIZv4X9u/dyh8+Qbj3Fly61uUXpGxXU4QFQhYuPi5pJTAOBA=="
+      },
+      "runtime.linux-musl-arm64.runtime.native.System.IO.Ports": {
+        "type": "Transitive",
+        "resolved": "9.0.10",
+        "contentHash": "NxMtoYPV8lreQggsXWsXXRF/djycKieThc4O2kxGB6EgjsiRDuNdnbODV0lWGV6v4mn08uQvuOhmBP5ZYpVdkA=="
+      },
+      "runtime.linux-musl-x64.runtime.native.System.IO.Ports": {
+        "type": "Transitive",
+        "resolved": "9.0.10",
+        "contentHash": "ZNQ/D4lUGxTbfGAZRWP4vp7tCLqvInit03YXAiFXDWh/DnMEosBjrwcu8vbWgSsF01DUbyZQai8lwAStIZWo8w=="
+      },
+      "runtime.linux-x64.runtime.native.System.IO.Ports": {
+        "type": "Transitive",
+        "resolved": "9.0.10",
+        "contentHash": "mOTksL8qwN9EiWz71Dzhc98iQhKmtHlWH5GbhiCJ+ES2ei1HLr2bXSNMrXRd5s0Wfzg6xeQmT5M9umcgtv8Bzg=="
+      },
+      "runtime.maccatalyst-arm64.runtime.native.System.IO.Ports": {
+        "type": "Transitive",
+        "resolved": "9.0.10",
+        "contentHash": "aKoLfCdLoQGhPh2VYBn6sn1kDuwgtXKJ4D2Ql/2WLCGCuXestpxLBS0JhSVBFSp1HrFdazj4aSwpYurtes+1Gg=="
+      },
+      "runtime.maccatalyst-x64.runtime.native.System.IO.Ports": {
+        "type": "Transitive",
+        "resolved": "9.0.10",
+        "contentHash": "B+boSbUptH2fiKiUXBIu5hlQ3oH+nAdPY9TNmpU10nuoFW/DNz21fCXY3UOIz9oRXp5Ao2b7RlurgpBl0AgoOQ=="
+      },
+      "runtime.native.System.IO.Ports": {
+        "type": "Transitive",
+        "resolved": "9.0.10",
+        "contentHash": "7AzXN+J8PkTVctfymH+tEaAmj0wNKFPyACqp5cYff0DrHxnsQhv7xtRWxJRrQ0azOAFGR1mhWN4aM1QkbQQ0Rw==",
+        "dependencies": {
+          "runtime.android-arm.runtime.native.System.IO.Ports": "9.0.10",
+          "runtime.android-arm64.runtime.native.System.IO.Ports": "9.0.10",
+          "runtime.android-x64.runtime.native.System.IO.Ports": "9.0.10",
+          "runtime.android-x86.runtime.native.System.IO.Ports": "9.0.10",
+          "runtime.linux-arm.runtime.native.System.IO.Ports": "9.0.10",
+          "runtime.linux-arm64.runtime.native.System.IO.Ports": "9.0.10",
+          "runtime.linux-bionic-arm64.runtime.native.System.IO.Ports": "9.0.10",
+          "runtime.linux-bionic-x64.runtime.native.System.IO.Ports": "9.0.10",
+          "runtime.linux-musl-arm.runtime.native.System.IO.Ports": "9.0.10",
+          "runtime.linux-musl-arm64.runtime.native.System.IO.Ports": "9.0.10",
+          "runtime.linux-musl-x64.runtime.native.System.IO.Ports": "9.0.10",
+          "runtime.linux-x64.runtime.native.System.IO.Ports": "9.0.10",
+          "runtime.maccatalyst-arm64.runtime.native.System.IO.Ports": "9.0.10",
+          "runtime.maccatalyst-x64.runtime.native.System.IO.Ports": "9.0.10",
+          "runtime.osx-arm64.runtime.native.System.IO.Ports": "9.0.10",
+          "runtime.osx-x64.runtime.native.System.IO.Ports": "9.0.10"
+        }
+      },
+      "runtime.osx-arm64.runtime.native.System.IO.Ports": {
+        "type": "Transitive",
+        "resolved": "9.0.10",
+        "contentHash": "m+gRRrmCTwP30YiVnFeZg/zRWgzVcOlN28cIPMkK11C9UU60waLknTnRLlQUagIkWaCDifKJCB6wtEeca5QiMA=="
+      },
+      "runtime.osx-x64.runtime.native.System.IO.Ports": {
+        "type": "Transitive",
+        "resolved": "9.0.10",
+        "contentHash": "89HgF1Oplzjomn0BLeqJxEC17d//zmbs7CMKT12ZvjvFMvpMFO8uQUZ9xRIh91rM0ByfbhSobe2IRezjpeDNlg=="
       },
       "SkiaSharp": {
         "type": "Transitive",
@@ -717,6 +1043,59 @@
         "resolved": "3.119.4",
         "contentHash": "XOpbx/4CReO2wYsq2s6rbvdauc6dntG4Zv499sHGTJ87bwZaFXszFkwql3+FIZMc8kUPeaj3Mx2ezIJmo8a1Kg=="
       },
+      "Spectre.Console": {
+        "type": "Transitive",
+        "resolved": "0.51.1",
+        "contentHash": "84xNywgnaG8XgOypnZAL+EZUbhCGE0umj7fuMrSI6esdE74HYHRoeBioeMUJXPiCt7iBDKHLwiBcg0IliYIIxA=="
+      },
+      "Spectre.Console.Cli": {
+        "type": "Transitive",
+        "resolved": "0.51.1",
+        "contentHash": "LqJjjug5f8ipFFzhwBaQHMXt8+uuJAxu3dsyAxF+Jyva9yHW0P3iP6s1NpwVqt0Yk11n6/f9qipyiEn0zBKBiQ==",
+        "dependencies": {
+          "Spectre.Console": "0.51.1"
+        }
+      },
+      "SQLite": {
+        "type": "Transitive",
+        "resolved": "3.53.4",
+        "contentHash": "KN7jeWqgUPeBRe1FlcpZURzxomuKKEKHmBBQfg+Nx7NkY1LjKhzHvH+3ASkNvhayESE34nMBinL9CV21JfPRJw=="
+      },
+      "SQLitePCLRaw.bundle_e_sqlite3": {
+        "type": "Transitive",
+        "resolved": "3.0.5",
+        "contentHash": "SW8iASIyWMrLzqabUHYQRvALhvD4ylSBsj4PgEVGwc36kQjc9xT5kSV/XQ9rU7nIpBWD+LPyX3Hlw5FzyUzGeQ==",
+        "dependencies": {
+          "SQLite": "3.53.4",
+          "SQLitePCLRaw.config.e_sqlite3": "3.0.5"
+        }
+      },
+      "SQLitePCLRaw.config.e_sqlite3": {
+        "type": "Transitive",
+        "resolved": "3.0.5",
+        "contentHash": "aSk8WE5tF2MybESMgtZAEyMVCAWA0nBqOMc48HFoa9UoSdtm3goDXVzNRnefeKIwE6bV9NaNXptn1F9ReMQI0Q==",
+        "dependencies": {
+          "SQLitePCLRaw.provider.e_sqlite3": "3.0.5"
+        }
+      },
+      "SQLitePCLRaw.core": {
+        "type": "Transitive",
+        "resolved": "3.0.5",
+        "contentHash": "k81AYXXRCw3Zj8rOhyBoCsx/U97KYDFI2CSKr/ijl5BwpsW/hX/4kBiDmerFaoust8nxBwa0IHQFw8MmSHRtnQ=="
+      },
+      "SQLitePCLRaw.provider.e_sqlite3": {
+        "type": "Transitive",
+        "resolved": "3.0.5",
+        "contentHash": "um8YSWduhhuskTG2bHfZrBqMNQOydfU8pcseT+cu5RivOGyoUbCrGXxgoRNTmRYw2VbMWnEZVVFcneZT/5dsBg==",
+        "dependencies": {
+          "SQLitePCLRaw.core": "3.0.5"
+        }
+      },
+      "System.ComponentModel.Composition": {
+        "type": "Transitive",
+        "resolved": "9.0.0",
+        "contentHash": "HwA28KOsRUSN2Hiei4RvXKDeMlmQe/E6WemYDWY8Iv4AYFS04obS6rDVCE4UNDbc3bsa1Cg9tJ5Dko3T0eDjyA=="
+      },
       "System.Diagnostics.EventLog": {
         "type": "Transitive",
         "resolved": "10.0.0",
@@ -726,6 +1105,32 @@
         "type": "Transitive",
         "resolved": "5.0.0",
         "contentHash": "SxHB3nuNrpptVk+vZ/F+7OHEpoHUIKKMl02bUmYHQr1r+glbZQxs7pRtsf4ENO29TVm2TH3AEeep2fJcy92oYw=="
+      },
+      "System.IO.Ports": {
+        "type": "Transitive",
+        "resolved": "9.0.10",
+        "contentHash": "jMvwu+NOk/+vlOzTp9vpxIeGq+yRA+3EbkmpLMs37AAy9cI8YlY/ntTHL00w26Tvu6cIkx0/TdjmeHm0l99Nqw==",
+        "dependencies": {
+          "runtime.native.System.IO.Ports": "9.0.10"
+        }
+      },
+      "System.Security.Cryptography.Pkcs": {
+        "type": "Transitive",
+        "resolved": "10.0.13",
+        "contentHash": "a+EovgC1fBnwdlQ6cn3j4JFBfKqiFaFvoAhjisOoSvazLAcIznaBzPQP0oYnvccmeXfqUH1KebVZOxSeH6rMaw=="
+      },
+      "TestableIO.System.IO.Abstractions.Wrappers": {
+        "type": "Transitive",
+        "resolved": "22.0.16",
+        "contentHash": "QUX0TLMvnRLEgvuMRotrZKN9eCdX4yzK7HJCaPj17T4jvUf+G4XifdLpB5wmRct2zKlscYzpWMOmHjKabse3yw==",
+        "dependencies": {
+          "Testably.Abstractions.FileSystem.Interface": "9.0.0"
+        }
+      },
+      "Testably.Abstractions.FileSystem.Interface": {
+        "type": "Transitive",
+        "resolved": "9.0.0",
+        "contentHash": "uksk86YlnzAdyfVNu3wICU0X5iXVe9LF7Q3UkngNliHWEvM5gvAlOUr+jmd9JwmbJWISH5+i1vyXE02lEVz7WQ=="
       },
       "Tmds.DBus.Protocol": {
         "type": "Transitive",
@@ -745,6 +1150,83 @@
           "UsbDotNet.Core": "1.4.2"
         }
       },
+      "WSCT.Core": {
+        "type": "Transitive",
+        "resolved": "6.7.0",
+        "contentHash": "dIIhQCx0Dqqw3jAAlMqQBswmXlYw1wUD9qiLqcBJ4jGht7E8re3My4VH6uDJVuKNxuMIDn1A2XTHJ1LU0AO4+g==",
+        "dependencies": {
+          "WSCT.Helpers": "5.2.0"
+        }
+      },
+      "WSCT.Helpers": {
+        "type": "Transitive",
+        "resolved": "5.2.0",
+        "contentHash": "0MeNf+0MieqSapOGvLeyxyezXGgWKPCZDHg2hTHJTFh4mjt2Xgklmn0+ZIDvIj12SCDgX3ZHfB3u239iWzckVw==",
+        "dependencies": {
+          "Newtonsoft.Json": "13.0.3"
+        }
+      },
+      "WSCT.Wrapper.Desktop": {
+        "type": "Transitive",
+        "resolved": "1.5.0",
+        "contentHash": "xps6h7F/TbIwW/LM8Wf5tQLi4VXBaey/PrvGmZ47ePy3ryB/ads0OFZGEDBj3aA2U2iWWQ71avI8UCzgux5phg==",
+        "dependencies": {
+          "WSCT.Core": "6.7.0",
+          "WSCT.Wrapper.MacOSX": "1.5.0",
+          "WSCT.Wrapper.PCSCLite32": "1.5.0",
+          "WSCT.Wrapper.PCSCLite64": "1.5.0",
+          "WSCT.Wrapper.WinSCard": "1.5.0"
+        }
+      },
+      "WSCT.Wrapper.MacOSX": {
+        "type": "Transitive",
+        "resolved": "1.5.0",
+        "contentHash": "w2Lb7hEJg8o6KNYeHcbVh5JCsaXUAyYmil+4gMVZPILAv7AgJir8XAxtfOQx1xjfL+lvkBSW2uXpqA1/I2MKtw==",
+        "dependencies": {
+          "WSCT.Core": "6.7.0"
+        }
+      },
+      "WSCT.Wrapper.PCSCLite32": {
+        "type": "Transitive",
+        "resolved": "1.5.0",
+        "contentHash": "yT/+/YIZjoB4H1lsOzpy5zMPKsVarDKzIDGdsl1zLtr3inSPIhT9Ieh9pDZk0EKTgOTEEifWkeFUZ+F++CDeHQ==",
+        "dependencies": {
+          "WSCT.Core": "6.7.0"
+        }
+      },
+      "WSCT.Wrapper.PCSCLite64": {
+        "type": "Transitive",
+        "resolved": "1.5.0",
+        "contentHash": "2xq6w6/u1gNceFQVJdswaViWgECgo3oA1YccxDTXvFAlp/xmbhyKrQ8hX8zDpEc55RYJ9xItvSdUxkr8CdIXPQ==",
+        "dependencies": {
+          "WSCT.Core": "6.7.0"
+        }
+      },
+      "WSCT.Wrapper.WinSCard": {
+        "type": "Transitive",
+        "resolved": "1.5.0",
+        "contentHash": "znTuHRcR4t4hSnb+/9PlNCToKGg6TrrK7dEgO+XUdm3cNPxw63BnPWtoHKGR9hlM/kHjqVh2BbJRgEXdEVP1xg==",
+        "dependencies": {
+          "WSCT.Core": "6.7.0"
+        }
+      },
+      "YamlDotNet": {
+        "type": "Transitive",
+        "resolved": "15.1.2",
+        "contentHash": "qeX0XhzOIcQEvnI5JxnPaIwcINwyY4Qy/LXhSfsdHkFrl9F41AT52UFfy2nIE7kgrhMg+cP7xuS+GtPJhmHmTA=="
+      },
+      "gp4net": {
+        "type": "Project",
+        "dependencies": {
+          "BouncyCastle.Cryptography": "[2.6.1, )",
+          "CSharpFunctionalExtensions": "[3.6.0, )",
+          "JetBrains.Annotations": "[2024.3.0, )",
+          "Kdf108": "[2.0.0, )",
+          "Microsoft.Extensions.Logging.Abstractions": "[8.0.0, )",
+          "WSCT.Core": "[6.7.0, )",
+          "WSCT.Wrapper.Desktop": "[1.5.0, )"
+        }
+      },
       "openphysical.biometrics.capture": {
         "type": "Project",
         "dependencies": {
@@ -757,7 +1239,7 @@
         "dependencies": {
           "CSharpFunctionalExtensions": "[3.7.0, )",
           "FlashCap": "[1.13.0, )",
-          "OpenPhysical.Biometrics.Imaging": "[3.0.0-dev.20261105.2, )"
+          "OpenPhysical.Biometrics.Imaging": "[3.0.0-dev.20261113.1, )"
         }
       },
       "openphysical.biometrics.capture.futronic": {
@@ -765,14 +1247,14 @@
         "dependencies": {
           "BouncyCastle.Cryptography": "[2.6.1, )",
           "Microsoft.Extensions.DependencyInjection.Abstractions": "[10.0.0, )",
-          "OpenPhysical.Biometrics.Capture": "[3.0.0-dev.20261105.2, )",
-          "OpenPhysical.Biometrics.Capture.Usb": "[3.0.0-dev.20261105.2, )"
+          "OpenPhysical.Biometrics.Capture": "[3.0.0-dev.20261113.1, )",
+          "OpenPhysical.Biometrics.Capture.Usb": "[3.0.0-dev.20261113.1, )"
         }
       },
       "openphysical.biometrics.capture.usb": {
         "type": "Project",
         "dependencies": {
-          "OpenPhysical.Biometrics.Capture": "[3.0.0-dev.20261105.2, )",
+          "OpenPhysical.Biometrics.Capture": "[3.0.0-dev.20261113.1, )",
           "UsbDotNet.LibUsbNative": "[1.4.2, )"
         }
       },
@@ -783,15 +1265,18 @@
           "CommunityToolkit.Mvvm": "[8.4.0, )",
           "Material.Avalonia": "[3.14.2, )",
           "Microsoft.Extensions.Hosting": "[10.0.0, )",
-          "OpenPhysical.Biometrics.Capture.Camera": "[3.0.0-dev.20261105.2, )",
-          "OpenPhysical.Biometrics.Capture.Futronic": "[3.0.0-dev.20261105.2, )",
-          "OpenPhysical.Biometrics.Facial": "[3.0.0-dev.20261105.2, )",
-          "OpenPhysical.Biometrics.Fingerprints": "[3.0.0-dev.20261105.2, )",
-          "OpenPhysical.Biometrics.Fingerprints.Nfiq2": "[3.0.0-dev.20261105.2, )",
-          "OpenPhysical.Biometrics.Imaging": "[3.0.0-dev.20261105.2, )",
-          "OpenPhysical.Biometrics.Packages": "[3.0.0-dev.20261105.2, )",
-          "OpenPhysical.Biometrics.Piv": "[3.0.0-dev.20261105.2, )",
-          "OpenPhysical.Biometrics.Presentation": "[3.0.0-dev.20261105.2, )",
+          "OpenPhysical.Biometrics.Capture.Camera": "[3.0.0-dev.20261113.1, )",
+          "OpenPhysical.Biometrics.Capture.Futronic": "[3.0.0-dev.20261113.1, )",
+          "OpenPhysical.Biometrics.Facial": "[3.0.0-dev.20261113.1, )",
+          "OpenPhysical.Biometrics.Fingerprints": "[3.0.0-dev.20261113.1, )",
+          "OpenPhysical.Biometrics.Fingerprints.Nfiq2": "[3.0.0-dev.20261113.1, )",
+          "OpenPhysical.Biometrics.Imaging": "[3.0.0-dev.20261113.1, )",
+          "OpenPhysical.Biometrics.Packages": "[3.0.0-dev.20261113.1, )",
+          "OpenPhysical.Biometrics.Piv": "[3.0.0-dev.20261113.1, )",
+          "OpenPhysical.Biometrics.Presentation": "[3.0.0-dev.20261113.1, )",
+          "OpenPhysical.CardEdge": "[1.0.0, )",
+          "OpenPhysical.Hosting": "[1.0.0, )",
+          "OpenPhysical.Verification": "[1.0.0, )",
           "PCSC": "[7.0.1, )",
           "Tmds.DBus.Protocol": "[0.21.3, )"
         }
@@ -806,9 +1291,9 @@
           "Microsoft.Extensions.DependencyInjection.Abstractions": "[10.0.0, )",
           "Microsoft.Extensions.Logging.Abstractions": "[10.0.0, )",
           "Microsoft.ML.OnnxRuntime": "[1.20.1, )",
-          "OpenPhysical.Biometrics.Facial.Models": "[3.0.0-dev.20261105.2, )",
-          "OpenPhysical.Biometrics.Imaging": "[3.0.0-dev.20261105.2, )",
-          "OpenPhysical.Biometrics.Piv": "[3.0.0-dev.20261105.2, )",
+          "OpenPhysical.Biometrics.Facial.Models": "[3.0.0-dev.20261113.1, )",
+          "OpenPhysical.Biometrics.Imaging": "[3.0.0-dev.20261113.1, )",
+          "OpenPhysical.Biometrics.Piv": "[3.0.0-dev.20261113.1, )",
           "SkiaSharp.NativeAssets.Linux.NoDependencies": "[3.119.4, )"
         }
       },
@@ -821,8 +1306,8 @@
           "BouncyCastle.Cryptography": "[2.6.1, )",
           "CSharpFunctionalExtensions": "[3.7.0, )",
           "Microsoft.Extensions.DependencyInjection.Abstractions": "[10.0.0, )",
-          "OpenPhysical.Biometrics.Capture": "[3.0.0-dev.20261105.2, )",
-          "OpenPhysical.Biometrics.Formats": "[3.0.0-dev.20261105.2, )",
+          "OpenPhysical.Biometrics.Capture": "[3.0.0-dev.20261113.1, )",
+          "OpenPhysical.Biometrics.Formats": "[3.0.0-dev.20261113.1, )",
           "OpenPhysical.Biometrics.NBIS": "[1.0.1, )",
           "OpenPhysical.Biometrics.NFIQ1": "[1.0.1, )"
         }
@@ -830,7 +1315,7 @@
       "openphysical.biometrics.fingerprints.nfiq2": {
         "type": "Project",
         "dependencies": {
-          "OpenPhysical.Biometrics.Fingerprints": "[3.0.0-dev.20261105.2, )",
+          "OpenPhysical.Biometrics.Fingerprints": "[3.0.0-dev.20261113.1, )",
           "OpenPhysical.Biometrics.NFIQ2": "[1.0.1, )"
         }
       },
@@ -860,7 +1345,7 @@
         "type": "Project",
         "dependencies": {
           "CSharpFunctionalExtensions": "[3.7.0, )",
-          "OpenPhysical.Biometrics.Formats": "[3.0.0-dev.20261105.2, )"
+          "OpenPhysical.Biometrics.Formats": "[3.0.0-dev.20261113.1, )"
         }
       },
       "openphysical.biometrics.presentation": {
@@ -870,8 +1355,89 @@
           "CommunityToolkit.Mvvm": "[8.4.0, )",
           "Material.Avalonia": "[3.14.2, )",
           "Microsoft.Extensions.Logging.Abstractions": "[10.0.0, )",
-          "OpenPhysical.Biometrics.Packages": "[3.0.0-dev.20261105.2, )",
+          "OpenPhysical.Biometrics.Packages": "[3.0.0-dev.20261113.1, )",
           "Tmds.DBus.Protocol": "[0.21.3, )"
+        }
+      },
+      "openphysical.cardedge": {
+        "type": "Project",
+        "dependencies": {
+          "FluentValidation": "[12.0.0, )",
+          "Kdf108": "[2.0.0, )",
+          "OpenPhysical.Core": "[1.0.0, )",
+          "OpenPhysical.Hosting": "[1.0.0, )",
+          "OpenPhysical.Verification": "[1.0.0, )",
+          "PCSC": "[7.0.1, )",
+          "PCSC.Iso7816": "[7.0.1, )",
+          "Spectre.Console.Cli": "[0.51.1, )",
+          "System.IO.Ports": "[9.0.10, )",
+          "TestableIO.System.IO.Abstractions.Wrappers": "[22.0.16, )",
+          "WSCT.Wrapper.Desktop": "[1.5.0, )"
+        }
+      },
+      "openphysical.cards": {
+        "type": "Project",
+        "dependencies": {
+          "Gp4Net": "[1.0.0, )",
+          "OpenPhysical.CardEdge": "[1.0.0, )",
+          "OpenPhysical.Core": "[1.0.0, )",
+          "OpenPhysical.KeyCustody": "[1.0.0, )",
+          "OpenPhysical.Verification": "[1.0.0, )",
+          "System.ComponentModel.Composition": "[9.0.0, )"
+        }
+      },
+      "OpenPhysical.Core": {
+        "type": "Project",
+        "dependencies": {
+          "BouncyCastle.Cryptography": "[2.7.0, )",
+          "CSharpFunctionalExtensions": "[3.7.0, )",
+          "JetBrains.Annotations": "[2025.2.2, )",
+          "Microsoft.Extensions.Logging.Abstractions": "[9.0.9, )"
+        }
+      },
+      "openphysical.emulation": {
+        "type": "Project",
+        "dependencies": {
+          "BouncyCastle.Cryptography": "[2.7.0, )",
+          "OpenPhysical.CardEdge": "[1.0.0, )",
+          "OpenPhysical.Cards": "[1.0.0, )",
+          "OpenPhysical.Core": "[1.0.0, )",
+          "OpenPhysical.KeyCustody": "[1.0.0, )",
+          "OpenPhysical.Verification": "[1.0.0, )"
+        }
+      },
+      "openphysical.hosting": {
+        "type": "Project",
+        "dependencies": {
+          "CSharpFunctionalExtensions": "[3.7.0, )",
+          "FluentEmail.Core": "[3.0.2, )",
+          "FluentEmail.MailKit": "[3.0.2, )",
+          "MailKit": "[4.18.2, )",
+          "Microsoft.AspNetCore.SignalR.Client": "[10.0.14, )",
+          "OpenPhysical.Core": "[1.0.0, )",
+          "Spectre.Console.Cli": "[0.51.1, )"
+        }
+      },
+      "openphysical.keycustody": {
+        "type": "Project",
+        "dependencies": {
+          "BouncyCastle.Cryptography": "[2.7.0, )",
+          "Microsoft.Extensions.DependencyInjection.Abstractions": "[10.0.14, )",
+          "OpenPhysical.Core": "[1.0.0, )"
+        }
+      },
+      "openphysical.verification": {
+        "type": "Project",
+        "dependencies": {
+          "JetBrains.Annotations": "[2025.2.2, )",
+          "Microsoft.EntityFrameworkCore.Sqlite": "[10.0.14, )",
+          "Microsoft.Extensions.DependencyInjection.Abstractions": "[10.0.14, )",
+          "OpenPhysical.Biometrics.Formats": "[3.0.0-dev.20261113.1, )",
+          "OpenPhysical.Biometrics.Piv": "[3.0.0-dev.20261113.1, )",
+          "OpenPhysical.Core": "[1.0.0, )",
+          "SQLitePCLRaw.bundle_e_sqlite3": "[3.0.5, )",
+          "TestableIO.System.IO.Abstractions.Wrappers": "[22.0.16, )",
+          "YamlDotNet": "[15.1.2, )"
         }
       }
     }

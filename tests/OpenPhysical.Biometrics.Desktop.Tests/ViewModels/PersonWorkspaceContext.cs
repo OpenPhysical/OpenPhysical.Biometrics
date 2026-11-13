@@ -71,9 +71,9 @@ internal sealed class PersonWorkspaceContext : IAsyncDisposable
     {
         await Export.SaveCommand.ExecuteAsync(default);
         Export.Status.Should().StartWith("Saved:");
-        var path = Directory.EnumerateFiles(Export.Folder, "*.opbio").Single();
-        Directory
-            .EnumerateFiles(Export.Folder, "*", SearchOption.AllDirectories)
+        var path = System.IO.Directory.EnumerateFiles(Export.Folder, "*.opbio").Single();
+        System
+            .IO.Directory.EnumerateFiles(Export.Folder, "*", SearchOption.AllDirectories)
             .Should()
             .Equal(path);
         return path;
@@ -99,7 +99,7 @@ internal sealed class PersonWorkspaceContext : IAsyncDisposable
     {
         await fingerprints.DisposeAsync();
         portraits.Dispose();
-        if (Directory.Exists(root))
-            Directory.Delete(root, true);
+        if (System.IO.Directory.Exists(root))
+            System.IO.Directory.Delete(root, true);
     }
 }

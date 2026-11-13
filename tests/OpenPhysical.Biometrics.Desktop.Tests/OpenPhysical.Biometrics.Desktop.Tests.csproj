@@ -10,6 +10,7 @@
         <PackageReference Include="NUnit" Version="4.4.0" />
         <PackageReference Include="NUnit3TestAdapter" Version="5.0.0" />
         <PackageReference Include="Avalonia.Headless.NUnit" Version="11.3.6" />
+        <ProjectReference Include="../../../OpenPhysical.Net/src/OpenPhysical.Emulation/OpenPhysical.Emulation.csproj" />
     </ItemGroup>
     <ItemGroup>
         <Content Include="Fixtures/fvc2002/manifest.json" CopyToOutputDirectory="PreserveNewest" />

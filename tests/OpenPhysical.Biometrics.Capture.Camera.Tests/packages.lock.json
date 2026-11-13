@@ -226,7 +226,7 @@
         "dependencies": {
           "CSharpFunctionalExtensions": "[3.7.0, )",
           "FlashCap": "[1.13.0, )",
-          "OpenPhysical.Biometrics.Imaging": "[3.0.0-dev.20261105.2, )"
+          "OpenPhysical.Biometrics.Imaging": "[3.0.0-dev.20261113.1, )"
         }
       },
       "openphysical.biometrics.imaging": {

@@ -19,7 +19,7 @@ internal sealed class ExtractorMetadataTests
         var loaded = await new TemplateStorage().LoadAsync(path, CancellationToken.None);
         loaded.Should().Succeed();
         loaded.Value.Images.Single().ExtractorVersion.Value.Should().Be("NBIS 5.0.0 MINDTCT V2");
-        Directory.Delete(folder, true);
+        System.IO.Directory.Delete(folder, true);
     }
 
     [Test]
@@ -35,6 +35,6 @@ internal sealed class ExtractorMetadataTests
             .Fail()
             .Which.Code.Should()
             .Be("Storage.Manifest");
-        Directory.Delete(folder, true);
+        System.IO.Directory.Delete(folder, true);
     }
 }

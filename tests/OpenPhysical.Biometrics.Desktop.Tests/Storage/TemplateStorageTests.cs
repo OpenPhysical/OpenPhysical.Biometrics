@@ -38,14 +38,16 @@ internal sealed class TemplateStorageTests
         var saved = (
             await store.SaveAsync(record, [capture], folder, CancellationToken.None)
         ).Value;
-        var image = Directory.GetFiles(Path.GetDirectoryName(saved)!, "*-processing.png").Single();
+        var image = System
+            .IO.Directory.GetFiles(Path.GetDirectoryName(saved)!, "*-processing.png")
+            .Single();
         await File.WriteAllBytesAsync(image, [1, 2, 3]);
         (await store.LoadAsync(saved, CancellationToken.None))
             .Should()
             .Fail()
             .Which.Code.Should()
             .Be("Storage.Manifest");
-        Directory.Delete(folder, true);
+        System.IO.Directory.Delete(folder, true);
     }
 
     [Test]
@@ -70,7 +72,7 @@ internal sealed class TemplateStorageTests
             .Fail()
             .Which.Code.Should()
             .Be("Storage.Manifest");
-        Directory.Delete(folder, true);
+        System.IO.Directory.Delete(folder, true);
     }
 
     [Test]
@@ -95,14 +97,14 @@ internal sealed class TemplateStorageTests
             .Fail()
             .Which.Code.Should()
             .Be("Storage.Manifest");
-        Directory.Delete(folder, true);
+        System.IO.Directory.Delete(folder, true);
     }
 
     [Test]
     public async Task BareTemplateExportRejectsARepositoryBeforeWritingBiometrics()
     {
         var folder = ProcessingStorageFixtures.Folder();
-        Directory.CreateDirectory(Path.Combine(folder, ".git"));
+        System.IO.Directory.CreateDirectory(Path.Combine(folder, ".git"));
         try
         {
             var capture = ProcessingStorageFixtures.Capture();
@@ -119,11 +121,14 @@ internal sealed class TemplateStorageTests
                 .Fail()
                 .Which.Code.Should()
                 .Be("Package.UnsafePath");
-            Directory.EnumerateFiles(folder, "*", SearchOption.AllDirectories).Should().BeEmpty();
+            System
+                .IO.Directory.EnumerateFiles(folder, "*", SearchOption.AllDirectories)
+                .Should()
+                .BeEmpty();
         }
         finally
         {
-            Directory.Delete(folder, true);
+            System.IO.Directory.Delete(folder, true);
         }
     }
 
@@ -152,6 +157,6 @@ internal sealed class TemplateStorageTests
             .Fail()
             .Which.Code.Should()
             .Be("Storage.Association");
-        Directory.Exists(folder).Should().BeFalse();
+        System.IO.Directory.Exists(folder).Should().BeFalse();
     }
 }

@@ -27,9 +27,8 @@ internal sealed class CaptureAutomationTests
         }
         pending.Complete(pixels).Should().BeTrue();
         pending = await rig.Driver.NextAsync();
-        rig.View.CaptureGuidance.Should()
-            .Contain("Lift your finger")
-            .And.Contain("clean the sensor");
+        rig.View.CaptureGuidance.Should().Be("Lift your finger, then place the next finger.");
+        rig.View.CaptureCommand.CanExecute(default).Should().BeFalse();
         rig.View.Captured.HasNoValue.Should().BeTrue();
         var empty = Enumerable.Repeat((byte)255, 800 * 750).ToArray();
         pending.Complete(empty).Should().BeTrue();

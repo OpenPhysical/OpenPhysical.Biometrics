@@ -107,8 +107,11 @@ internal sealed class EnrollmentModuleTests
             var counts = context.Counts;
             await context.Export.SaveCommand.ExecuteAsync(default);
             context.Export.Status.Should().Contain("Saved:");
-            var path = Directory.EnumerateFiles(folder, "*.opbio").Single();
-            Directory.EnumerateFiles(folder, "*", SearchOption.AllDirectories).Should().Equal(path);
+            var path = System.IO.Directory.EnumerateFiles(folder, "*.opbio").Single();
+            System
+                .IO.Directory.EnumerateFiles(folder, "*", SearchOption.AllDirectories)
+                .Should()
+                .Equal(path);
             using var secret = EnrollmentExportFixtures.Secret();
             var loaded = await storage.OpenAsync(path, secret, CancellationToken.None);
             loaded.Should().Succeed();
@@ -117,8 +120,8 @@ internal sealed class EnrollmentModuleTests
         }
         finally
         {
-            if (Directory.Exists(folder))
-                Directory.Delete(folder, true);
+            if (System.IO.Directory.Exists(folder))
+                System.IO.Directory.Delete(folder, true);
         }
     }
 

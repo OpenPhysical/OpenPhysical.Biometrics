@@ -23,7 +23,7 @@ internal sealed class SettingsStorageTests
         (await new SettingsStorage(path).LoadAsync(CancellationToken.None))
             .Value.Should()
             .Be(chosen);
-        Directory.GetFiles(location.Folder).Should().ContainSingle();
+        System.IO.Directory.GetFiles(location.Folder).Should().ContainSingle();
         if (!OperatingSystem.IsWindows())
             File.GetUnixFileMode(path).Should().Be(UnixFileMode.UserRead | UnixFileMode.UserWrite);
     }
@@ -36,7 +36,7 @@ internal sealed class SettingsStorageTests
     {
         using var location = new SettingsTestFile();
         var path = location.Path;
-        Directory.CreateDirectory(location.Folder);
+        System.IO.Directory.CreateDirectory(location.Folder);
         await File.WriteAllTextAsync(path, contents);
         var loaded = await new SettingsStorage(path).LoadAsync(CancellationToken.None);
         loaded.Should().Fail();
@@ -65,6 +65,6 @@ internal sealed class SettingsStorageTests
         (await storage.LoadAsync(CancellationToken.None))
             .Value.Should()
             .Be(DesktopPreferences.Default);
-        Directory.GetFiles(location.Folder).Should().ContainSingle();
+        System.IO.Directory.GetFiles(location.Folder).Should().ContainSingle();
     }
 }

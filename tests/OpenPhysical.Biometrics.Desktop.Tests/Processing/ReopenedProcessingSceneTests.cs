@@ -40,7 +40,7 @@ internal sealed class ReopenedProcessingSceneTests
         finally
         {
             (await inspection.StopAsync()).Should().Succeed();
-            Directory.Delete(folder, true);
+            System.IO.Directory.Delete(folder, true);
         }
     }
 

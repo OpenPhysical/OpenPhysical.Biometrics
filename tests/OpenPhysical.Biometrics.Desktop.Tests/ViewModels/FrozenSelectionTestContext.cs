@@ -27,6 +27,7 @@ internal sealed class FrozenSelectionTestContext : IAsyncDisposable
         View = new CaptureViewModel(coordinator, processor, dispatcher, clock)
         {
             AutomaticExposure = false,
+            AutoCapture = true,
         };
         View.ConfigureImageAdjustments(
                 ImageAdjustmentSettings.Create(false, 7, 0).Value,
