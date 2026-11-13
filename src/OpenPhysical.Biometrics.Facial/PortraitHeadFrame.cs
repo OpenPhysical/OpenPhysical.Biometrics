@@ -2,6 +2,7 @@
 namespace OpenPhysical.Biometrics.Facial;
 
 using CSharpFunctionalExtensions;
+using OpenPhysical.Biometrics.Piv;
 
 // Head landmarks after rolling the source so the eyes are level.
 internal sealed record PortraitHeadFrame(
@@ -22,7 +23,10 @@ internal sealed record PortraitHeadFrame(
     internal double Center => (Nose.X + Mouth.X) / 2;
 
     internal bool IsDegenerate =>
-        HeadWidth < 240 || HeadHeight <= 0 || Crown.Y >= Eye.Y || Eye.Y >= Chin.Y;
+        HeadWidth < PivPortraitGeometry.MinimumHeadWidth
+        || HeadHeight <= 0
+        || Crown.Y >= Eye.Y
+        || Eye.Y >= Chin.Y;
 
     internal static PortraitHeadFrame From(
         PortraitFace face,

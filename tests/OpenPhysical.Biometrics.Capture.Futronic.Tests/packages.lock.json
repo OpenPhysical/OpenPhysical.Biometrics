@@ -199,6 +199,7 @@
       "openphysical.biometrics.capture": {
         "type": "Project",
         "dependencies": {
+          "BouncyCastle.Cryptography": "[2.6.1, )",
           "CSharpFunctionalExtensions": "[3.7.0, )"
         }
       },

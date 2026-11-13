@@ -9,7 +9,7 @@ using OpenPhysical.Biometrics.Fingerprints;
 internal static class TemplateProcessingReader
 {
     internal static async Task<Result<TemplateImage, DesktopError>> AttachAsync(
-        string folder,
+        TemplateCompanionSource source,
         TemplateManifestImage entry,
         TemplateImage image,
         CancellationToken token
@@ -21,7 +21,7 @@ internal static class TemplateProcessingReader
         var value = parsed.Value;
         var planes = await TemplatePngFiles
             .ReadAllAsync(
-                folder,
+                source,
                 [
                     value.Manifest.Original,
                     value.Manifest.Masks.Retained,
@@ -37,12 +37,12 @@ internal static class TemplateProcessingReader
         var attached = BuildImage(value, entry, image, planes.Value);
         return attached.IsFailure
             ? attached.Error
-            : await AttachSupplementalAsync(folder, value, entry, attached.Value, token)
+            : await AttachSupplementalAsync(source, value, entry, attached.Value, token)
                 .ConfigureAwait(false);
     }
 
     private static async Task<Result<TemplateImage, DesktopError>> AttachSupplementalAsync(
-        string folder,
+        TemplateCompanionSource source,
         TemplateProcessingValidated value,
         TemplateManifestImage entry,
         TemplateImage image,
@@ -50,12 +50,12 @@ internal static class TemplateProcessingReader
     )
     {
         var contact = await TemplateContactReader
-            .AttachAsync(folder, value, image, token)
+            .AttachAsync(source, value, image, token)
             .ConfigureAwait(false);
         if (contact.IsFailure)
             return contact.Error;
         return await TemplateContourReader
-            .AttachAsync(folder, value, entry, contact.Value, token)
+            .AttachAsync(source, value, entry, contact.Value, token)
             .ConfigureAwait(false);
     }
 

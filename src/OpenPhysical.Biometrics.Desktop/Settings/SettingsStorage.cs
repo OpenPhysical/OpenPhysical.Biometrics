@@ -2,6 +2,7 @@
 namespace OpenPhysical.Biometrics.Desktop;
 
 using CSharpFunctionalExtensions;
+using OpenPhysical.Biometrics.Packages;
 
 /// <summary>Loads and atomically saves the current private application configuration.</summary>
 /// <param name="path">Explicit private configuration file path.</param>
@@ -17,13 +18,16 @@ public sealed class SettingsStorage(string path)
     public async Task<Result<DesktopPreferences, DesktopError>> LoadAsync(CancellationToken token)
     {
         var loaded = await DesktopEdge
-            .TryAsync(
+            .TryOptionalFileAsync(
                 async () =>
                 {
                     token.ThrowIfCancellationRequested();
-                    if (!File.Exists(path))
-                        return Result.Success<DesktopPreferences, DesktopError>(
-                            DesktopPreferences.Default
+                    if ((File.GetAttributes(path) & FileAttributes.Directory) != 0)
+                        return Result.Failure<DesktopPreferences, DesktopError>(
+                            new(
+                                "Settings.Read",
+                                "The settings path is a directory instead of a file."
+                            )
                         );
                     if (new FileInfo(path).Length > 4096)
                         return Result.Failure<DesktopPreferences, DesktopError>(
@@ -37,7 +41,12 @@ public sealed class SettingsStorage(string path)
                 "The saved settings could not be read."
             )
             .ConfigureAwait(false);
-        return loaded.Bind(result => result);
+        return loaded.Bind(value =>
+            value.Match(
+                result => result,
+                () => Result.Success<DesktopPreferences, DesktopError>(DesktopPreferences.Default)
+            )
+        );
     }
 
     /// <summary>Atomically persists validated configuration.</summary>
@@ -49,37 +58,16 @@ public sealed class SettingsStorage(string path)
         CancellationToken token
     )
     {
-        var saved = await DesktopEdge
-            .TryAsync(
-                () => WriteAsync(preferences, token),
-                "Settings.Write",
-                "The settings could not be saved."
+        var saved = await PrivateFileTransaction
+            .WriteBatchAsync(
+                [new PrivateFileWrite(path, [.. preferences.ToJsonBytes()])],
+                true,
+                token
             )
             .ConfigureAwait(false);
-        return saved.IsSuccess
-            ? UnitResult.Success<DesktopError>()
-            : UnitResult.Failure(saved.Error);
-    }
-
-    private async Task<bool> WriteAsync(DesktopPreferences preferences, CancellationToken token)
-    {
-        token.ThrowIfCancellationRequested();
-        var folder = Path.GetDirectoryName(Path.GetFullPath(path)) ?? string.Empty;
-        PrivateFileWriter.CreateDirectory(folder);
-        var staging = Path.Combine(folder, $".preferences-{Guid.NewGuid():N}.tmp");
-        try
-        {
-            await PrivateFileWriter
-                .WriteAsync(staging, preferences.ToJsonBytes(), token)
-                .ConfigureAwait(false);
-            token.ThrowIfCancellationRequested();
-            File.Move(staging, path, overwrite: true);
-            return true;
-        }
-        finally
-        {
-            if (File.Exists(staging))
-                File.Delete(staging);
-        }
+        return saved.MapError(error => new DesktopError(
+            error.Code == PackageErrorCodes.Cancelled ? error.Code : "Settings.Write",
+            error.Message
+        ));
     }
 }

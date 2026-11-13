@@ -40,8 +40,12 @@ internal sealed class FacialPreparationTests
         }
     }
 
-    [Test]
-    public void MissingAcquisitionEvidenceProducesAnOperatorReviewOutcome()
+    [TestCase(false, true)]
+    [TestCase(true, false)]
+    public void MissingAcquisitionEvidenceProducesAnOperatorReviewOutcome(
+        bool frontal,
+        bool optical
+    )
     {
         var prepared = TestFixtures
             .NewRecordPreparer()
@@ -51,7 +55,8 @@ internal sealed class FacialPreparationTests
                 640,
                 Metadata with
                 {
-                    FullFrontalConfirmed = false,
+                    FullFrontalConfirmed = frontal,
+                    OpticalResolutionConfirmed = optical,
                 }
             );
         prepared.Should().Succeed();
@@ -59,12 +64,27 @@ internal sealed class FacialPreparationTests
         prepared.Value.Record.HasValue.Should().BeFalse();
     }
 
-    [Test]
-    public void UnsupportedProfileGeometryProducesAnExplicitOutcome()
+    [TestCase(420, 2, 0)]
+    [TestCase(480, 1, 0)]
+    [TestCase(480, 2, 101)]
+    public void UnsupportedProfileMetadataIsRejectedBeforeFlatImageCompression(
+        int width,
+        int source,
+        int quality
+    )
     {
         var prepared = TestFixtures
             .NewRecordPreparer()
-            .Prepare(new byte[420 * 560 * 3], 420, 560, Metadata);
+            .Prepare(
+                new byte[width * 560 * 3],
+                width,
+                560,
+                Metadata with
+                {
+                    SourceType = (byte)source,
+                    Quality = (ushort)quality,
+                }
+            );
         prepared.Should().Succeed();
         prepared.Value.Status.Should().Be(FacialPreparationStatus.ProfileRejected);
         prepared.Value.Record.HasValue.Should().BeFalse();

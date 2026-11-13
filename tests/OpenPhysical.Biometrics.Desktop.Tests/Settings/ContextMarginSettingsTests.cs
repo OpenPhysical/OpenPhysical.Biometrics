@@ -56,8 +56,9 @@ internal sealed class ContextMarginSettingsTests
             value =>
             {
                 applied = value;
-                return UnitResult.Success<DesktopError>();
-            }
+                return Task.FromResult(UnitResult.Success<DesktopError>());
+            },
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<SettingsViewModel>.Instance
         );
         (await view.InitializeAsync()).Should().Succeed();
         view.ContextMargin.Should().Be(48);

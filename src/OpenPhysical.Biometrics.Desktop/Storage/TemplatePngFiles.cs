@@ -27,7 +27,7 @@ internal static class TemplatePngFiles
     internal static async Task<
         Result<ImmutableArray<ImmutableArray<byte>>, DesktopError>
     > ReadAllAsync(
-        string folder,
+        TemplateCompanionSource source,
         ImmutableArray<TemplatePngDescriptor> descriptors,
         int width,
         int height,
@@ -37,7 +37,7 @@ internal static class TemplatePngFiles
         var result = ImmutableArray.CreateBuilder<ImmutableArray<byte>>();
         foreach (var descriptor in descriptors)
         {
-            var read = await ReadAsync(folder, descriptor, width, height, token)
+            var read = await ReadAsync(source, descriptor, width, height, token)
                 .ConfigureAwait(false);
             if (read.IsFailure)
                 return read.Error;
@@ -66,7 +66,7 @@ internal static class TemplatePngFiles
             });
 
     internal static async Task<Result<ImmutableArray<byte>, DesktopError>> ReadAsync(
-        string folder,
+        TemplateCompanionSource source,
         TemplatePngDescriptor descriptor,
         int width,
         int height,
@@ -75,29 +75,26 @@ internal static class TemplatePngFiles
     {
         if (!Valid(descriptor))
             return Invalid("A processing companion name or hash is invalid.");
-        var path = Path.Combine(folder, descriptor.FileName);
-        var attributes = DesktopEdge.Try(
-            () => File.GetAttributes(path),
-            "Storage.Manifest",
-            "A required PNG companion is unavailable."
-        );
-        if (attributes.IsFailure)
-            return attributes.Error;
-        if ((attributes.Value & FileAttributes.ReparsePoint) != 0)
-            return Invalid("PNG companions must not be symbolic links.");
-        var input = await TemplateFileReader
-            .ReadAsync(path, 32 * 1024 * 1024, cancellationToken)
+        var input = await source
+            .ReadAsync(descriptor.FileName, 32 * 1024 * 1024, cancellationToken)
             .ConfigureAwait(false);
         if (input.IsFailure)
             return input.Error;
-        if (!Same(TemplateSha256.Of(input.Value), descriptor.Sha256))
-            return Invalid("A required PNG companion hash does not match.");
-        return GrayPngCodec
-            .Decode(input.Value, width, height)
-            .Ensure(
-                pixels => Same(TemplateSha256.Of(pixels.ToArray()), descriptor.PixelSha256),
-                Invalid("A required PNG companion pixel hash does not match.")
-            );
+        try
+        {
+            if (!Same(TemplateSha256.Of(input.Value), descriptor.Sha256))
+                return Invalid("A required PNG companion hash does not match.");
+            return GrayPngCodec
+                .Decode(input.Value, width, height)
+                .Ensure(
+                    pixels => Same(TemplateSha256.Of(pixels.ToArray()), descriptor.PixelSha256),
+                    Invalid("A required PNG companion pixel hash does not match.")
+                );
+        }
+        finally
+        {
+            Array.Clear(input.Value);
+        }
     }
 
     internal static bool Valid(TemplatePngDescriptor descriptor) =>

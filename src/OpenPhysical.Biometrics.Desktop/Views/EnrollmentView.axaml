@@ -6,8 +6,15 @@
     x:Class="OpenPhysical.Biometrics.Desktop.EnrollmentView"
     x:DataType="local:WorkspaceViewModel"
 >
-    <Grid ColumnDefinitions="240,*" ColumnSpacing="16">
+    <Grid
+        ColumnDefinitions="240,*"
+        RowDefinitions="*,Auto"
+        ColumnSpacing="16"
+        RowSpacing="8"
+        IsEnabled="{Binding !Export.SaveCommand.IsRunning}"
+    >
         <Border
+            Grid.RowSpan="2"
             BorderBrush="{DynamicResource AppDivider}"
             BorderThickness="0,0,1,0"
             Padding="0,4,16,0"
@@ -45,12 +52,44 @@
                             </Grid>
                             <TextBox
                                 Text="{Binding Export.Enrollment.Person.Name}"
+                                Classes.requiredMissing="{Binding Export.Enrollment.Person.NameMissing}"
                                 Watermark="Name or alias"
                                 AutomationProperties.Name="Name or label"
                                 MaxLength="128"
                             />
                         </StackPanel>
                         <StackPanel Spacing="8">
+                            <TextBlock Text="Required captures" Classes="section" />
+                            <ComboBox
+                                ItemsSource="{Binding Export.Enrollment.Plans}"
+                                SelectedItem="{Binding Export.Enrollment.Plan}"
+                                IsEnabled="{Binding Export.Enrollment.CanNavigate}"
+                                AutomationProperties.Name="Required captures"
+                            />
+                            <ListBox
+                                ItemsSource="{Binding Export.Enrollment.Sections}"
+                                SelectedItem="{Binding Export.Enrollment.ActiveSection}"
+                                IsEnabled="{Binding Export.Enrollment.CanNavigate}"
+                                AutomationProperties.Name="Capture task"
+                            >
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate x:DataType="local:IEnrollmentSection">
+                                        <StackPanel Spacing="4" MinHeight="48" Margin="4">
+                                            <TextBlock Text="{Binding Title}" />
+                                            <TextBlock
+                                                Text="{Binding Progress}"
+                                                Classes="caption"
+                                                TextWrapping="Wrap"
+                                            />
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+                        </StackPanel>
+                        <StackPanel
+                            Spacing="8"
+                            IsVisible="{Binding Export.Enrollment.FingerprintsActive}"
+                        >
                             <TextBlock Text="Fingerprints" Classes="section" />
                             <CheckBox
                                 Content="Two fingers"
@@ -150,7 +189,23 @@
                 </ScrollViewer>
             </Grid>
         </Border>
-        <material:Card Grid.Column="1" Classes="surface">
+        <ContentControl
+            Grid.Column="1"
+            Content="{Binding Export.Enrollment.ActiveSection.ViewModel}"
+            IsVisible="{Binding Export.Enrollment.FaceActive}"
+            Margin="12"
+        >
+            <ContentControl.DataTemplates>
+                <DataTemplate DataType="local:FaceCaptureViewModel">
+                    <local:FaceCaptureView />
+                </DataTemplate>
+            </ContentControl.DataTemplates>
+        </ContentControl>
+        <material:Card
+            Grid.Column="1"
+            Classes="surface"
+            IsVisible="{Binding Export.Enrollment.FingerprintsActive}"
+        >
             <Grid RowDefinitions="Auto,*,Auto" RowSpacing="8" Margin="12">
                 <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
                     <TextBlock
@@ -216,11 +271,7 @@
                             IsVisible="{Binding Capture.Captured.HasValue}"
                             AutomationProperties.LiveSetting="Polite"
                         />
-                        <TextBlock
-                            Classes="caption"
-                            Text="{Binding Export.Status}"
-                            IsVisible="{Binding Export.Enrollment.Ready}"
-                        />
+
                         <WrapPanel
                             HorizontalAlignment="Right"
                             Orientation="Horizontal"
@@ -326,15 +377,24 @@
                                     IsVisible="{Binding Capture.Captured.HasValue}"
                                 />
                             </StackPanel>
-                            <Button
-                                Content="Save person"
-                                Command="{Binding Export.SaveCommand}"
-                                IsVisible="{Binding Export.Enrollment.Ready}"
-                            />
                         </WrapPanel>
                     </StackPanel>
                 </Border>
             </Grid>
         </material:Card>
+        <Grid Grid.Row="1" Grid.Column="1" ColumnDefinitions="*,Auto" ColumnSpacing="12">
+            <TextBlock
+                Text="{Binding Export.Status}"
+                TextWrapping="Wrap"
+                Classes="caption"
+                VerticalAlignment="Center"
+            />
+            <Button
+                Grid.Column="1"
+                Content="Save person"
+                Command="{Binding Export.SaveCommand}"
+                IsVisible="{Binding Export.Enrollment.Ready}"
+            />
+        </Grid>
     </Grid>
 </UserControl>

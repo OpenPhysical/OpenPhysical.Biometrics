@@ -99,10 +99,71 @@ internal sealed class SecondFingerAutoCaptureTests
         pending.Complete(pixels).Should().BeTrue();
         pending = await rig.Driver.NextAsync();
         rig.View.CaptureCommand.CanExecute(default).Should().BeFalse();
-        rig.View.CaptureGuidance.Should()
-            .Contain("Lift your finger")
-            .And.Contain("If it is already off, clean the sensor");
+        rig.View.CaptureGuidance.Should().Be("Lift your finger, then place the next finger.");
         return pending;
+    }
+
+    [AvaloniaTest]
+    public async Task StableChangedContactRearmsSecondWithoutACleanEmptyFrame()
+    {
+        await using var rig = new LiveEnrollmentCaptureRig();
+        var first = await CaptureFirstAsync(rig);
+        await rig.Export.Enrollment.AcceptCommand.ExecuteAsync(default);
+        var pending = await rig.Driver.NextAsync();
+        var replacement = ProcessingFrameFixtures.PublicFinger();
+        Array.Reverse(replacement);
+        pending.Complete(replacement).Should().BeTrue();
+        pending = await rig.Driver.NextAsync();
+        rig.View.CaptureCommand.CanExecute(default).Should().BeFalse();
+        rig.Clock.Advance(TimeSpan.FromMilliseconds(100));
+        pending.Complete(replacement).Should().BeTrue();
+        pending = await rig.Driver.NextAsync();
+        rig.View.CaptureCommand.CanExecute(default).Should().BeTrue();
+        pending = await HoldAsync(rig, pending, replacement, 500);
+        rig.Clock.Advance(TimeSpan.FromMilliseconds(500));
+        pending.Complete(replacement).Should().BeTrue();
+        var second = await rig.NextCaptureAsync();
+        await rig.View.CaptureCommand.ExecutionTask!;
+        second.Frame.Should().NotBeSameAs(first.Frame);
+        await rig.Export.Enrollment.AcceptCommand.ExecuteAsync(default);
+        rig.Export.Enrollment.Ready.Should().BeTrue();
+        await rig.Export.Enrollment.Fingerprints.PrimarySlotCommand.ExecuteAsync(default);
+        rig.View.Captured.Value.Should().BeSameAs(first);
+    }
+
+    [AvaloniaTest]
+    public async Task FaintResidueProvesRemovalWithoutBecomingACaptureOrEmptyReference()
+    {
+        await using var rig = new LiveEnrollmentCaptureRig();
+        var first = await CaptureFirstAsync(rig);
+        await rig.Export.Enrollment.AcceptCommand.ExecuteAsync(default);
+        var pending = await rig.Driver.NextAsync();
+        var residue = ProcessingFrameFixtures.FaintResidue();
+        for (var index = 0; index < 2; index++)
+        {
+            rig.Clock.Advance(TimeSpan.FromMilliseconds(100));
+            pending.Complete(residue).Should().BeTrue();
+            pending = await rig.Driver.NextAsync();
+            rig.View.Captured.HasNoValue.Should().BeTrue();
+        }
+        rig.View.CaptureGuidance.Should().Be("Place your finger");
+        rig.View.Scene.HasNoValue.Should().BeTrue();
+        var pixels = ProcessingFrameFixtures.PublicFinger();
+        pending.Complete(pixels).Should().BeTrue();
+        pending = await rig.Driver.NextAsync();
+        rig.View.CaptureCommand.CanExecute(default).Should().BeTrue();
+        pending = await HoldAsync(rig, pending, pixels, 500);
+        rig.Clock.Advance(TimeSpan.FromMilliseconds(500));
+        pending.Complete(pixels).Should().BeTrue();
+        var second = await rig.NextCaptureAsync();
+        await rig.View.CaptureCommand.ExecutionTask!;
+        second
+            .Processing.Value.OriginalQualification.Value.ReferenceDigest.HasNoValue.Should()
+            .BeTrue();
+        await rig.Export.Enrollment.AcceptCommand.ExecuteAsync(default);
+        rig.Export.Enrollment.Ready.Should().BeTrue();
+        await rig.Export.Enrollment.Fingerprints.PrimarySlotCommand.ExecuteAsync(default);
+        rig.View.Captured.Value.Should().BeSameAs(first);
     }
 
     private static async Task<CapturedFingerprint> CaptureFirstAsync(LiveEnrollmentCaptureRig rig)

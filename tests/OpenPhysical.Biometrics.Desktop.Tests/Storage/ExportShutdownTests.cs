@@ -21,7 +21,7 @@ internal sealed class ExportShutdownTests
         var model = context.Export;
         model.Enrollment.Person.Name = "Sample person";
         model.Enrollment.Fingerprints.TwoFingers = false;
-        await context.AcceptAsync(StorageFixtures.Capture());
+        await context.AcceptAsync(context.NativeCapture());
         var save = model.SaveCommand.ExecuteAsync(default);
         await storage.Started.Task.WaitAsync(TimeSpan.FromSeconds(2));
         var status = model.Status;
@@ -29,12 +29,13 @@ internal sealed class ExportShutdownTests
         stopped.IsCompleted.Should().BeFalse();
         storage.Token.IsCancellationRequested.Should().BeTrue();
         model.SaveCommand.CanExecute(default).Should().BeFalse();
-        storage.Completed.SetResult(Result.Success<string, DesktopError>("saved.fmr"));
+        storage.Completed.SetResult(Result.Success<string, DesktopError>("saved.opbio"));
         (await stopped.WaitAsync(TimeSpan.FromSeconds(2))).Should().Succeed();
         await save;
         model.Status.Should().Be(status);
         await model.SaveCommand.ExecuteAsync(default);
         storage.Saves.Should().Be(1);
+        model.Status.Should().Be(status);
     }
 
     [AvaloniaTest]

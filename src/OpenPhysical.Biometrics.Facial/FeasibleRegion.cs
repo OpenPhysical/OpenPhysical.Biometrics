@@ -2,6 +2,7 @@
 namespace OpenPhysical.Biometrics.Facial;
 
 using System.Collections.Immutable;
+using OpenPhysical.Biometrics.Piv;
 
 // Feasible scale and eye-height pairs form a convex polygon. Clipping the
 // polygon avoids missing a narrow feasible crop between sampled scales.
@@ -9,8 +10,17 @@ internal sealed record FeasibleRegion(ImmutableArray<(double Scale, double Eye)>
 {
     internal bool IsEmpty => Vertices.IsEmpty;
 
-    internal static FeasibleRegion Initial(double minScale, double maxScale) =>
-        new([(minScale, 192), (maxScale, 192), (maxScale, 320), (minScale, 320)]);
+    internal static FeasibleRegion Initial(double minScale, double maxScale)
+    {
+        const double minEye = PortraitOutput.Height * PivPortraitGeometry.MinimumEyeHeightFraction;
+        const double maxEye = PortraitOutput.Height * PivPortraitGeometry.MaximumEyeHeightFraction;
+        return new([
+            (minScale, minEye),
+            (maxScale, minEye),
+            (maxScale, maxEye),
+            (minScale, maxEye),
+        ]);
+    }
 
     // Keeps the half-plane a * scale + b * eye <= limit.
     internal FeasibleRegion Clip(double a, double b, double limit)

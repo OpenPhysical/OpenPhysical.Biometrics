@@ -20,10 +20,11 @@ internal sealed class MaterialSurfaceTests
     public async Task ImageCardShadowExtendsPastTheStraightEdgeRatherThanOnlyTheCorners()
     {
         var host = DesktopServices.CreateHost();
-        var view = new EnrollmentView
-        {
-            DataContext = host.Services.GetRequiredService<WorkspaceViewModel>(),
-        };
+        var workspace = host.Services.GetRequiredService<WorkspaceViewModel>();
+        await workspace.Export.Enrollment.SelectSectionCommand.ExecuteAsync(
+            workspace.Export.Enrollment.Sections.Single(section => section.Id == "fingerprints")
+        );
+        var view = new EnrollmentView { DataContext = workspace };
         var window = new Window
         {
             Content = view,

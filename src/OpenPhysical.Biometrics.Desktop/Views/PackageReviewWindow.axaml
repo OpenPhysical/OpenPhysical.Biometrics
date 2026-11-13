@@ -1,0 +1,77 @@
+<Window
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:OpenPhysical.Biometrics.Desktop"
+    x:Class="OpenPhysical.Biometrics.Desktop.PackageReviewWindow"
+    x:DataType="local:PackageReviewViewModel"
+    Title="Saved person · Biometric Studio"
+    Width="1100"
+    Height="760"
+    MinWidth="800"
+    MinHeight="600"
+    WindowStartupLocation="CenterOwner"
+>
+    <Grid RowDefinitions="Auto,*,Auto" Margin="20" RowSpacing="12">
+        <StackPanel Spacing="4">
+            <TextBlock Text="{Binding Label}" FontSize="18" />
+            <TextBlock Text="{Binding ExternalId}" IsVisible="{Binding HasExternalId}" />
+        </StackPanel>
+        <TabControl Grid.Row="1" SelectedIndex="{Binding InitialTabIndex}">
+            <TabItem Header="Face" IsVisible="{Binding HasFace}">
+                <Grid RowDefinitions="Auto,*" RowSpacing="8">
+                    <ComboBox
+                        IsVisible="{Binding HasMultipleFaces}"
+                        ItemsSource="{Binding FaceChoices}"
+                        SelectedItem="{Binding SelectedFace}"
+                        HorizontalAlignment="Stretch"
+                        AutomationProperties.Name="Saved portrait"
+                    />
+                    <Border
+                        Grid.Row="1"
+                        BorderBrush="{DynamicResource AppDivider}"
+                        BorderThickness="1"
+                        ClipToBounds="True"
+                    >
+                        <local:FaceImageCanvas
+                            Scene="{Binding FaceScene}"
+                            Mirror="False"
+                            AutomationProperties.Name="Saved portrait, original orientation"
+                        />
+                    </Border>
+                </Grid>
+            </TabItem>
+            <TabItem Header="Fingerprints" IsVisible="{Binding HasFingerprints}">
+                <Grid RowDefinitions="Auto,*" RowSpacing="8">
+                    <ComboBox
+                        ItemsSource="{Binding FingerSelection.Views}"
+                        SelectedItem="{Binding FingerSelection.SelectedView}"
+                        HorizontalAlignment="Stretch"
+                        AutomationProperties.Name="Saved finger view"
+                    />
+                    <local:BiometricImageView
+                        Grid.Row="1"
+                        Scene="{Binding FingerprintScene}"
+                        EmptyText="No companion image"
+                    />
+                </Grid>
+            </TabItem>
+        </TabControl>
+        <Expander
+            Grid.Row="2"
+            Header="Details"
+            HorizontalAlignment="Stretch"
+            HorizontalContentAlignment="Stretch"
+        >
+            <ScrollViewer MaxHeight="170">
+                <StackPanel Spacing="8" Margin="8">
+                    <TextBlock
+                        Text="Unsigned objects and advertised companion associations verified. Signing and card loading are separate steps."
+                        TextWrapping="Wrap"
+                    />
+                    <TextBlock Text="{Binding FaceDetails}" TextWrapping="Wrap" />
+                    <TextBlock Text="{Binding FingerprintDetails}" TextWrapping="Wrap" />
+                </StackPanel>
+            </ScrollViewer>
+        </Expander>
+    </Grid>
+</Window>

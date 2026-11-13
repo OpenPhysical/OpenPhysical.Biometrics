@@ -80,6 +80,7 @@ internal sealed class FingerprintEnrollmentViewModel : ObservableObject, IFinger
     public bool PrimaryActive => ActiveFinger.Position == PrimaryFinger.Position;
     public bool SecondaryActive => TwoFingers && ActiveFinger.Position == SecondaryFinger.Position;
     public bool ActiveAccepted => state.ActiveAccepted;
+    public ImmutableArray<CapturedFingerprint> AcceptedCaptures => state.Session.OrderedAccepted;
     public bool CanAdjustCapture => !stopping && !IsBusy && state.CanAdjust(currentCapture());
     public bool IsBusy => selecting || AcceptCommand.IsRunning || Adjustment.IsOpen;
     public string PrimaryLabel =>

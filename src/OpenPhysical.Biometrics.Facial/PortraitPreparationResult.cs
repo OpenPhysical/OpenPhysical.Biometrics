@@ -10,9 +10,9 @@ using CSharpFunctionalExtensions;
 /// <param name="SourceWidth">Oriented source width.</param>
 /// <param name="SourceHeight">Oriented source height.</param>
 /// <param name="Faces">Detections in stable order.</param>
-/// <param name="Transform">Source-to-output mapping when prepared.</param>
-/// <param name="Measurements">Crop measurements when prepared.</param>
-/// <param name="RgbPixels">Owned 480 by 640 sRGB pixels, or empty when review is required.</param>
+/// <param name="Transform">Source-to-inspection-portrait mapping when supported by the source.</param>
+/// <param name="Measurements">Framing measurements when an inspection portrait is available.</param>
+/// <param name="RgbPixels">Owned 480 by 640 sRGB inspection pixels; availability does not imply acceptance.</param>
 /// <param name="Findings">Structural and review findings.</param>
 public sealed record PortraitPreparationResult(
     PortraitStatus Status,
@@ -26,6 +26,15 @@ public sealed record PortraitPreparationResult(
     ImmutableArray<PortraitFinding> Findings
 )
 {
+    /// <summary>Gets the immutable mouth tolerance used for this exact preparation.</summary>
+    public PortraitMouthPolicy MouthPolicy { get; init; } = PortraitMouthPolicy.Default;
+
+    /// <summary>Gets the source-bound mouth measurement, absent when it was unassessable.</summary>
+    public Maybe<PortraitMouthMeasurement> MouthMeasurement { get; init; }
+
+    /// <summary>Gets explicit background-editing evidence, separate from acquisition and pose findings.</summary>
+    public Maybe<PortraitBackgroundEvidence> Background { get; init; }
+
     /// <summary>Gets the pinned model source revision used by this implementation.</summary>
     public string ModelRevision => PortraitProvenance.ModelRevision;
 

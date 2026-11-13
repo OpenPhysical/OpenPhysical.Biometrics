@@ -6,7 +6,7 @@ using CSharpFunctionalExtensions;
 using OpenPhysical.Biometrics.Formats.Fingerprints;
 
 /// <summary>Saves private Studio capture packages and opens templates with verified companions.</summary>
-public sealed class TemplateStorage : ITemplateStorage, ITemplateSessionStorage
+public sealed class TemplateStorage : ITemplateStorage
 {
     /// <summary>Gets the durable per-user default capture directory.</summary>
     public static string DefaultFolder =>
@@ -39,35 +39,6 @@ public sealed class TemplateStorage : ITemplateStorage, ITemplateSessionStorage
             cancellationToken
         );
 
-    /// <inheritdoc/>
-    public Task<Result<string, DesktopError>> SaveSessionAsync(
-        FingerprintRecord record,
-        ImmutableArray<CapturedFingerprint> captures,
-        CapturePerson person,
-        string folder,
-        TemplateSaveOptions options,
-        CancellationToken cancellationToken
-    ) =>
-        SavePackageAsync(
-            TemplatePackageBuilder.CreateSession(record, captures, person, options),
-            folder,
-            cancellationToken
-        );
-
-    /// <inheritdoc/>
-    public Task<Result<string, DesktopError>> SaveSessionAsync(
-        FingerprintRecord record,
-        ImmutableArray<CapturedFingerprint> captures,
-        CapturePerson person,
-        string folder,
-        CancellationToken cancellationToken
-    ) =>
-        SavePackageAsync(
-            TemplatePackageBuilder.CreateSession(record, captures, person),
-            folder,
-            cancellationToken
-        );
-
     private static async Task<Result<string, DesktopError>> SavePackageAsync(
         Result<ImmutableArray<TemplatePackageFile>, DesktopError> package,
         string folder,
@@ -76,12 +47,8 @@ public sealed class TemplateStorage : ITemplateStorage, ITemplateSessionStorage
     {
         if (package.IsFailure)
             return package.Error;
-        return await DesktopEdge
-            .TryAsync(
-                () => PrivatePackageFiles.WriteAsync(package.Value, folder, cancellationToken),
-                "Storage.Write",
-                "The capture package could not be saved."
-            )
+        return await PrivatePackageFiles
+            .WriteAsync(package.Value, folder, cancellationToken)
             .ConfigureAwait(false);
     }
 

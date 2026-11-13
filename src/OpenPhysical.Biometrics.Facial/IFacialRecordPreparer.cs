@@ -8,6 +8,26 @@ using CSharpFunctionalExtensions;
 /// <summary>Prepares captured sRGB pixels as a PIV facial image record.</summary>
 public interface IFacialRecordPreparer
 {
+    /// <summary>Encodes a prepared portrait after checking reviewed head boundaries.</summary>
+    /// <param name="portrait">Source-bound prepared pixels and reviewed measurements.</param>
+    /// <param name="acquisition">Explicit camera and attended-capture findings.</param>
+    /// <returns>A canonical record or an explicit geometry/acquisition review outcome.</returns>
+    Result<FacialPreparationResult, FacialError> Prepare(
+        PortraitPreparationResult portrait,
+        FacialAcquisitionMetadata acquisition
+    );
+
+    /// <summary>Encodes a reviewed portrait under an explicit acquisition policy without changing its evidence.</summary>
+    /// <param name="portrait">Source-bound prepared pixels and reviewed measurements.</param>
+    /// <param name="acquisition">Actual camera and attended-capture findings, including unconfirmed findings.</param>
+    /// <param name="policy">Required evidence for this staging or acquisition workflow.</param>
+    /// <returns>A canonical record with separate acquisition findings, or an explicit review/profile outcome.</returns>
+    Result<FacialPreparationResult, FacialError> Prepare(
+        PortraitPreparationResult portrait,
+        FacialAcquisitionMetadata acquisition,
+        FacialPreparationPolicy policy
+    );
+
     /// <summary>Encodes an attended capture as JPEG 2000, preserving its original geometry.</summary>
     /// <param name="srgbPixels">Tightly packed red, green, blue bytes in row-major order, starting at the top left.</param>
     /// <param name="width">Original width in pixels.</param>

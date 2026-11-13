@@ -6,5 +6,5 @@ internal static class ProcessingStorageFixtures
     internal static CapturedFingerprint Capture() => HullStorageFixtures.Capture(true);
 
     internal static string Folder() =>
-        Path.Combine(Path.GetTempPath(), "processing-package-" + Guid.NewGuid().ToString("N"));
+        Path.Combine(PrivateTestPaths.Root, "processing-package-" + Guid.NewGuid().ToString("N"));
 }

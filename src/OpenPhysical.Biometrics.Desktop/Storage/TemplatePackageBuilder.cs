@@ -17,29 +17,6 @@ internal static class TemplatePackageBuilder
         FingerprintRecord record,
         ImmutableArray<CapturedFingerprint> captures,
         TemplateSaveOptions options
-    ) => CreateForSubjects(record, captures, [], options);
-
-    internal static Result<ImmutableArray<TemplatePackageFile>, DesktopError> CreateSession(
-        FingerprintRecord record,
-        ImmutableArray<CapturedFingerprint> captures,
-        CapturePerson person
-    ) => CreateSession(record, captures, person, TemplateSaveOptions.Default);
-
-    internal static Result<ImmutableArray<TemplatePackageFile>, DesktopError> CreateSession(
-        FingerprintRecord record,
-        ImmutableArray<CapturedFingerprint> captures,
-        CapturePerson person,
-        TemplateSaveOptions options
-    ) =>
-        CapturePerson
-            .Create(person.DisplayName, person.SubjectIdentifier)
-            .Bind(subject => CreateForSubjects(record, captures, [subject], options));
-
-    private static Result<ImmutableArray<TemplatePackageFile>, DesktopError> CreateForSubjects(
-        FingerprintRecord record,
-        ImmutableArray<CapturedFingerprint> captures,
-        ImmutableArray<CapturePerson> subjects,
-        TemplateSaveOptions options
     )
     {
         if (
@@ -63,13 +40,12 @@ internal static class TemplatePackageBuilder
                 "Storage.Association",
                 "The template does not contain the selected captured views."
             );
-        return CreateFiles(encoded.Value, captures, subjects, options);
+        return CreateFiles(encoded.Value, captures, options);
     }
 
     private static Result<ImmutableArray<TemplatePackageFile>, DesktopError> CreateFiles(
         byte[] encoded,
         ImmutableArray<CapturedFingerprint> captures,
-        ImmutableArray<CapturePerson> subjects,
         TemplateSaveOptions options
     )
     {
@@ -84,10 +60,7 @@ internal static class TemplatePackageBuilder
                 return image.Error;
             images.Add(image.Value);
         }
-        var manifest = new TemplateManifest(2, TemplateSha256.Of(encoded), images.ToImmutable())
-        {
-            Subjects = subjects,
-        };
+        var manifest = new TemplateManifest(2, TemplateSha256.Of(encoded), images.ToImmutable());
         files.Add(
             new TemplatePackageFile(
                 "fingerprints.json",

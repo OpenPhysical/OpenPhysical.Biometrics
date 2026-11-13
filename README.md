@@ -28,8 +28,16 @@ The libraries target **.NET 10**.
 - **OpenPhysical.Biometrics.Imaging** provides owned image buffers and Skia-backed
   decoding, encoding, and transforms.
 - **OpenPhysical.Biometrics.Tool** installs `biotool` for portrait preparation, text/JSON inspection, and selected-view template conversion.
-- **OpenPhysical.Biometrics.Desktop** provides OpenPhysical Biometric Studio, the Avalonia FS50 capture application,
-  unsigned fingerprint export, and template inspection with live-probe comparison.
+- **OpenPhysical.Biometrics.Capture.Camera** provides owned native webcam frames
+  behind a Result-based, cancellable camera interface.
+- **OpenPhysical.Biometrics.Packages** provides encrypted unsigned-person handoff
+  and shared private atomic file transactions.
+- **OpenPhysical.Biometrics.Presentation** provides the shared theme, controls,
+  encrypted package import and privacy lock, without capture or signing services.
+- **OpenPhysical.Biometrics.Desktop** provides the face-and-fingerprint capture
+  workspace and template inspection with live-probe comparison.
+- **OpenPhysical.Biometrics.Studio** launches the capture application and exports
+  encrypted person packages for the separate signing application.
 
 [NIST NBIS bindings](https://github.com/OpenPhysical/OpenPhysical.Biometrics.NBIS)
 provide MINDTCT extraction and Bozorth3 comparison. The independently versioned
@@ -37,15 +45,23 @@ provide MINDTCT extraction and Bozorth3 comparison. The independently versioned
 unified quality score. Each algorithm package carries its native runtime assets,
 source provenance, model identity, and upstream notices.
 
-## Capture and inspect with an FS50
+## Capture a person in Studio
 
 Run OpenPhysical Biometric Studio on macOS with .NET 10 and the FS50 attached:
 
 ```sh
-dotnet run --project src/OpenPhysical.Biometrics.Desktop
+dotnet run --project src/OpenPhysical.Biometrics.Studio
 ```
 
-Enter a **Name or label** for the person and choose the required fingers. Each new
+Enter a **Name or label** for the person. The default plan requires one face and
+two fingers; explicit face-only and fingerprint-only plans are also available.
+Choose Face to capture from a built-in or external webcam, review source-supported
+crown/ear boundaries, apply the portrait crop, then accept it separately. Camera
+optical qualification records the actual 20 cm target at 1.5 m measurement;
+nominal HD resolution does not establish PIV acquisition evidence. See
+[the facial operator guide](docs/FACE-STUDIO-WORKFLOW.md).
+
+Choose Fingerprints and select the required fingers. Each new
 person starts with one suggested finger from each hand; a single-finger plan can use any selected finger.
 Studio automatically connects to the FS50 at the manufacturer's nominal 500 ppi.
 Automatic capture selects one recent acknowledged image after the configured delay,
@@ -62,12 +78,15 @@ Advanced metadata starts with Vendor ID `0x0103` (**Vendor Unknown**), as select
 for the test workflow. It can be edited in decimal or `0x` hexadecimal. Product Type
 and Capture Equipment ID accept the same forms; zero records an unreported value.
 
-**Save person** creates a new capture directory containing an unsigned
-ANSI/INCITS 378-2004 `fingerprints.fmr`, each original Gray8 image as PNG, and
-`fingerprints.json` with capture timestamps, device/correction provenance,
-quality results and SHA-256 associations. The default macOS location is
+**Save person** creates one owner-only encrypted `.opbio` file containing the
+selected unsigned INCITS 385 face and/or INCITS 378 fingerprint record, evidence,
+and fingerprint PNG companions. The full camera frame is kept only in RAM.
+The default macOS location is
 `~/Library/Application Support/OpenPhysical/Private Biometrics/Captures`.
-Capture directories and files have owner-only permissions.
+A confirmed passphrase stays in owned memory until Lock, OS lock or exit. Clear
+person clears both modalities and comparison references while retaining that
+protection state and preferences. **Open person** authenticates and inspects the
+saved standard bytes without reprocessing. See [the package format](docs/PRIVATE-PACKAGES.md).
 
 In **Compare**, open an FMR or unwrapped PIV CBEFF fingerprint file, or read the
 fingerprint object from an inserted credential after explicitly entering its PIN.

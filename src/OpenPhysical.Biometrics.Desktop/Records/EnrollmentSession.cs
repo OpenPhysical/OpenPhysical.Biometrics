@@ -23,6 +23,10 @@ public sealed record EnrollmentSession
     /// <summary>Gets accepted captures without changing their original labels.</summary>
     public ImmutableArray<CapturedFingerprint> Accepted { get; }
 
+    /// <summary>Gets accepted captures in the explicit primary/secondary plan order.</summary>
+    public ImmutableArray<CapturedFingerprint> OrderedAccepted =>
+        [.. Plan.SelectMany(finger => Accepted.Where(value => value.Finger == finger))];
+
     /// <summary>Gets whether every planned finger is accepted.</summary>
     public bool Complete => Accepted.Length == Plan.Length;
 
@@ -115,8 +119,7 @@ public sealed record EnrollmentSession
     /// <returns>Ordered captures or an incomplete-session failure.</returns>
     public Result<ImmutableArray<CapturedFingerprint>, DesktopError> Selection() =>
         Complete
-            ? Plan.Select(finger => Accepted.Single(capture => capture.Finger == finger))
-                .ToImmutableArray()
+            ? OrderedAccepted
             : new DesktopError(
                 "Session.Incomplete",
                 "Capture and accept every planned finger before saving."

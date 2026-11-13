@@ -33,6 +33,9 @@ internal sealed class CompactWorkspaceTests
     {
         var host = DesktopServices.CreateHost();
         var workspace = host.Services.GetRequiredService<WorkspaceViewModel>();
+        await workspace.Export.Enrollment.SelectSectionCommand.ExecuteAsync(
+            workspace.Export.Enrollment.Sections.Single(section => section.Id == "fingerprints")
+        );
         foreach (var size in new[] { new Size(800, 600), new Size(1100, 760), new Size(1280, 880) })
         {
             var view = new EnrollmentView { DataContext = workspace };
@@ -84,6 +87,9 @@ internal sealed class CompactWorkspaceTests
     {
         var host = DesktopServices.CreateHost();
         var workspace = host.Services.GetRequiredService<WorkspaceViewModel>();
+        await workspace.Export.Enrollment.SelectSectionCommand.ExecuteAsync(
+            workspace.Export.Enrollment.Sections.Single(section => section.Id == "fingerprints")
+        );
         foreach (var size in new[] { new Size(800, 600), new Size(1100, 760), new Size(1280, 880) })
         {
             var window = WorkspaceTestWindow.Create(host, workspace, size);

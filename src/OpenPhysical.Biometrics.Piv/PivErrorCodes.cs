@@ -24,6 +24,9 @@ public static class PivErrorCodes
     /// <summary>The CBEFF record could not be serialized for signing.</summary>
     public const string InvalidRecord = "InvalidRecord";
 
+    /// <summary>Portrait geometry contains nonfinite or nonpositive measurements.</summary>
+    public const string InvalidPortraitMeasurements = "InvalidPortraitMeasurements";
+
     /// <summary>The external signing service failed.</summary>
     public const string SigningProviderFailed = "SigningProviderFailed";
 

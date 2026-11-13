@@ -24,6 +24,26 @@
     "maddie.jpeg": {
       "bytes": 92040,
       "sha256": "a8c930684d59acad95fc993216af8b9caa716e02ef14772d2b4875e6ef055fa4"
+    },
+    "closed-mouth.jpg": {
+      "bytes": 488865,
+      "sha256": "208fd52c10d9ab4c4cbc3ed4a77ab012d1b02a302882f67f864092c66781edb6"
+    },
+    "selfie-bush-input.png": {
+      "bytes": 100417,
+      "sha256": "3f2992e4a91350ebf8ec485962008b3acfeda342fd9b76e8791f480034f9b80f"
+    },
+    "selfie-bush-mask.f32.gz": {
+      "bytes": 50792,
+      "sha256": "6861456f7ff6d02fba0b78b5c24bcbec4bc1b05c7247a7dc7e3fd79d009e095a"
+    },
+    "selfie-glenn-input.png": {
+      "bytes": 97072,
+      "sha256": "34fa6b4644d1fcb0751bf1ac681ad91b8ed01e117c76ac5c9c95895fc3976e71"
+    },
+    "selfie-glenn-mask.f32.gz": {
+      "bytes": 56544,
+      "sha256": "db9ae22823b1cb70255e1a95f6e616e5c0290593eb8e2fc929eca7da13fefcc3"
     }
   }
 }

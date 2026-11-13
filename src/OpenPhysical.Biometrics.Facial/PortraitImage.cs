@@ -10,7 +10,7 @@ using Org.BouncyCastle.Crypto.Digests;
 public sealed class PortraitImage
 {
     internal const long MaximumPixels = 32 * 1024 * 1024;
-    private const int MaximumEncodedBytes = 64 * 1024 * 1024;
+    internal const int MaximumEncodedBytes = 64 * 1024 * 1024;
 
     private PortraitImage(PortraitPixels pixels, string sourceSha256)
     {

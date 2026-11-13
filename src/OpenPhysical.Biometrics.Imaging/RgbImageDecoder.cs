@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 using CSharpFunctionalExtensions;
-using SkiaSharp;
 
 namespace OpenPhysical.Biometrics.Imaging;
 
@@ -73,25 +72,19 @@ public static class RgbImageDecoder
         }
     }
 
-    private static Result<RgbImage, ImagingError> DecodeCodec(ReadOnlyMemory<byte> data)
-    {
-        using var encoded = SKData.CreateCopy(data.Span);
-        var created = Maybe.From(SKCodec.Create(encoded));
-        if (created.HasNoValue)
-            return ImagingErrors.FormatUnsupported().Fail<RgbImage>();
-        using var codec = created.Value;
-        var info = codec.Info;
-        if (!RgbImage.DimensionsValid(info.Width, info.Height))
-            return ImagingErrors.InvalidDimensions().Fail<RgbImage>();
-        using var bitmap = new SKBitmap(
-            new SKImageInfo(info.Width, info.Height, SKColorType.Rgba8888, SKAlphaType.Unpremul)
-        );
-        return codec.GetPixels(bitmap.Info, bitmap.GetPixels()) == SKCodecResult.Success
-            ? Result.Success<RgbImage, ImagingError>(
-                RgbImage.Adopt(SkiaBridge.ReadPixels(bitmap), info.Width, info.Height)
-            )
-            : ImagingErrors.DecodeFailed().Fail<RgbImage>();
-    }
+    /// <summary>Decodes opaque sRGB pixels and applies EXIF orientation exactly once.</summary>
+    /// <param name="data">Encoded camera image, limited to 64 MiB and 32 megapixels.</param>
+    /// <returns>An owned image or an explicit decoding, size, or transparency failure.</returns>
+    public static Result<RgbImage, ImagingError> LoadSrgbOpaque(ReadOnlyMemory<byte> data) =>
+        data.Length is < 1 or > 64 * 1024 * 1024
+            ? ImagingErrors.EncodedSizeInvalid().Fail<RgbImage>()
+            : ImagingGuard.TryBind(
+                () => SkiaImageDecoder.Decode(data, ImageDecodePolicy.Portrait),
+                ImagingErrorCodes.SkiaFailure
+            );
+
+    private static Result<RgbImage, ImagingError> DecodeCodec(ReadOnlyMemory<byte> data) =>
+        SkiaImageDecoder.Decode(data, ImageDecodePolicy.General);
 
     private static Result<byte[], ImagingError> ReadLimited(Stream stream)
     {

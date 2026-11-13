@@ -5,21 +5,22 @@
     x:Class="OpenPhysical.Biometrics.Desktop.MainWindow"
     x:DataType="local:WorkspaceViewModel"
     Title="OpenPhysical Biometric Studio"
-    Icon="/Assets/Fingerprint.png"
+    Icon="avares://OpenPhysical.Biometrics.Presentation/Assets/Fingerprint.png"
     Width="1100"
     Height="760"
     MinWidth="800"
     MinHeight="600"
 >
     <Grid Margin="16">
-        <TabControl Classes="segmented navigation">
+        <TabControl
+            x:Name="WorkspaceTabs"
+            Classes="segmented navigation"
+            SelectionChanged="CaptureTabChanged"
+        >
             <TabItem Header="Capture">
                 <local:EnrollmentView />
             </TabItem>
-            <TabItem
-                Header="Compare"
-                IsEnabled="{Binding !Export.Enrollment.Fingerprints.Adjustment.IsOpen}"
-            >
+            <TabItem Header="Compare" IsEnabled="{Binding !Export.Enrollment.IsEditing}">
                 <local:VerificationView />
             </TabItem>
         </TabControl>
@@ -32,7 +33,8 @@
             <Button
                 Classes="Flat compact"
                 Content="Image adjustments"
-                IsEnabled="{Binding !Export.Enrollment.Fingerprints.Adjustment.IsOpen}"
+                IsVisible="{Binding Export.Enrollment.FingerprintsActive}"
+                IsEnabled="{Binding !Export.Enrollment.IsEditing}"
                 AutomationProperties.Name="Image adjustments"
                 ToolTip.Tip="Brightness and contrast preview live. Segmentation and enhancement run after capture. Use Adjust capture before accepting the finger."
             >
@@ -43,10 +45,15 @@
                 </Button.Flyout>
             </Button>
             <Button
+                Classes="Flat compact"
+                Content="Open person"
+                Command="{Binding Export.OpenCommand}"
+            />
+            <Button
                 x:Name="SettingsButton"
                 Classes="Flat compact"
                 Content="Settings"
-                IsEnabled="{Binding !Export.Enrollment.Fingerprints.Adjustment.IsOpen}"
+                IsEnabled="{Binding !Export.Enrollment.IsEditing}"
                 AutomationProperties.Name="Settings"
             >
                 <Button.Flyout>
@@ -54,6 +61,28 @@
                         <ScrollViewer MaxHeight="480" HorizontalScrollBarVisibility="Disabled">
                             <StackPanel Width="360" Spacing="16">
                                 <TextBlock Classes="section" Text="Settings" />
+                                <Expander x:Name="CameraSetupExpander" Header="Camera setup">
+                                    <ContentControl Content="{Binding Export.CameraSetupContent}">
+                                        <ContentControl.DataTemplates>
+                                            <DataTemplate DataType="local:CameraSetupViewModel">
+                                                <local:CameraSetupPanel />
+                                            </DataTemplate>
+                                        </ContentControl.DataTemplates>
+                                    </ContentControl>
+                                </Expander>
+                                <Expander Header="Package protection">
+                                    <StackPanel Spacing="8">
+                                        <TextBlock
+                                            Text="{Binding Export.Protection.Status}"
+                                            Classes="caption"
+                                        />
+                                        <Button
+                                            Content="Forget passphrase"
+                                            Classes="Flat"
+                                            Command="{Binding Export.Protection.LockCommand}"
+                                        />
+                                    </StackPanel>
+                                </Expander>
                                 <StackPanel Spacing="8">
                                     <TextBlock Classes="label" Text="Comparison score threshold" />
                                     <TextBox
@@ -61,8 +90,33 @@
                                         AutomationProperties.Name="Comparison score threshold"
                                     />
                                 </StackPanel>
+                                <StackPanel Spacing="8">
+                                    <TextBlock Classes="label" Text="Mouth closure tolerance (%)" />
+                                    <NumericUpDown
+                                        Text="{Binding Settings.MouthTolerancePercent, Mode=TwoWay}"
+                                        Minimum="0"
+                                        Maximum="100"
+                                        Increment="0.5"
+                                        FormatString="0.##"
+                                        ClipValueToMinMax="False"
+                                        AutomationProperties.Name="Mouth closure tolerance (%)"
+                                    />
+                                    <TextBlock
+                                        Classes="caption"
+                                        Text="Percent of mouth width. Higher values allow a wider lip gap."
+                                        TextWrapping="Wrap"
+                                    />
+                                </StackPanel>
                                 <CheckBox
-                                    Content="Auto capture"
+                                    Content="Auto capture photos"
+                                    IsChecked="{Binding Settings.FaceAutoCapture}"
+                                />
+                                <CheckBox
+                                    Content="Replace photo background"
+                                    IsChecked="{Binding Settings.FaceBackgroundReplacement}"
+                                />
+                                <CheckBox
+                                    Content="Auto capture fingerprints"
                                     IsChecked="{Binding Settings.AutoCapture}"
                                 />
                                 <StackPanel Spacing="8">
@@ -78,6 +132,11 @@
                                         FormatString="0.0"
                                         ClipValueToMinMax="False"
                                         AutomationProperties.Name="Auto capture delay (seconds)"
+                                    />
+                                    <TextBlock
+                                        Classes="caption"
+                                        Text="Used for photos and fingerprints."
+                                        TextWrapping="Wrap"
                                     />
                                 </StackPanel>
                                 <CheckBox
@@ -164,9 +223,10 @@
                 </Button.Flyout>
             </Button>
             <Button
+                x:Name="ClearPersonButton"
                 Classes="Flat compact"
                 Content="Clear person"
-                Command="{Binding Export.ClearPersonCommand}"
+                Command="{Binding ClearPersonCommand}"
                 IsEnabled="{Binding !Export.SaveCommand.IsRunning}"
             />
         </StackPanel>

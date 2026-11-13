@@ -44,27 +44,28 @@ internal sealed class EnrollmentPlanTests
     public async Task SuccessfulCaptureWaitsForExplicitAcceptanceAndExportsTheOriginalSnapshots()
     {
         var storage = new ControlledExportStorage();
-        storage.Completed.SetResult(Result.Success<string, DesktopError>("saved.fmr"));
+        storage.Completed.SetResult(Result.Success<string, DesktopError>("saved.opbio"));
         await using var context = new EnrollmentOperatorContext(
             storage,
             EnrollmentTestSuggestions.IndexPair()
         );
         var model = context.Export.Enrollment.Fingerprints;
         context.Export.Enrollment.Person.Name = "Sample person";
-        var first = StorageFixtures.Capture(FingerPosition.RightIndex);
+        var first = context.NativeCapture(FingerPosition.RightIndex);
         await context.PresentAsync(first);
         model.PrimaryLabel.Should().Be("Waiting for acceptance");
         model.SecondaryLabel.Should().Be("Waiting for capture");
         model.Progress.Should().Be("0 of 2 fingerprints accepted");
         await model.AcceptCommand.ExecuteAsync(default);
         model.PrimaryLabel.Should().Be("Right Index accepted");
-        var second = StorageFixtures.Capture(FingerPosition.LeftIndex);
+        var second = context.NativeCapture(FingerPosition.LeftIndex);
         await context.PresentAsync(second);
         model.SecondaryLabel.Should().Be("Waiting for acceptance");
         model.PrimaryLabel.Should().Be("Right Index accepted");
         await model.AcceptCommand.ExecuteAsync(default);
         await context.Export.SaveCommand.ExecuteAsync(default);
-        storage.Accepted.Should().Equal(first, second);
+        model.AcceptedCaptures.Should().Equal(first, second);
+        storage.Saves.Should().Be(1);
     }
 
     [Test]

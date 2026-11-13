@@ -16,13 +16,13 @@ internal static class PortraitFaceSelector
             return Review(
                 PortraitStatus.NoFace,
                 "NoFace",
-                "No face passed detection and presence checks."
+                "No face was found. Retake with your whole face visible."
             );
         return faceIndex.HasNoValue && faces.Length != 1
             ? Review(
                 PortraitStatus.FaceSelectionRequired,
                 "SelectFace",
-                "Select one face by its stable index."
+                "More than one face was found."
             )
             : Maybe<PortraitReview>.None;
     }
@@ -39,5 +39,13 @@ internal static class PortraitFaceSelector
         PortraitStatus status,
         string code,
         string message
-    ) => new PortraitReview(status, new PortraitFinding(code, message));
+    ) =>
+        new PortraitReview(
+            status,
+            new PortraitFinding(code, message)
+            {
+                TestName = code == "NoFace" ? "Face detection" : "Single face",
+                Action = PortraitFindingAction.Retake,
+            }
+        );
 }

@@ -24,7 +24,7 @@ internal sealed class LiveEnrollmentCaptureRig : IAsyncDisposable
                 new ScriptedCredentialTransport(new ScriptedCredentialCard())
             )
         );
-        Export = new ExportViewModel(
+        Export = EnrollmentExportFixtures.Create(
             View,
             new ControlledExportStorage(),
             EnrollmentTestSuggestions.IndexPair(),

@@ -24,8 +24,9 @@ internal sealed class CapturePolicySettingsTests
             value =>
             {
                 applied = value;
-                return UnitResult.Success<DesktopError>();
-            }
+                return Task.FromResult(UnitResult.Success<DesktopError>());
+            },
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<SettingsViewModel>.Instance
         );
         (await view.InitializeAsync()).Should().Succeed();
         view.Threshold = "65";

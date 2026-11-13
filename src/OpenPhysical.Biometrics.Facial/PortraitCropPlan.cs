@@ -22,7 +22,7 @@ public sealed record PortraitCropPlan(
         var transform = new PortraitTransform(
             rotation.A * scale,
             rotation.B * scale,
-            240 - frame.Center * scale,
+            PortraitOutput.Width / 2 - frame.Center * scale,
             eyeY - frame.Eye.Y * scale
         );
         var crown = review.Bind(r => r.Crown);
@@ -31,7 +31,7 @@ public sealed record PortraitCropPlan(
         var measures = new PortraitMeasurements(
             scale * frame.HeadWidth,
             scale * frame.HeadHeight,
-            eyeY / 640,
+            eyeY / PortraitOutput.Height,
             crown.HasValue && left.HasValue && right.HasValue
         )
         {

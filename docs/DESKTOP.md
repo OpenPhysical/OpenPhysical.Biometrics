@@ -1,9 +1,49 @@
 # OpenPhysical Biometric Studio
 
-OpenPhysical Biometric Studio captures a selected finger from a Futronic FS50,
-exports an unsigned ANSI/INCITS 378-2004 minutiae record, and inspects and compares
-saved records. It uses the shared FS50 acquisition path, NIST NBIS extraction and
-Bozorth3 matching, NFIQ 1 classification, and supplemental NFIQ 2 image quality.
+OpenPhysical Biometric Studio captures a face and fingerprints for the same person,
+reviews their unsigned standard records, and saves an encrypted `.opbio` package
+for a later signing and issuance tool. The default plan requires one face and two
+fingers. Face-only and fingerprint-only plans are explicit choices under Required captures.
+
+The shared facial pipeline detects faces and prepares reviewed Full Frontal
+portraits. Fingerprints use the existing FS50/NBIS/Bozorth3/NFIQ path.
+[Facial capture and camera setup](FACE-STUDIO-WORKFLOW.md) describes the operator
+review, optical evidence, and camera lifecycle.
+[Package protection](PRIVATE-PACKAGES.md) specifies the reusable encrypted format.
+
+## Shared desktop composition
+
+`OpenPhysical.Biometrics.Desktop` is the reusable Avalonia library. It retains the
+Studio shell, controls, compiled resources, privacy handling and capture lifetime.
+`OpenPhysical.Biometrics.Studio` is its thin executable:
+
+```sh
+dotnet run --project src/OpenPhysical.Biometrics.Studio
+```
+
+A trusted application derives from `DesktopApplication` and overrides `CreateHost`
+with `DesktopServices.CreateHost(services => ...)`. It registers its display name
+as `DesktopApplicationIdentity` and application tasks as `IStudioWorkspaceFeature`.
+Feature tabs follow Capture and Compare and share `StudioStagePanel` and the
+existing theme. Navigation pauses both biometric streams before feature activation;
+privacy lock and shutdown cancel and drain every feature. `PauseAsync` must cancel
+an incomplete activation as well as active operations.
+
+`ExportViewModel.PrepareAcceptedPackage()` returns an immutable
+`AcceptedBiometricSnapshot` containing the existing unsigned `BiometricPackage`
+objects and capture evidence. It writes no files and requires accepted captures.
+A signing application calls `ValidateAcceptedPackage(snapshot)` after asynchronous
+preparation and before dispatch to reject changed identity, artifacts, capture plan
+or privacy generation. This API does not create a PIV signature or assign a card
+identity; the issuance application supplies those separately.
+
+Applications selecting a Directory or server person use
+`StudioPersonSelection.Select(personId, name, identifier)` before capture. It binds
+the existing person model's `AuthoritativePersonId`, and the package uses that GUID
+as its person ID. Reassigning captured or accepted records is rejected. Editing
+identity fields or clearing the person invalidates the trusted selection and any
+retained snapshot. The signing application checks this selected ID against its
+authenticated issuance person before dispatch.
 
 ## Build and launch on macOS
 
@@ -45,10 +85,10 @@ native architectures and dependencies, rewrites local dylib references, removes
 development-directory runtime search paths, and verifies a local ad-hoc signature.
 The app can be launched from Finder without relying on the working directory.
 
-The session keeps person details in one shared model. Its registered fingerprint
-section owns the required finger plan, accepted captures, and package writer.
-`IEnrollmentSection` gives each section a stable identifier, display model,
-completion state, reset operation, and typed saved-artifact result.
+The session keeps person details in one shared model. Each registered capture
+section owns its modality's planning, review, accepted artifacts, reset and source
+lifetime. Sections return immutable standard artifacts to one package writer;
+they do not independently publish folders.
 
 ## Capture a finger
 
@@ -168,7 +208,7 @@ exposure settings; application preferences remain unchanged. It leaves saved fil
 An accepted capture remains available if the scanner is disconnected or its
 session expires. Resuming preview rediscovers and reconnects the scanner.
 
-## Save an unsigned template
+## Save an unsigned person package
 
 The **Save options** popup starts with Vendor ID `0x0103`, **Vendor Unknown**,
 as selected for the test workflow. Edit **Vendor ID**, **Product Type**, and
@@ -188,8 +228,12 @@ The default destination on macOS is:
 ~/Library/Application Support/OpenPhysical/Private Biometrics/Captures
 ```
 
-Each save creates a separate private directory containing `fingerprints.fmr`,
-`fingerprints.json`, and lossless original and processing PNGs for every view.
+Each save creates an opaque, owner-only `.opbio` ciphertext file. It contains the
+selected `face.bin` and/or `fingerprints.fmr`, their evidence and associations,
+and fingerprint companions. No plaintext package intermediates are written.
+The face artifact contains only the accepted portrait, not the camera frame.
+For fingerprint plans, `fingerprints.json` and lossless original and processing
+PNGs are retained inside the encrypted archive.
 The current Studio package records measured selected contact (C), inferred enclosed
 holes (H), the feature region (F), measured ridge support (S), feature uncertainty
 (F minus S), and processing context (E) as distinct roles. Context references the
@@ -211,12 +255,22 @@ image. Live packages require the recorded original whole-contact decision and it
 complete policy and source associations. Offline packages explicitly record that
 physical qualification is absent. Loading recorded metadata never creates a live
 sensor authorization.
-Studio accepts one current package format;
+The internal fingerprint companion reader accepts one current format;
 unsupported package markers or incomplete processing evidence fail with a precise
 error. Standalone ANSI 378 and raw CBEFF imports remain independent of Studio
 companions. The unsigned FMR contains no PIV CBEFF signature or card encryption.
 The default destination persists across reboot outside the source checkout, with
 owner-only directory and file permissions on macOS.
+
+**Save person** becomes available when the selected plan and identity are complete.
+The first save establishes a passphrase of at least 15 Unicode characters and asks
+for confirmation. It stays in owned memory until **Forget passphrase**, OS lock,
+or exit. Clear person retains this independent protection state. There is no
+passphrase recovery. Saved packages are not deleted when clearing or locking.
+
+**Open person** authenticates and decrypts an `.opbio` package, then opens a
+read-only review of its standard records and verified image companions. Reopening
+does not rerun facial detection, NIST quality assessment, or extraction.
 
 ## Verify and visualize
 
@@ -303,5 +357,8 @@ persistent action footers. All text uses its bundled Roboto family through
 follows [Material font guidance](https://m3.material.io/styles/typography/fonts). Optional identifier, scanner and save settings open in
 focused popups, keeping the required person and finger plan visible. This package
 implements Material 2 controls; the custom visual treatment does not claim a
-Material 3 implementation. Shared styles live in `Views/DesktopTheme.axaml`; both
-workspaces use the same canonical fingerprint canvas.
+Material 3 implementation. Shared styles live in
+`src/OpenPhysical.Biometrics.Presentation/Views/DesktopTheme.axaml`. The presentation
+library also owns the encrypted package picker, unlock dialog and privacy lock.
+It contains no capture or signing services. Both biometric workspaces use the same
+canonical fingerprint canvas in the capture application.

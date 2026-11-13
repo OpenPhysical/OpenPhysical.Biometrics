@@ -18,8 +18,11 @@ internal static class PreferencesJson
                 schemaVersion = 1,
                 comparisonThreshold = preferences.ComparisonThreshold,
                 autoCapture = preferences.AutoCapture,
+                faceAutoCapture = preferences.FaceAutoCapture,
+                faceBackgroundReplacement = preferences.FaceBackgroundReplacement,
                 invertImage = preferences.InvertImage,
                 autoCaptureDelaySeconds = preferences.AutoCaptureDelaySeconds,
+                mouthMaximumOpeningRatio = preferences.MouthPolicy.MaximumOpeningRatio,
                 imageAdjustments = new
                 {
                     automaticEnhancement = preferences.ImageAdjustments.AutomaticEnhancement,
@@ -36,7 +39,7 @@ internal static class PreferencesJson
         var root = document.RootElement;
         if (
             root.ValueKind != JsonValueKind.Object
-            || root.EnumerateObject().Count() != 7
+            || root.EnumerateObject().Count() != 10
             || !root.TryGetProperty("schemaVersion", out var schema)
             || schema.ValueKind != JsonValueKind.Number
             || !schema.TryGetInt32(out var version)
@@ -48,28 +51,37 @@ internal static class PreferencesJson
             return Invalid();
         return ReadCommon(root)
             .Bind(values =>
-                DesktopPreferences.Create(
-                    values.Threshold,
-                    values.Automatic,
-                    values.Invert,
-                    seconds
-                )
+                DesktopPreferences
+                    .Create(values.Threshold, values.Automatic, values.Invert, seconds)
+                    .Map(value =>
+                        value with
+                        {
+                            FaceAutoCapture = values.AutomaticPhoto,
+                            FaceBackgroundReplacement = values.ReplaceBackground,
+                        }
+                    )
             )
-            .Bind(preferences =>
-                ImageAdjustmentJson
-                    .Read(root)
-                    .Map(settings => preferences with { ImageAdjustments = settings })
-            )
-            .Bind(preferences =>
-                CapturePolicyJson
-                    .Read(root)
-                    .Map(policy => preferences with { CapturePolicy = policy })
-            );
+            .Bind(preferences => ReadPolicies(root, preferences));
     }
 
-    private static Result<(int Threshold, bool Automatic, bool Invert), DesktopError> ReadCommon(
-        JsonElement root
-    )
+    private static Result<DesktopPreferences, DesktopError> ReadPolicies(
+        JsonElement root,
+        DesktopPreferences preferences
+    ) =>
+        ImageAdjustmentJson
+            .Read(root)
+            .Map(settings => preferences with { ImageAdjustments = settings })
+            .Bind(value =>
+                CapturePolicyJson.Read(root).Map(policy => value with { CapturePolicy = policy })
+            )
+            .Bind(value =>
+                MouthPolicyInput.Read(root).Map(policy => value with { MouthPolicy = policy })
+            );
+
+    private static Result<
+        (int Threshold, bool Automatic, bool AutomaticPhoto, bool ReplaceBackground, bool Invert),
+        DesktopError
+    > ReadCommon(JsonElement root)
     {
         if (
             !root.TryGetProperty("comparisonThreshold", out var threshold)
@@ -77,11 +89,21 @@ internal static class PreferencesJson
             || !threshold.TryGetInt32(out var value)
             || !root.TryGetProperty("autoCapture", out var auto)
             || auto.ValueKind is not (JsonValueKind.True or JsonValueKind.False)
+            || !root.TryGetProperty("faceAutoCapture", out var photo)
+            || photo.ValueKind is not (JsonValueKind.True or JsonValueKind.False)
+            || !root.TryGetProperty("faceBackgroundReplacement", out var background)
+            || background.ValueKind is not (JsonValueKind.True or JsonValueKind.False)
             || !root.TryGetProperty("invertImage", out var invert)
             || invert.ValueKind is not (JsonValueKind.True or JsonValueKind.False)
         )
             return Invalid();
-        return (value, auto.GetBoolean(), invert.GetBoolean());
+        return (
+            value,
+            auto.GetBoolean(),
+            photo.GetBoolean(),
+            background.GetBoolean(),
+            invert.GetBoolean()
+        );
     }
 
     private static DesktopError Invalid() =>

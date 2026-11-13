@@ -5,7 +5,7 @@ internal sealed class SettingsTestFile : IDisposable
 {
     internal string Folder { get; } =
         System.IO.Path.Combine(
-            System.IO.Path.GetTempPath(),
+            PrivateTestPaths.Root,
             "biometrics-settings-" + Guid.NewGuid().ToString("N")
         );
     internal string Path => System.IO.Path.Combine(Folder, "preferences.json");

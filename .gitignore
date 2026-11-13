@@ -396,3 +396,19 @@ datasets/
 /temp_fp.txt
 /extract_twic.py
 /extract_with_opensc.sh
+
+# Local secrets, PKI material and runtime state
+.env
+.env.*
+!.env.example
+!.env.template
+*.pem
+*.key
+*.p12
+*.cer
+*.crt
+*.der
+*.db
+*.db-*
+*.sqlite*
+/output/

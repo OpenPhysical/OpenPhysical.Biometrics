@@ -26,6 +26,7 @@ internal sealed class CaptureScannerControls
 
     internal Task<UnitResult<DesktopError>> RestoreDefaultsAsync()
     {
+        coordinator.SensorEvidence.Clear();
         view.Exposure = DesktopCaptureDefaults.Exposure;
         view.AutomaticExposure = true;
         return coordinator.SetExposureAsync(DesktopCaptureDefaults.Exposure, true);

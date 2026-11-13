@@ -57,17 +57,6 @@
           "CSharpFunctionalExtensions": "[3.7.0, )"
         }
       }
-    },
-    "net10.0/osx-arm64": {
-      "UsbDotNet.LibUsbNative": {
-        "type": "Direct",
-        "requested": "[1.4.2, )",
-        "resolved": "1.4.2",
-        "contentHash": "8rmqg/KqUT0XgHU3EtZx/6T4B+UDpleR7QL6R1zUqozbwdi9fAqI74f/rCxnbo/c+VlY6LJM+uB5KKv/W411vA==",
-        "dependencies": {
-          "UsbDotNet.Core": "1.4.2"
-        }
-      }
     }
   }
 }

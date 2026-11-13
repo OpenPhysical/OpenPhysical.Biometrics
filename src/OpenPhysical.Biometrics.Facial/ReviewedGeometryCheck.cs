@@ -14,30 +14,33 @@ internal static class ReviewedGeometryCheck
     ) =>
         geometry.HasNoValue
             ? faceIndex.Succeed()
-            : Validate(geometry.Value, source, faceIndex)
+            : Validate(
+                    geometry.Value,
+                    source.Hash,
+                    source.Image.Width,
+                    source.Image.Height,
+                    faceIndex
+                )
                 .Map(() => Maybe.From(geometry.Value.FaceIndex));
 
-    private static UnitResult<FacialError> Validate(
+    internal static UnitResult<FacialError> Validate(
         ReviewedPortraitGeometry geometry,
-        PortraitSource source,
+        string hash,
+        int width,
+        int height,
         Maybe<int> faceIndex
     )
     {
-        var image = source.Image;
         if (
             geometry.Version != 1
-            || !string.Equals(
-                source.Hash,
-                geometry.SourceSha256,
-                StringComparison.OrdinalIgnoreCase
-            )
-            || geometry.Width != image.Width
-            || geometry.Height != image.Height
+            || !string.Equals(hash, geometry.SourceSha256, StringComparison.OrdinalIgnoreCase)
+            || geometry.Width != width
+            || geometry.Height != height
             || geometry.FaceIndex < 0
             || (faceIndex.HasValue && faceIndex.Value != geometry.FaceIndex)
         )
             return UnitResult.Failure(FacialErrors.GeometryMismatch());
-        return Points(geometry).All(point => Inside(point, image))
+        return Points(geometry).All(point => Inside(point, width, height))
             ? UnitResult.Success<FacialError>()
             : UnitResult.Failure(FacialErrors.GeometryPointInvalid());
     }
@@ -47,11 +50,11 @@ internal static class ReviewedGeometryCheck
             .Where(point => point.HasValue)
             .Select(point => point.Value);
 
-    private static bool Inside(PortraitPoint point, PortraitPixels image) =>
+    private static bool Inside(PortraitPoint point, int width, int height) =>
         double.IsFinite(point.X)
         && double.IsFinite(point.Y)
         && point.X >= 0
         && point.Y >= 0
-        && point.X < image.Width
-        && point.Y < image.Height;
+        && point.X < width
+        && point.Y < height;
 }

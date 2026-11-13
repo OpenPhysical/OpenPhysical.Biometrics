@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 using System.Reflection;
 using Avalonia;
+using Avalonia.Controls;
 using Avalonia.Headless;
 using Avalonia.Headless.NUnit;
 using AwesomeAssertions;
@@ -17,10 +18,12 @@ internal static class DesktopTestApplication
 {
     public static AppBuilder BuildAvaloniaApp() =>
         AppBuilder
-            .Configure<DesktopApplication>()
+            .Configure<SharedShellTestApplication>()
             .UseSkia()
             .UseHeadless(new AvaloniaHeadlessPlatformOptions { UseHeadlessDrawing = false });
 }
+
+internal sealed class SharedShellTestApplication : DesktopApplication { }
 
 [TestFixture]
 internal sealed class DesktopCompositionTests
@@ -35,7 +38,7 @@ internal sealed class DesktopCompositionTests
         window.Title.Should().Be("OpenPhysical Biometric Studio");
         Application
             .Current.Should()
-            .BeOfType<DesktopApplication>()
+            .BeAssignableTo<DesktopApplication>()
             .Which.Name.Should()
             .Be("OpenPhysical Biometric Studio");
         var assembly = typeof(DesktopApplication).Assembly;
@@ -54,6 +57,28 @@ internal sealed class DesktopCompositionTests
         window.DataContext.Should().BeSameAs(workspace);
         workspace.Capture.CaptureCommand.CanExecute(default).Should().BeFalse();
         workspace.Inspection.Threshold.Should().Be(40);
+        await ((IAsyncDisposable)host).DisposeAsync();
+    }
+
+    [AvaloniaTest]
+    public async Task TrustedFeatureUsesTheCompiledSharedShellAndApplicationTitle()
+    {
+        var feature = new StudioTestFeature();
+        var host = DesktopServices.CreateHost(services =>
+            services
+                .AddSingleton(new DesktopApplicationIdentity("OpenPhysical Signing", 2))
+                .AddSingleton<IStudioWorkspaceFeature>(feature)
+        );
+        var window = new MainWindow(host);
+        window.Title.Should().Be("OpenPhysical Signing");
+        var tabs = window.FindControl<Avalonia.Controls.TabControl>("WorkspaceTabs");
+        tabs.Should().NotBeNull();
+        tabs!.Items.Should().HaveCount(3);
+        tabs.SelectedIndex.Should().Be(2);
+        var task = tabs.Items.OfType<Avalonia.Controls.TabItem>().Last();
+        task.Header.Should().Be(feature.Title);
+        task.Content.Should().BeSameAs(feature.Content);
+        Application.Current!.Styles.Should().NotBeEmpty();
         await ((IAsyncDisposable)host).DisposeAsync();
     }
 }

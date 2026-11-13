@@ -1,0 +1,44 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <Description>Bounded RGB webcam acquisition using native platform camera providers.</Description>
+        <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+    </PropertyGroup>
+    <ItemGroup>
+        <PackageReference Include="FlashCap" Version="1.13.0" />
+        <PackageReference Include="CSharpFunctionalExtensions" Version="3.7.0" />
+        <ProjectReference Include="../OpenPhysical.Biometrics.Imaging/OpenPhysical.Biometrics.Imaging.csproj" />
+    </ItemGroup>
+    <ItemGroup>
+        <None
+            Update="Notices/FlashCap-Apache-2.0.txt"
+            Pack="true"
+            PackagePath="licenses/"
+            CopyToOutputDirectory="PreserveNewest"
+        />
+    </ItemGroup>
+    <PropertyGroup Condition="$([MSBuild]::IsOSPlatform('OSX'))">
+        <CameraNativeRuntime>$(NETCoreSdkRuntimeIdentifier)</CameraNativeRuntime>
+        <CameraNativeOutput>$(MSBuildProjectDirectory)/../../artifacts/native/camera/$(CameraNativeRuntime)/libopenphysical_camera.dylib</CameraNativeOutput>
+    </PropertyGroup>
+    <ItemGroup Condition="$([MSBuild]::IsOSPlatform('OSX'))">
+        <CameraNativeSource Include="native/macos/**/*" />
+        <Content
+            Include="$(CameraNativeOutput)"
+            Link="libopenphysical_camera.dylib"
+            CopyToOutputDirectory="PreserveNewest"
+            CopyToPublishDirectory="PreserveNewest"
+            Pack="true"
+            PackagePath="runtimes/$(CameraNativeRuntime)/native/"
+        />
+    </ItemGroup>
+    <Target
+        Name="BuildMacCameraBridge"
+        BeforeTargets="GetCopyToOutputDirectoryItems;CoreCompile"
+        Condition="$([MSBuild]::IsOSPlatform('OSX'))"
+        Inputs="@(CameraNativeSource)"
+        Outputs="$(CameraNativeOutput)"
+    >
+        <Exec Command="bash &quot;$(MSBuildProjectDirectory)/native/macos/build.sh&quot; &quot;$(CameraNativeOutput)&quot;" />
+    </Target>
+</Project>

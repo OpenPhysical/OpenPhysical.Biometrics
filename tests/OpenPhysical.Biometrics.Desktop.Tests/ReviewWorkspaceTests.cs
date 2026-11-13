@@ -21,6 +21,8 @@ internal sealed class ReviewWorkspaceTests
         var host = DesktopServices.CreateHost();
         var workspace = host.Services.GetRequiredService<WorkspaceViewModel>();
         var enrollment = workspace.Export.Enrollment;
+        enrollment.Plan = CapturePlanChoice.Fingerprints;
+        await enrollment.SelectSectionCommand.ExecuteAsync(enrollment.Sections.Single());
         enrollment.Person.Name = "Sample person";
         enrollment.Fingerprints.PrimaryFinger = FingerChoice.For(FingerPosition.RightIndex);
         enrollment.Fingerprints.SecondaryFinger = FingerChoice.For(FingerPosition.LeftIndex);

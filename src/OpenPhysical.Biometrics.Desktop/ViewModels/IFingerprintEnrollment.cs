@@ -32,6 +32,9 @@ public interface IFingerprintEnrollment : INotifyPropertyChanged
     /// <summary>Gets whether the selected capture is accepted.</summary>
     bool ActiveAccepted { get; }
 
+    /// <summary>Gets the explicitly accepted captures in primary/secondary order.</summary>
+    ImmutableArray<CapturedFingerprint> AcceptedCaptures { get; }
+
     /// <summary>Gets whether a slot operation is running.</summary>
     bool IsBusy { get; }
 

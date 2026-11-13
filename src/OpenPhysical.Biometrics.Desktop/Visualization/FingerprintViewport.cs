@@ -40,18 +40,7 @@ internal sealed class FingerprintViewport
             () => new Rect(0, 0, scene.Width, scene.Height)
         );
         var padding = framing.Match(value => value.Final ? 12.0 : 0, () => 0);
-        padding = Math.Min(padding, Math.Min(viewport.Width, viewport.Height) / 4);
-        var scale =
-            Math.Min(
-                (viewport.Width - padding * 2) / region.Width,
-                (viewport.Height - padding * 2) / region.Height
-            ) * Zoom;
-        var offset =
-            new Vector(
-                viewport.Width / 2 - region.Center.X * scale,
-                viewport.Height / 2 - region.Center.Y * scale
-            ) + Pan;
-        return (scale, offset);
+        return ImageViewportTransform.Fit(viewport, region, Zoom, Pan, padding);
     }
 
     internal bool HandleKey(Key key) =>

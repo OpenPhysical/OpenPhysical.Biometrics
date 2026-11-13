@@ -30,7 +30,10 @@ internal static class TestFixtures
         points[13] = new(600, 800, 0);
         points[14] = new(600, 810, 0);
         return (
-            new(0, .99, .99, points.ToImmutableArray(), new(440, 650), new(760, 650)),
+            new(0, .99, .99, points.ToImmutableArray(), new(440, 650), new(760, 650))
+            {
+                Pose = new PortraitPoseEstimate(0, 0, 0, 63),
+            },
             new(
                 1,
                 "fixture",
@@ -43,5 +46,29 @@ internal static class TestFixtures
                 new PortraitPoint(760, 650)
             )
         );
+    }
+
+    internal static (
+        PortraitPreparationResult Portrait,
+        ReviewedPortraitGeometry Review
+    ) PreparedPortrait()
+    {
+        using var service = TestFixtures.NewPreparer();
+        var analysis = service
+            .Analyze(PortraitImage.Decode(TestFixtures.Bytes("bush.jpg")).Value)
+            .Value;
+        var review = new ReviewedPortraitGeometry(
+            1,
+            analysis.SourceSha256,
+            808,
+            1024,
+            0,
+            new PortraitPoint(416, 160),
+            default,
+            new PortraitPoint(270, 423),
+            new PortraitPoint(615, 396)
+        );
+        var portrait = service.Prepare(analysis, review).Value;
+        return (portrait, review);
     }
 }

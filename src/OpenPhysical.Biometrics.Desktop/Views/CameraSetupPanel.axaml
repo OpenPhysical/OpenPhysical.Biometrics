@@ -1,0 +1,39 @@
+<UserControl
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:OpenPhysical.Biometrics.Desktop"
+    x:Class="OpenPhysical.Biometrics.Desktop.CameraSetupPanel"
+    x:DataType="local:CameraSetupViewModel"
+>
+    <StackPanel Spacing="8">
+        <TextBlock Text="{Binding Selection}" TextWrapping="Wrap" />
+        <TextBlock
+            Text="At 1.5 m, measure a 20 cm target in the original camera image. It must span at least 240 pixels. Recheck after changing optics or zoom."
+            Classes="caption"
+            TextWrapping="Wrap"
+        />
+        <TextBlock Text="Measured target width (pixels)" />
+        <NumericUpDown
+            Minimum="0"
+            Maximum="4096"
+            Increment="1"
+            Value="{Binding TargetPixels}"
+            AutomationProperties.Name="Optical target width in original pixels"
+        />
+        <TextBlock Text="Operator ID" />
+        <TextBox
+            Text="{Binding OperatorId}"
+            MaxLength="128"
+            AutomationProperties.Name="Optical measurement operator ID"
+        />
+        <CheckBox
+            Content="20 cm target at 1.5 m; camera zoom unchanged"
+            IsChecked="{Binding TargetConfirmed}"
+        />
+        <TextBlock Text="{Binding Status}" Classes="caption" TextWrapping="Wrap" />
+        <WrapPanel HorizontalAlignment="Right">
+            <Button Content="Forget measurement" Classes="Flat" Command="{Binding ForgetCommand}" />
+            <Button Content="Record measurement" Command="{Binding SaveCommand}" />
+        </WrapPanel>
+    </StackPanel>
+</UserControl>

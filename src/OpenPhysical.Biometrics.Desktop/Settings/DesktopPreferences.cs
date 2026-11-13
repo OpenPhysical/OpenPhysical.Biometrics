@@ -2,6 +2,7 @@
 namespace OpenPhysical.Biometrics.Desktop;
 
 using CSharpFunctionalExtensions;
+using OpenPhysical.Biometrics.Facial;
 
 /// <summary>Validated desktop configuration using one current serialized schema.</summary>
 public sealed record DesktopPreferences
@@ -20,13 +21,19 @@ public sealed record DesktopPreferences
     }
 
     /// <summary>Gets initial application configuration.</summary>
-    public static DesktopPreferences Default { get; } = new(40, true, false, 1);
+    public static DesktopPreferences Default { get; } = new(40, false, false, 1);
 
     /// <summary>Gets the comparison decision threshold.</summary>
     public int ComparisonThreshold { get; }
 
-    /// <summary>Gets whether automatic capture is enabled.</summary>
+    /// <summary>Gets whether automatic fingerprint capture is enabled.</summary>
     public bool AutoCapture { get; }
+
+    /// <summary>Gets whether automatic photo capture is enabled independently of fingerprints.</summary>
+    public bool FaceAutoCapture { get; init; }
+
+    /// <summary>Gets whether captured photos replace the segmented background.</summary>
+    public bool FaceBackgroundReplacement { get; init; } = true;
 
     /// <summary>Gets whether display pixels are inverted.</summary>
     public bool InvertImage { get; }
@@ -40,6 +47,9 @@ public sealed record DesktopPreferences
 
     /// <summary>Gets advanced capture choices.</summary>
     public CapturePolicySettings CapturePolicy { get; init; } = CapturePolicySettings.Default;
+
+    /// <summary>Gets the adjustable facial mouth-closure assessment policy.</summary>
+    public PortraitMouthPolicy MouthPolicy { get; init; } = PortraitMouthPolicy.Default;
 
     /// <summary>Serializes this configuration using the one current settings schema.</summary>
     /// <returns>Complete UTF-8 configuration JSON.</returns>

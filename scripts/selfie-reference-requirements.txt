@@ -1,0 +1,5 @@
+# Independent Google TFLite reference runner. Separate from the conversion environment.
+mediapipe==0.10.21
+numpy==1.26.4
+onnxruntime==1.20.1
+pillow==11.1.0

@@ -36,6 +36,13 @@ public static class PivBiometricProfile
     public static ImmutableArray<BiometricProfileDiagnostic> Validate(FaceRecord record) =>
         PivFacialProfile.Validate(record);
 
+    /// <summary>Checks facial image metadata before expensive image encoding.</summary>
+    /// <param name="information">Planned encoded-image metadata.</param>
+    /// <returns>Mandatory PIV image metadata findings, without acquisition or anatomical claims.</returns>
+    public static ImmutableArray<BiometricProfileDiagnostic> Validate(
+        FaceImageInformation information
+    ) => PivFacialProfile.ValidateInformation(information, "ImageInformation");
+
     /// <summary>Checks common signed PIV header fields and the enclosed biometric profile.</summary>
     /// <param name="record">The raw CBEFF record.</param>
     /// <param name="evaluationTime">The explicit instant for validity evaluation.</param>

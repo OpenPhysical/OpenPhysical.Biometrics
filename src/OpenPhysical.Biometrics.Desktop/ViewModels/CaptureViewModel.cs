@@ -78,13 +78,8 @@ public sealed class CaptureViewModel : CaptureAdjustedViewModel
     /// <summary>Validates the continuous-presentation capture delay.</summary>
     /// <param name="value">Delay from zero through ten seconds.</param>
     /// <returns>Configuration outcome.</returns>
-    public UnitResult<DesktopError> ConfigureAutoCaptureDelay(TimeSpan value)
-    {
-        var result = automation.ConfigureDelay(value);
-        if (result.IsSuccess)
-            coordinator.AutoCaptureDelay = value;
-        return result;
-    }
+    public UnitResult<DesktopError> ConfigureAutoCaptureDelay(TimeSpan value) =>
+        automation.ConfigureDelay(value).Tap(() => coordinator.AutoCaptureDelay = value);
 
     /// <summary>Starts acquisition using the displayed exposure controls.</summary>
     /// <param name="token">Application shutdown cancellation.</param>
@@ -92,13 +87,20 @@ public sealed class CaptureViewModel : CaptureAdjustedViewModel
     public Task<UnitResult<DesktopError>> StartAsync(CancellationToken token) =>
         lifecycle.StartAsync((int)Exposure, AutomaticExposure, token);
 
+    internal Task<UnitResult<DesktopError>> PauseSourceAsync() =>
+        work.ReviewAsync(CaptureCommand, () => UnitResult.Success<DesktopError>());
+
+    internal Task<UnitResult<DesktopError>> ResumeSourceAsync() =>
+        Captured.HasValue
+            ? Task.FromResult(UnitResult.Success<DesktopError>())
+            : work.ResumeAsync(CaptureCommand, () => lifecycle.Stopping);
+
     /// <summary>Clears the current attempt and restores acquisition defaults while preserving the selected finger.</summary>
     /// <returns>Reset outcome.</returns>
     public async Task<UnitResult<DesktopError>> ResetDefaultsAsync()
     {
-        coordinator.SensorEvidence.Clear();
         var configured = await scanner.RestoreDefaultsAsync();
-        return configured.IsFailure ? configured : await ResetAsync(false);
+        return configured.IsFailure ? configured : await ResetAsync(false, coordinator.IsLive);
     }
 
     /// <summary>Cancels and drains processing, stops acquisition and releases displayed scenes.</summary>
@@ -155,10 +157,11 @@ public sealed class CaptureViewModel : CaptureAdjustedViewModel
         if (lifecycle.Stopping || generation != attempt)
             return;
         busy = false;
-        CompleteProcessing(result);
+        if (CompleteProcessing(result).IsSuccess && result.IsSuccess)
+            CaptureSound.Play();
     }
 
-    private async Task<UnitResult<DesktopError>> ResetAsync(bool requireRemoval)
+    private async Task<UnitResult<DesktopError>> ResetAsync(bool requireRemoval, bool resume = true)
     {
         CaptureCommand.Cancel();
         CancelAdjustments();
@@ -170,11 +173,10 @@ public sealed class CaptureViewModel : CaptureAdjustedViewModel
         automation.Reset(requireRemoval);
         CaptureGuidance = requireRemoval ? CapturePreviewGuidance.Removal : "Place your finger";
         busy = false;
-        var result = await work.ResumeAsync(CaptureCommand, () => lifecycle.Stopping);
-        if (result.IsFailure)
-            Report(result.Error);
-        CaptureCommand.NotifyCanExecuteChanged();
-        return result;
+        var result = resume
+            ? await work.ResumeAsync(CaptureCommand, () => lifecycle.Stopping)
+            : await PauseSourceAsync();
+        return result.TapError(error => Report(error)).Tap(CaptureCommand.NotifyCanExecuteChanged);
     }
 
     /// <summary>Pauses acquisition and displays an immutable retained capture for frozen review.</summary>

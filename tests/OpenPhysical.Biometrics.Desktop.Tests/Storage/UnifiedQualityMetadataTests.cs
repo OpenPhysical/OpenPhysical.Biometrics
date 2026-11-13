@@ -124,7 +124,7 @@ internal sealed class UnifiedQualityMetadataTests
 
     private static string NewFolder() =>
         Path.Combine(
-            Path.GetTempPath(),
+            PrivateTestPaths.Root,
             "biometrics-unified-quality-" + Guid.NewGuid().ToString("N")
         );
 }

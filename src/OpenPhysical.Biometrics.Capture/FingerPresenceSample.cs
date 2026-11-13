@@ -10,6 +10,12 @@ internal sealed record FingerPresenceSample(
     long At
 )
 {
+    internal static FingerPresenceSample Create(
+        CaptureFrame frame,
+        ImmutableArray<byte> mask,
+        long at
+    ) => new(frame, mask, FingerFrameGeometry.Create(frame, mask), at);
+
     internal bool Compatible(CaptureFrame next) =>
         Frame.Width == next.Width
         && Frame.Height == next.Height

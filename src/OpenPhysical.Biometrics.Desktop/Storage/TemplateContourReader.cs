@@ -8,7 +8,7 @@ using OpenPhysical.Biometrics.Capture.Futronic;
 internal static class TemplateContourReader
 {
     internal static async Task<Result<TemplateImage, DesktopError>> AttachAsync(
-        string folder,
+        TemplateCompanionSource source,
         TemplateProcessingValidated processing,
         TemplateManifestImage entry,
         TemplateImage image,
@@ -19,7 +19,7 @@ internal static class TemplateContourReader
         if (parsed.IsFailure)
             return parsed.Error;
         var planes = await TemplatePngFiles
-            .ReadAllAsync(folder, parsed.Value.Manifest.Planes.Additional, 800, 750, token)
+            .ReadAllAsync(source, parsed.Value.Manifest.Planes.Additional, 800, 750, token)
             .ConfigureAwait(false);
         if (planes.IsFailure)
             return planes.Error;

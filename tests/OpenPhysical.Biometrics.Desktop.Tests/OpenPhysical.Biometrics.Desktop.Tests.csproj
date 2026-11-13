@@ -24,4 +24,11 @@
             CopyToOutputDirectory="PreserveNewest"
         />
     </ItemGroup>
+    <ItemGroup>
+        <Content
+            Include="../OpenPhysical.Biometrics.Facial.Tests/Fixtures/bush.jpg"
+            Link="Fixtures/face-bush.jpg"
+            CopyToOutputDirectory="PreserveNewest"
+        />
+    </ItemGroup>
 </Project>

@@ -10,6 +10,8 @@ using CSharpFunctionalExtensions;
 public sealed class FingerPresenceGate(TimeProvider clock)
 {
     private readonly FingerCaptureBuffer buffer = new(clock);
+    private readonly FingerPresentationChange replacement = new();
+    private Maybe<FingerPresenceSample> latest;
     private Maybe<FingerPresenceSample> anchor;
     private Maybe<long> last;
     private TimeSpan delay = TimeSpan.FromSeconds(1);
@@ -58,11 +60,11 @@ public sealed class FingerPresenceGate(TimeProvider clock)
         bool automatic
     )
     {
-        if (!Valid(frame, foregroundMask, componentCount))
-            return Invalid();
+        if (clock is null || !FingerPresenceInput.Valid(frame, foregroundMask, componentCount))
+            return FingerPresenceInput.Invalid();
         var present = !foregroundMask.IsDefaultOrEmpty && foregroundMask.Any(value => value != 0);
         if (present != (componentCount > 0))
-            return Invalid();
+            return FingerPresenceInput.Invalid();
         var now = clock.GetTimestamp();
         var cleared =
             last.HasValue && clock.GetElapsedTime(last.Value, now) > buffer.Policy.AcquisitionGap;
@@ -72,10 +74,13 @@ public sealed class FingerPresenceGate(TimeProvider clock)
         buffer.Prune(now);
         if (!present)
         {
+            replacement.Interrupt();
             if (++absent >= buffer.Policy.AbsenceFrames)
             {
                 ClearInterval();
                 requireRemoval = false;
+                replacement.Clear();
+                latest = default;
                 cleared = true;
             }
             return Observation(false, false, false, now, cleared);
@@ -97,18 +102,25 @@ public sealed class FingerPresenceGate(TimeProvider clock)
         bool automatic
     )
     {
-        var sample = new FingerPresenceSample(
-            frame,
-            foregroundMask,
-            FingerFrameGeometry.Create(frame, foregroundMask),
-            now
-        );
+        var sample = FingerPresenceSample.Create(frame, foregroundMask, now);
+        if (
+            requireRemoval
+            && replacement.Observe(sample, Math.Max(2, buffer.Policy.RepositionFrames))
+        )
+        {
+            requireRemoval = false;
+            cleared |= ClearInterval();
+        }
+        latest = sample;
         cleared |= UpdatePresentation(sample);
         buffer.Add(sample);
         var ready =
             automatic && !requireRemoval && clock.GetElapsedTime(anchor.Value.At, now) >= delay;
         if (ready)
+        {
             requireRemoval = true;
+            replacement.Consume(sample);
+        }
         return Observation(true, true, ready, now, cleared);
     }
 
@@ -117,6 +129,13 @@ public sealed class FingerPresenceGate(TimeProvider clock)
     /// <returns>A successful reset.</returns>
     public UnitResult<CaptureError> Reset(bool requireRemoval)
     {
+        if (requireRemoval)
+            replacement.Wait(latest);
+        else
+        {
+            replacement.Clear();
+            latest = default;
+        }
         ClearInterval();
         last = Maybe<long>.None;
         absent = 0;
@@ -181,24 +200,10 @@ public sealed class FingerPresenceGate(TimeProvider clock)
 
     private bool ClearInterval()
     {
+        replacement.Interrupt();
         anchor = Maybe<FingerPresenceSample>.None;
         buffer.Clear();
         major = 0;
         return true;
     }
-
-    private static CaptureError Invalid() =>
-        new(
-            CaptureErrorCodes.InvalidArgument,
-            "A presence observation requires a matching image mask and foreground component count."
-        );
-
-    private bool Valid(CaptureFrame frame, ImmutableArray<byte> mask, int count) =>
-        frame is not null
-        && clock is not null
-        && count >= 0
-        && (
-            mask.IsDefaultOrEmpty
-            || (mask.Length == frame.Pixels.Length && mask.All(value => value <= 1))
-        );
 }

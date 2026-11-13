@@ -43,6 +43,9 @@ public static class ImagingErrorCodes
     /// <summary>The encoded image is incomplete or could not be decoded.</summary>
     public const string DecodeFailed = "Imaging.DecodeFailed";
 
+    /// <summary>A capture requiring opaque pixels contains transparency.</summary>
+    public const string TransparencyUnsupported = "Imaging.TransparencyUnsupported";
+
     /// <summary>A TIFF stream is structurally invalid.</summary>
     public const string TiffMalformed = "Imaging.TiffMalformed";
 
@@ -60,6 +63,9 @@ public static class ImagingErrorCodes
 
     /// <summary>A native Skia operation failed.</summary>
     public const string SkiaFailure = "Imaging.SkiaFailure";
+
+    /// <summary>A required native image runtime cannot be loaded.</summary>
+    public const string NativeRuntimeUnavailable = "Imaging.NativeRuntimeUnavailable";
 
     /// <summary>The caller cancelled the operation.</summary>
     public const string Cancelled = "Imaging.Cancelled";

@@ -9,14 +9,19 @@ internal static class WorkspaceReviewImages
 {
     internal static bool Save(Window window, Size size, string label)
     {
+        window.UpdateLayout();
+        return Save((Control)window, size, label);
+    }
+
+    internal static bool Save(Control control, Size size, string label)
+    {
         var folder = Environment.GetEnvironmentVariable("OPENPHYSICAL_REVIEW_IMAGES");
         if (string.IsNullOrWhiteSpace(folder))
             return false;
-        window.UpdateLayout();
         using var rendered = new RenderTargetBitmap(
             new PixelSize((int)size.Width, (int)size.Height)
         );
-        rendered.Render(window);
+        rendered.Render(control);
         rendered.Save(Path.Combine(folder, $"studio-{size.Width}x{size.Height}-{label}.png"));
         return true;
     }

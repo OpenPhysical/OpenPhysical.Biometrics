@@ -20,8 +20,9 @@ internal sealed class ImageAdjustmentPersistenceTests
             value =>
             {
                 applied = value;
-                return UnitResult.Success<DesktopError>();
-            }
+                return Task.FromResult(UnitResult.Success<DesktopError>());
+            },
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<SettingsViewModel>.Instance
         );
         (await view.InitializeAsync()).Should().Succeed();
         view.ImageAdjustments.Brightness = 34;
@@ -50,8 +51,9 @@ internal sealed class ImageAdjustmentPersistenceTests
             value =>
             {
                 applied = value;
-                return UnitResult.Success<DesktopError>();
-            }
+                return Task.FromResult(UnitResult.Success<DesktopError>());
+            },
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<SettingsViewModel>.Instance
         );
         (await restarted.InitializeAsync()).Should().Succeed();
         restarted.ImageAdjustments.Value.Should().Be(expected);

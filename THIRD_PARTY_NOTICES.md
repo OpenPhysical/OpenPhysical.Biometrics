@@ -40,9 +40,30 @@ detector/crop postprocessing retain Apache-2.0 terms. See
 `LICENSE-MediaPipe-Apache-2.0.txt` for exact artifacts and notices. The
 first-party combination permission is part of the repository's `LICENSE`.
 
+## Canonical facial pose geometry and MathNet
+
+The facial pose estimator adapts Google's Apache-2.0 MediaPipe screen-to-metric
+conversion and weighted canonical alignment. Canonical XYZ coordinates and the
+33 nonzero landmark weights are derived from
+[`geometry_pipeline_metadata_landmarks.pbtxt`](https://github.com/google-ai-edge/mediapipe/blob/350fbb2100ad531bc110b93aaea23d96af5a5064/mediapipe/modules/face_geometry/data/geometry_pipeline_metadata_landmarks.pbtxt)
+at revision `350fbb2100ad531bc110b93aaea23d96af5a5064`.
+The upstream metadata SHA-256 is
+`55ca7c4c7bf195673b9d12a1b5d49d4b9c82b5ade8fed4b565496590866e359d`.
+The embedded extracted CSV is checked against SHA-256
+`b94647c5f575dd5a395489e233ad4142992e8fff50293c038fb70711f187c83d`.
+Copyright 2020 The MediaPipe Authors. The Apache-2.0 notice and adaptation details
+are retained in `src/OpenPhysical.Biometrics.Facial/Notices/Google-Face-Geometry-Apache-2.0.txt`.
+
+The numerical SVD uses MathNet.Numerics 5.0.0 under MIT, copyright 2002–2022 Math.NET.
+Its [official versioned license](https://github.com/mathnet/mathnet-numerics/blob/v5.0.0/LICENSE.md)
+is retained in `src/OpenPhysical.Biometrics.Facial/Notices/MathNet.Numerics-5.0.0-MIT.txt`.
+The managed provider requires no additional native numerical runtime. Both notices
+are included in NuGet packages and the Studio application's license directory.
+
 ## Avalonia desktop utility
 
-The desktop application uses Avalonia Desktop and the Inter font package 11.3.6,
+The desktop application uses Avalonia Desktop 11.3.6 and bundled Roboto through
+Material.Avalonia,
 Material.Avalonia 3.14.2, CommunityToolkit.Mvvm 8.4.0, Tmds.DBus.Protocol 0.21.3, and
 Microsoft.Extensions.Hosting 10.0.0. These NuGet packages declare MIT licenses;
 their distributed dependency and font notices remain applicable.
@@ -85,3 +106,20 @@ library. Numerical coefficient constants were recovered from observable syntheti
 outputs and common cubic mathematics. No upstream cubic implementation was copied or
 translated. See `docs/FS50-CAPTURE.md` and the immutable numerical oracle fixture for
 profile and provenance details.
+
+## Webcam acquisition and migrated FaceOFFx measurements
+
+Webcam acquisition on Windows/Linux uses FlashCap and FlashCap.Core 1.13.0 under
+Apache-2.0. macOS uses the first-party ARC-managed AVFoundation adapter and system
+frameworks; it does not call FlashCap's macOS backend.
+Source revision: `f14ed6303ed621efe198ddbebbb3b9521bb713a1` at
+[FlashCap](https://github.com/kekyo/FlashCap).
+The pinned license is retained at
+`src/OpenPhysical.Biometrics.Capture.Camera/Notices/FlashCap-Apache-2.0.txt`.
+The macOS publisher includes it in `Contents/Resources/Licenses/FlashCap-1.13.0`.
+
+The migrated advisory facial sharpness and backdrop measurements retain the
+historical FaceOFFx MIT notice in
+`src/OpenPhysical.Biometrics.Facial/Notices/FaceOFFx-MIT.txt` and the published
+bundle. Their migration disposition is documented in the retired FaceOFFx
+repository's `docs/MIGRATION.md`.

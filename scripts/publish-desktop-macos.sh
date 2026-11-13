@@ -3,9 +3,15 @@
 set -euo pipefail
 
 task_repo_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-task_publish_dir="${task_repo_dir}/artifacts/desktop-publish/osx-arm64"
+task_publish_dir="${OPENPHYSICAL_DESKTOP_PUBLISH_DIRECTORY:-${task_repo_dir}/artifacts/desktop-publish/osx-arm64}"
 task_app_directory="${OPENPHYSICAL_DESKTOP_APP_DIRECTORY:-${task_repo_dir}/artifacts/apps}"
-task_app_path="${task_app_directory}/OpenPhysical Biometric Studio.app"
+task_app_name="${OPENPHYSICAL_DESKTOP_APP_NAME:-OpenPhysical Biometric Studio}"
+task_project_path="${OPENPHYSICAL_DESKTOP_PROJECT_PATH:-${task_repo_dir}/src/OpenPhysical.Biometrics.Studio/OpenPhysical.Biometrics.Studio.csproj}"
+task_executable="${OPENPHYSICAL_DESKTOP_EXECUTABLE:-OpenPhysical.Biometrics.Studio}"
+task_bundle_id="${OPENPHYSICAL_DESKTOP_BUNDLE_ID:-org.openphysical.biometrics.desktop}"
+task_assets_path="${OPENPHYSICAL_DESKTOP_ASSETS_PATH:-${task_repo_dir}/artifacts/obj/OpenPhysical.Biometrics.Studio/project.assets.json}"
+task_application_repo="${OPENPHYSICAL_DESKTOP_APPLICATION_REPOSITORY:-}"
+task_capture_enabled="${OPENPHYSICAL_DESKTOP_CAPTURE_ENABLED:-true}"
 
 if [[ "$(uname -s)" != Darwin ]]; then
     echo "Run this publisher on macOS." >&2
@@ -21,11 +27,11 @@ for task_argument in "$@"; do
     esac
 done
 if [[ "${task_candidate}" == true ]]; then
-    task_app_path="${task_app_directory}/OpenPhysical Biometric Studio Preview.app"
-    echo "Preview build: capture policy validation is not a release approval." >&2
+    echo "Test build: capture policy validation is not a release approval." >&2
 else
     python3 "${task_repo_dir}/scripts/check-desktop-policy.py"
 fi
+task_app_path="${task_app_directory}/${task_app_name}.app"
 for task_tool in dotnet python3 otool lipo install_name_tool codesign; do
     if ! command -v "${task_tool}" >/dev/null 2>&1; then
         echo "Required publishing tool is unavailable: ${task_tool}" >&2
@@ -36,12 +42,12 @@ done
 # Reusing publish output can retain assemblies from removed dependencies.
 rm -rf -- "${task_publish_dir}"
 DOTNET_CLI_DO_NOT_USE_MSBUILD_SERVER=1 dotnet publish \
-    "${task_repo_dir}/src/OpenPhysical.Biometrics.Desktop/OpenPhysical.Biometrics.Desktop.csproj" \
+    "${task_project_path}" \
     --configuration Release --runtime osx-arm64 --self-contained true \
-    -p:PublishSingleFile=false -p:PublishTrimmed=false -p:UseAppHost=true \
+    -p:PublishSingleFile=false -p:PublishTrimmed=false -p:UseAppHost=true -p:UseSharedCompilation=false \
     --output "${task_publish_dir}" "${task_restore_args[@]}" --disable-build-servers -m:1 -nr:false
 
-python3 - "${task_repo_dir}" "${task_publish_dir}" "${task_app_path}" <<'PY'
+python3 - "${task_repo_dir}" "${task_publish_dir}" "${task_app_path}" "${task_candidate}" "${task_executable}" "${task_bundle_id}" "${task_assets_path}" "${task_application_repo}" "${task_capture_enabled}" <<'PY'
 import json
 import os
 from pathlib import Path
@@ -59,13 +65,14 @@ native = stage / 'Contents' / 'MacOS'
 resources = stage / 'Contents' / 'Resources'
 shutil.copytree(published, native)
 resources.mkdir(parents=True)
-executable = native / 'OpenPhysical.Biometrics.Desktop'
+executable = native / sys.argv[5]
 executable.chmod(executable.stat().st_mode | 0o111)
-candidate = app.name.endswith(' Preview.app')
+candidate = sys.argv[4] == 'true'
+capture_enabled = sys.argv[9] == 'true'
 
 plist = {
     'CFBundleExecutable': executable.name,
-    'CFBundleIdentifier': 'org.openphysical.biometrics.desktop' + ('.preview' if candidate else ''),
+    'CFBundleIdentifier': sys.argv[6],
     'CFBundleName': app.stem,
     'CFBundleDisplayName': app.stem,
     'CFBundleIconFile': 'Fingerprint.icns',
@@ -75,24 +82,49 @@ plist = {
     'NSHighResolutionCapable': True,
     'NSPrincipalClass': 'NSApplication',
 }
+if capture_enabled:
+    plist['NSCameraUsageDescription'] = 'Capture an accepted portrait for the selected OpenPhysical person. Images are processed locally.'
 with (stage / 'Contents' / 'Info.plist').open('wb') as stream:
     plistlib.dump(plist, stream)
-shutil.copy2(repo / 'src' / 'OpenPhysical.Biometrics.Desktop' / 'Assets' / 'Fingerprint.icns', resources / 'Fingerprint.icns')
+shutil.copy2(repo / 'src' / 'OpenPhysical.Biometrics.Presentation' / 'Assets' / 'Fingerprint.icns', resources / 'Fingerprint.icns')
 
 licenses = resources / 'Licenses'
 licenses.mkdir()
 shutil.copytree(repo / 'src' / 'OpenPhysical.Biometrics.Desktop' / 'Notices', licenses / 'PCSC-7.0.1')
+if capture_enabled:
+    shutil.copytree(repo / 'src' / 'OpenPhysical.Biometrics.Capture.Camera' / 'Notices', licenses / 'FlashCap-1.13.0')
+    shutil.copytree(repo / 'src' / 'OpenPhysical.Biometrics.Facial' / 'Notices', licenses / 'Facial')
+    models = licenses / 'MediaPipe-models'
+    models.mkdir()
+    for name in ['README.md', 'provenance.json', 'LICENSE-MediaPipe-Apache-2.0.txt']:
+        shutil.copy2(repo / 'src' / 'OpenPhysical.Biometrics.Onnx' / 'Resources' / name, models / name)
+
 for name in ['LICENSE', 'README.md', 'THIRD_PARTY_NOTICES.md', 'COMMERCIAL-LICENSING.md']:
     shutil.copy2(repo / name, resources / name)
 shutil.copy2(repo / 'docs' / 'DESKTOP.md', resources / 'DESKTOP.md')
+if sys.argv[8]:
+    application_repo = Path(sys.argv[8]).resolve()
+    application_notices = resources / 'Application'
+    application_notices.mkdir()
+    for name in ['LICENSE', 'README.md', 'THIRD_PARTY_NOTICES.md']:
+        source = application_repo / name
+        if source.is_file():
+            shutil.copy2(source, application_notices / name)
+    signing_guide = application_repo / 'OpenPhysical.Signing.Desktop' / 'README.md'
+    if signing_guide.is_file():
+        shutil.copy2(signing_guide, application_notices / 'SIGNING.md')
+    gp_notices = licenses / 'Gp4Net'
+    gp_notices.mkdir()
+    for name in ['LICENSE', 'COMMERCIAL-LICENSING.md', 'THIRD_PARTY_NOTICES.md']:
+        shutil.copy2(application_repo.parent / 'Gp4Net' / name, gp_notices / name)
 validation_record = resources / 'capture-policy-validation.json'
-if candidate:
+if capture_enabled and candidate:
     subprocess.run([sys.executable, str(repo / 'scripts' / 'check-desktop-policy.py'),
                     '--research-record', str(validation_record)], check=True)
-else:
+elif capture_enabled:
     shutil.copy2(repo / 'docs' / 'validation' / 'live-image-policy-v2.json', validation_record)
 
-assets_path = repo / 'artifacts' / 'obj' / 'OpenPhysical.Biometrics.Desktop' / 'project.assets.json'
+assets_path = Path(sys.argv[7]).resolve()
 assets = json.loads(assets_path.read_text())
 package_roots = [Path(root) for root in assets['packageFolders']]
 packages = {name: value['path'] for name, value in assets['libraries'].items()
@@ -120,9 +152,18 @@ def copy_notices(package, relative):
 
 for package, relative in packages.items():
     copy_notices(package, relative)
-for algorithm in ['openphysical.biometrics.nbis', 'openphysical.biometrics.nfiq1', 'openphysical.biometrics.nfiq2', 'usbdotnet.libusbnative']:
+required_algorithms = ['openphysical.biometrics.nbis', 'openphysical.biometrics.nfiq1', 'openphysical.biometrics.nfiq2', 'usbdotnet.libusbnative'] if capture_enabled else []
+for algorithm in required_algorithms:
     if not any(name.lower().startswith(algorithm + '/') for name in packages):
         sys.exit(f'The published dependency graph is missing {algorithm}.')
+if not capture_enabled:
+    forbidden = ['OpenPhysical.Biometrics.Desktop', 'OpenPhysical.Workstation.Capture', 'OpenPhysical.Biometrics.Capture.Camera',
+                 'OpenPhysical.Biometrics.Capture.Futronic', 'OpenPhysical.Biometrics.Capture.Usb', 'FlashCap', 'LibUsbDotNet']
+    for name in forbidden:
+        if (native / (name + '.dll')).exists():
+            sys.exit(f'Signing must not include the capture component {name}.')
+    if any('libusb' in item.name.lower() or 'openphysical_camera' in item.name.lower() for item in native.rglob('*')):
+        sys.exit('Signing must not include a camera or USB fingerprint capture driver.')
 
 def run(*arguments):
     return subprocess.check_output(arguments, text=True).strip()
@@ -136,9 +177,13 @@ for item in native.rglob('*'):
         with item.open('rb') as stream:
             if stream.read(4) in magics:
                 binaries.append(item)
-for required in ['libusb-1.0.dylib', 'libopenphysical_nbis.dylib', 'libopenphysical_nfiq1.dylib',
-                 'libopenphysical_nfiq2.dylib', 'libFRFXLL.dylib', 'libopencv_core.410.dylib',
-                 'libopencv_imgproc.410.dylib', 'libopencv_ml.410.dylib']:
+required_native = ['libAvaloniaNative.dylib', 'libSkiaSharp.dylib', 'libHarfBuzzSharp.dylib']
+if capture_enabled:
+    required_native += ['libusb-1.0.dylib', 'libopenphysical_nbis.dylib', 'libopenphysical_nfiq1.dylib',
+                        'libopenphysical_nfiq2.dylib', 'libFRFXLL.dylib', 'libopencv_core.410.dylib',
+                        'libopencv_imgproc.410.dylib', 'libopencv_ml.410.dylib', 'libonnxruntime.dylib',
+                        'libopenphysical_camera.dylib']
+for required in required_native:
     if not (native / required).is_file():
         sys.exit(f'Missing required bundled native library: {required}')
 

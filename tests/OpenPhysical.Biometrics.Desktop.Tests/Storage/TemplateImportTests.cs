@@ -63,7 +63,7 @@ internal sealed class TemplateImportTests
         DesktopError
     >> OpenAsync(byte[] bytes)
     {
-        var path = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N") + ".fmr");
+        var path = Path.Combine(PrivateTestPaths.Root, Guid.NewGuid().ToString("N") + ".fmr");
         await File.WriteAllBytesAsync(path, bytes);
         var result = await new TemplateStorage().LoadAsync(path, CancellationToken.None);
         File.Delete(path);

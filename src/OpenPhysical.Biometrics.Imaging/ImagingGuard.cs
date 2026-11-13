@@ -54,7 +54,16 @@ internal static class ImagingGuard
     }
 
     private static ImagingError Describe(Exception exception, string code) =>
-        exception is OperationCanceledException
-            ? ImagingErrors.Cancelled()
-            : new ImagingError(code, exception.Message);
+        exception switch
+        {
+            OperationCanceledException => ImagingErrors.Cancelled(),
+            DllNotFoundException
+            or EntryPointNotFoundException
+            or BadImageFormatException
+            or TypeInitializationException => new ImagingError(
+                ImagingErrorCodes.NativeRuntimeUnavailable,
+                "The native image runtime is unavailable."
+            ),
+            _ => new ImagingError(code, exception.Message),
+        };
 }

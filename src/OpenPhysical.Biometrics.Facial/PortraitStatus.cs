@@ -13,6 +13,6 @@ public enum PortraitStatus
     /// <summary>The caller must select one of several faces.</summary>
     FaceSelectionRequired,
 
-    /// <summary>Geometry requires reviewed measurements or a new capture.</summary>
+    /// <summary>Automatic capture checks require review, an explicit override, or a new capture.</summary>
     ReviewRequired,
 }

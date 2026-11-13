@@ -2,40 +2,29 @@
 namespace OpenPhysical.Biometrics.Facial;
 
 using CoreJ2K;
-using CoreJ2K.j2k.util;
-using CoreJ2K.Skia;
-using CoreJ2K.Util;
 using CSharpFunctionalExtensions;
 using SkiaSharp;
 
-// Runs the shared CoreJ2K encoder, which keeps process-wide logger and factory state.
+// Encodes the existing PIV portrait policy without changing codec parameters.
 internal static class Jpeg2000Encoder
 {
-    private static readonly object EncoderLock = new();
-
-    internal static Result<byte[], FacialError> Encode(byte[] rgb, int width, int height) =>
-        FacialEdge.TryBind(
-            () => EncodeLocked(rgb, width, height),
-            FacialErrorCodes.EncodingFailed,
-            "The JPEG 2000 encoder failed."
-        );
-
-    private static Result<byte[], FacialError> EncodeLocked(byte[] rgb, int width, int height)
+    internal static Result<byte[], FacialError> Encode(byte[] rgb, int width, int height)
     {
-        using var image = PortraitBitmap.Create(rgb, width, height);
-        lock (EncoderLock)
+        try
         {
-            var previousLogger = FacilityManager.GetMsgLogger();
-            FacilityManager.DefaultMsgLogger = new Jpeg2000MessageSink();
-            try
-            {
-                ImageFactory.Register(new SKBitmapImageCreator());
-                return Attempts(image, rgb.Length, width, height);
-            }
-            finally
-            {
-                FacilityManager.DefaultMsgLogger = previousLogger;
-            }
+            return CoreJpeg2000.Run(
+                () =>
+                {
+                    using var image = PortraitBitmap.Create(rgb, width, height);
+                    return Attempts(image, rgb.Length, width, height);
+                },
+                FacialErrorCodes.EncodingFailed,
+                "The JPEG 2000 encoder failed."
+            );
+        }
+        finally
+        {
+            Array.Clear(rgb);
         }
     }
 
@@ -75,7 +64,7 @@ internal static class Jpeg2000Encoder
         var bytes = J2kImage.ToBytes(image, parameters);
         if ((long)bytes.Length * 15 < rawLength)
             return Maybe<byte[]>.None.Succeed();
-        var decoded = J2kImage.FromBytes(bytes);
+        using var decoded = J2kImage.FromBytes(bytes);
         return decoded.Width != width || decoded.Height != height || decoded.NumberOfComponents != 3
             ? FacialErrors.EncodedDimensions().Fail<Maybe<byte[]>>()
             : Maybe.From(bytes).Succeed();

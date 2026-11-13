@@ -16,6 +16,7 @@
         <ProjectReference Include="../OpenPhysical.Biometrics.Facial/OpenPhysical.Biometrics.Facial.csproj" />
         <ProjectReference Include="../OpenPhysical.Biometrics.Fingerprints/OpenPhysical.Biometrics.Fingerprints.csproj" />
         <ProjectReference Include="../OpenPhysical.Biometrics.Piv/OpenPhysical.Biometrics.Piv.csproj" />
+        <ProjectReference Include="../OpenPhysical.Biometrics.Packages/OpenPhysical.Biometrics.Packages.csproj" />
     </ItemGroup>
     <Target
         Name="ValidateToolRuntimeAssets"

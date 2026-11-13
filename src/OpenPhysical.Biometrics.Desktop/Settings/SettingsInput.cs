@@ -9,6 +9,7 @@ internal static class SettingsInput
     internal static Result<DesktopPreferences, DesktopError> Parse(
         string threshold,
         string delay,
+        string mouthPercent,
         bool automatic,
         bool invert
     ) =>
@@ -16,18 +17,25 @@ internal static class SettingsInput
             .Bind(score =>
                 ParseDelay(delay)
                     .Bind(seconds => DesktopPreferences.Create(score, automatic, invert, seconds))
+                    .Bind(value =>
+                        MouthPolicyInput
+                            .ParsePercent(mouthPercent)
+                            .Map(policy => value with { MouthPolicy = policy })
+                    )
             );
 
     internal static DesktopPreferences Editing(
         DesktopPreferences active,
         string threshold,
         string delay,
+        string mouthPercent,
         bool automatic,
         bool invert
     )
     {
         var score = ParseThreshold(threshold);
         var seconds = ParseDelay(delay);
+        var mouth = MouthPolicyInput.ParsePercent(mouthPercent);
         return DesktopPreferences
             .Create(
                 score.IsSuccess ? score.Value : active.ComparisonThreshold,
@@ -39,6 +47,9 @@ internal static class SettingsInput
         {
             ImageAdjustments = active.ImageAdjustments,
             CapturePolicy = active.CapturePolicy,
+            MouthPolicy = mouth.IsSuccess ? mouth.Value : active.MouthPolicy,
+            FaceAutoCapture = active.FaceAutoCapture,
+            FaceBackgroundReplacement = active.FaceBackgroundReplacement,
         };
     }
 

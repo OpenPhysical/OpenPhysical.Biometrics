@@ -29,7 +29,7 @@ internal sealed class EnrollmentAdjustmentContext : IAsyncDisposable
     {
         IsSecond = second;
         Storage = new ControlledExportStorage();
-        Storage.Completed.SetResult(Result.Success<string, DesktopError>("saved.fmr"));
+        Storage.Completed.SetResult(Result.Success<string, DesktopError>("saved.opbio"));
         context = new(Storage, EnrollmentTestSuggestions.IndexPair());
         Export.Enrollment.Person.Name = "Draft test";
         First = context.NativeCapture(FingerPosition.RightIndex, modified);
@@ -92,7 +92,7 @@ internal sealed class EnrollmentAdjustmentContext : IAsyncDisposable
         {
             await Export.SaveCommand.ExecuteAsync(default);
             Storage.Saves.Should().BeGreaterThan(0, Export.Status);
-            Storage.Accepted.Should().Equal(First, expected);
+            Fingers.AcceptedCaptures.Should().Equal(First, expected);
             await Fingers.SecondarySlotCommand.ExecuteAsync(default);
         }
         else

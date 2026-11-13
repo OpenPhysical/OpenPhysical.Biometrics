@@ -3,36 +3,30 @@ namespace OpenPhysical.Biometrics.Desktop;
 
 using CommunityToolkit.Mvvm.Input;
 using CSharpFunctionalExtensions;
+using Microsoft.Extensions.Logging;
 
 /// <summary>Applies and persists desktop configuration through application commands.</summary>
 public sealed class SettingsViewModel : SettingsControlsViewModel
 {
-    private readonly SettingsStorage storage;
-    private readonly Func<DesktopPreferences, UnitResult<DesktopError>> apply;
+    private readonly SettingsRecovery recovery;
+    private readonly Func<DesktopPreferences, Task<UnitResult<DesktopError>>> apply;
     private int version;
-    private DesktopPreferences active = DesktopPreferences.Default;
-
-    /// <summary>Creates settings commands for the active workspace.</summary>
-    /// <param name="storage">Private configuration storage.</param>
-    /// <param name="capture">Active capture workspace.</param>
-    /// <param name="inspection">Active comparison workspace.</param>
-    internal SettingsViewModel(
-        SettingsStorage storage,
-        CaptureViewModel capture,
-        InspectionViewModel inspection
-    )
-        : this(storage, preferences => SettingsApplication.Apply(preferences, capture, inspection))
-    { }
+    private DesktopPreferences requested = DesktopPreferences.Default;
+    private Task<UnitResult<DesktopError>> applying = Task.FromResult(
+        UnitResult.Success<DesktopError>()
+    );
 
     /// <summary>Creates settings commands with an explicit application configuration boundary.</summary>
     /// <param name="storage">Private configuration storage.</param>
     /// <param name="apply">Applies validated configuration and reports application failures.</param>
+    /// <param name="logger">Detailed settings diagnostics, separate from operator notices.</param>
     public SettingsViewModel(
         SettingsStorage storage,
-        Func<DesktopPreferences, UnitResult<DesktopError>> apply
+        Func<DesktopPreferences, Task<UnitResult<DesktopError>>> apply,
+        ILogger<SettingsViewModel> logger
     )
     {
-        this.storage = storage;
+        recovery = new(storage, logger);
         this.apply = apply;
         ImageAdjustments.Changed += _ => Changed();
         CapturePolicy.Changed += _ => PolicyChanged();
@@ -44,39 +38,38 @@ public sealed class SettingsViewModel : SettingsControlsViewModel
         SaveCommand.PropertyChanged += (_, _) => DefaultsCommand.NotifyCanExecuteChanged();
     }
 
-    /// <summary>Gets or sets context margin without changing feature admission.</summary>
-    public int ContextMargin
-    {
-        get => CapturePolicy.ContextMargin;
-        set => CapturePolicy.ContextMargin = value;
-    }
-
     /// <summary>Gets the command that persists current valid choices.</summary>
     public IAsyncRelayCommand SaveCommand { get; }
 
     /// <summary>Gets the command that restores and saves initial choices.</summary>
     public IAsyncRelayCommand DefaultsCommand { get; }
 
-    /// <summary>Gets image controls.</summary>
-    public ImageAdjustmentViewModel ImageAdjustments { get; } = new();
-
-    /// <summary>Gets advanced capture controls.</summary>
-    public CapturePolicyViewModel CapturePolicy { get; } = new();
-
     /// <summary>Loads and applies current configuration.</summary>
     /// <returns>Validated data or a precise application failure.</returns>
     public async Task<UnitResult<DesktopError>> InitializeAsync()
     {
-        var loaded = await storage.LoadAsync(CancellationToken.None);
+        var loaded = await recovery.LoadAsync(CancellationToken.None);
         if (Stopping)
             return UnitResult.Success<DesktopError>();
-        if (loaded.IsFailure)
+        SetValues(loaded.Preferences);
+        applying = ApplyAsync(
+            loaded.Preferences,
+            version,
+            Result.Success<DesktopPreferences, DesktopError>(loaded.Preferences)
+        );
+        var applied = await applying;
+        if (!Stopping && applied.IsSuccess)
         {
-            Status = $"{loaded.Error.Message} ({loaded.Error.Code})";
-            return UnitResult.Failure(loaded.Error);
+            Notice = loaded.Notice;
+            if (loaded.PersistenceFailure.HasValue)
+                Status = SettingsRecovery.ResetFailure;
         }
-        SetValues(loaded.Value);
-        return apply(loaded.Value);
+        return applied.IsFailure
+            ? applied
+            : loaded.PersistenceFailure.Match(
+                error => UnitResult.Failure(error),
+                () => UnitResult.Success<DesktopError>()
+            );
     }
 
     /// <summary>Stops settings commands and drains pending persistence.</summary>
@@ -88,20 +81,10 @@ public sealed class SettingsViewModel : SettingsControlsViewModel
         DefaultsCommand.Cancel();
         SaveCommand.NotifyCanExecuteChanged();
         DefaultsCommand.NotifyCanExecuteChanged();
-        return await DesktopCommandTasks.DrainAsync(SaveCommand, DefaultsCommand);
+        var drained = await DesktopCommandTasks.DrainAsync(SaveCommand, DefaultsCommand);
+        var applied = await SettleApplicationAsync();
+        return drained.IsFailure ? drained : applied;
     }
-
-    private Result<DesktopPreferences, DesktopError> Preferences() =>
-        SettingsInput
-            .Parse(Threshold, AutoCaptureDelaySeconds, AutoCapture, Invert)
-            .Map(WithPolicies);
-
-    private DesktopPreferences WithPolicies(DesktopPreferences value) =>
-        value with
-        {
-            ImageAdjustments = ImageAdjustments.Value,
-            CapturePolicy = CapturePolicy.Value,
-        };
 
     private UnitResult<DesktopError> PolicyChanged()
     {
@@ -115,29 +98,69 @@ public sealed class SettingsViewModel : SettingsControlsViewModel
         version++;
         var current = Preferences();
         var edited = SettingsInput.Editing(
-            active,
+            requested,
             Threshold,
             AutoCaptureDelaySeconds,
+            MouthTolerancePercent,
             AutoCapture,
             Invert
         );
         edited = WithPolicies(edited);
-        var applied = apply(edited);
-        if (applied.IsSuccess)
-            active = edited;
+        requested = edited;
+        applying = ApplyAsync(edited, version, current);
+        return current.IsFailure
+            ? UnitResult.Failure(current.Error)
+            : UnitResult.Success<DesktopError>();
+    }
+
+    private async Task<UnitResult<DesktopError>> ApplyAsync(
+        DesktopPreferences preferences,
+        int expected,
+        Result<DesktopPreferences, DesktopError> current
+    )
+    {
+        var attempt = await DesktopEdge.TryAsync(
+            () => apply(preferences),
+            "Settings.Apply",
+            "The settings could not be applied."
+        );
+        var applied = attempt.IsSuccess ? attempt.Value : UnitResult.Failure(attempt.Error);
+        if (applied.IsFailure)
+            recovery.RecordFailure("apply", applied.Error);
+        if (Stopping || expected != version)
+            return applied;
         Status =
-            applied.IsFailure ? applied.Error.Message
+            applied.IsFailure ? SettingsRecovery.ApplyFailure
             : current.IsFailure ? current.Error.Message
             : "Changes apply immediately. Save to keep them for the next session.";
-        return applied.IsFailure ? applied
-            : current.IsFailure ? UnitResult.Failure(current.Error)
-            : UnitResult.Success<DesktopError>();
+        if (applied.IsFailure)
+            Notice = new SettingsNotice(SettingsRecovery.ApplyFailure, true);
+        return applied;
+    }
+
+    private async Task<UnitResult<DesktopError>> SettleApplicationAsync()
+    {
+        while (true)
+        {
+            var current = applying;
+            var applied = await current;
+            if (ReferenceEquals(current, applying))
+                return applied;
+        }
     }
 
     private async Task SaveAsync(CancellationToken token)
     {
         if (Stopping)
             return;
+        var applied = await SettleApplicationAsync();
+        if (Stopping)
+            return;
+        if (applied.IsFailure)
+        {
+            Status = SettingsRecovery.ApplyFailure;
+            return;
+        }
         var current = Preferences();
         if (current.IsFailure)
         {
@@ -145,12 +168,16 @@ public sealed class SettingsViewModel : SettingsControlsViewModel
             return;
         }
         var expected = version;
-        var saved = await storage.SaveAsync(current.Value, token);
+        var saved = await recovery.SaveAsync(current.Value, token);
         if (!Stopping)
+        {
             Status =
-                saved.IsFailure ? $"{saved.Error.Message} ({saved.Error.Code})"
+                saved.IsFailure ? SettingsRecovery.SaveFailure
                 : expected == version ? "Settings saved."
                 : "Previous settings saved. Save the current changes to keep them.";
+            if (saved.IsFailure && saved.Error.Code != "Cancelled")
+                Notice = new SettingsNotice(SettingsRecovery.SaveFailure, true);
+        }
     }
 
     private async Task DefaultsAsync(CancellationToken token)
@@ -164,7 +191,7 @@ public sealed class SettingsViewModel : SettingsControlsViewModel
 
     private UnitResult<DesktopError> SetValues(DesktopPreferences preferences)
     {
-        active = preferences;
+        requested = preferences;
         RestoreControls(preferences);
         ImageAdjustments.Restore(preferences.ImageAdjustments);
         CapturePolicy.Restore(preferences.CapturePolicy);

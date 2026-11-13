@@ -10,11 +10,14 @@ namespace OpenPhysical.Biometrics.Desktop;
 internal sealed class CapturePreviewState
 {
     private readonly object sync = new();
-    private Maybe<CaptureFrame> displayed;
+    private readonly PreviewPublication<CaptureFrame, DesktopError> publication = new(
+        new DesktopError("Capture.NoFrame", "Wait for a complete preview frame.")
+    );
+    private Maybe<CaptureFrame> displayed => publication.Displayed;
     private Maybe<Fs50WholeContactProof> displayedProof;
     private Maybe<CaptureFrame> pendingFrozen;
-    private long generation;
-    private bool live;
+    private long generation => publication.Generation;
+    private bool live => publication.IsLive;
     private readonly DisplayedCaptureHistory history;
     internal CaptureExposureAccess Exposure { get; }
 
@@ -61,9 +64,7 @@ internal sealed class CapturePreviewState
     {
         lock (sync)
         {
-            generation++;
-            live = true;
-            displayed = Maybe<CaptureFrame>.None;
+            publication.Begin();
             displayedProof = Maybe<Fs50WholeContactProof>.None;
             pendingFrozen = Maybe<CaptureFrame>.None;
             history.Clear();
@@ -75,9 +76,8 @@ internal sealed class CapturePreviewState
     {
         lock (sync)
         {
-            live = false;
+            publication.Pause();
             pendingFrozen = Maybe<CaptureFrame>.None;
-            generation++;
             return true;
         }
     }
@@ -88,9 +88,7 @@ internal sealed class CapturePreviewState
         {
             if (!displayed.HasValue)
                 return new DesktopError("Capture.NoFrame", "Wait for a complete preview frame.");
-            live = false;
-            generation++;
-            return displayed.Value;
+            return publication.Freeze();
         }
     }
 
@@ -108,8 +106,7 @@ internal sealed class CapturePreviewState
                     "Capture.UnacknowledgedFrame",
                     "The automatic selection is not a recent displayed frame."
                 );
-            live = false;
-            generation++;
+            publication.Pause();
             return selected;
         }
     }
@@ -118,8 +115,7 @@ internal sealed class CapturePreviewState
     {
         lock (sync)
         {
-            generation++;
-            displayed = Maybe<CaptureFrame>.None;
+            publication.Forget();
             displayedProof = Maybe<Fs50WholeContactProof>.None;
             pendingFrozen = Maybe<CaptureFrame>.None;
             return history.Clear();
@@ -136,17 +132,21 @@ internal sealed class CapturePreviewState
     {
         lock (sync)
         {
-            if (!live || generation != expectedGeneration)
-                return UnitResult.Success<DesktopError>();
-            var result = render(frame);
-            if (result.IsSuccess)
-            {
-                displayed = frame;
-                displayedProof = proof;
-                if (candidate)
-                    history.Add(frame, proof);
-            }
-            return result;
+            return publication.Display(
+                frame,
+                expectedGeneration,
+                value =>
+                {
+                    var result = render(value);
+                    if (result.IsSuccess)
+                    {
+                        displayedProof = proof;
+                        if (candidate)
+                            history.Add(value, proof);
+                    }
+                    return result;
+                }
+            );
         }
     }
 
@@ -177,8 +177,7 @@ internal sealed class CapturePreviewState
             if (snapshot.IsSuccess)
             {
                 pendingFrozen = frame;
-                live = false;
-                generation++;
+                publication.Pause();
             }
             return snapshot;
         }

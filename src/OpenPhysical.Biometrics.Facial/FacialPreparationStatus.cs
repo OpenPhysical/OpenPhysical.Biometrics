@@ -9,6 +9,9 @@ public enum FacialPreparationStatus
     /// <summary>The facial record was prepared and its encoded metadata passed the profile.</summary>
     Prepared,
 
+    /// <summary>The portrait or reviewed crown and ear boundaries require confirmation.</summary>
+    GeometryReviewRequired,
+
     /// <summary>Acquisition evidence needs operator review.</summary>
     AcquisitionReviewRequired,
 

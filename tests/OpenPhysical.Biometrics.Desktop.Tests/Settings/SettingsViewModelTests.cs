@@ -20,8 +20,9 @@ internal sealed class SettingsViewModelTests
             preferences =>
             {
                 applied = preferences;
-                return UnitResult.Success<DesktopError>();
-            }
+                return Task.FromResult(UnitResult.Success<DesktopError>());
+            },
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<SettingsViewModel>.Instance
         );
         await view.InitializeAsync();
         view.Threshold = "83";
@@ -38,7 +39,7 @@ internal sealed class SettingsViewModelTests
             .Value.Should()
             .Be(DesktopPreferences.Default);
         view.Threshold.Should().Be("40");
-        view.AutoCapture.Should().BeTrue();
+        view.AutoCapture.Should().BeFalse();
         view.Invert.Should().BeFalse();
         await view.StopAsync();
         view.SaveCommand.CanExecute(default).Should().BeFalse();
@@ -56,8 +57,9 @@ internal sealed class SettingsViewModelTests
             preferences =>
             {
                 applied = preferences;
-                return UnitResult.Success<DesktopError>();
-            }
+                return Task.FromResult(UnitResult.Success<DesktopError>());
+            },
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<SettingsViewModel>.Instance
         );
         await view.SaveCommand.ExecuteAsync(default);
         view.Threshold = "not a number";

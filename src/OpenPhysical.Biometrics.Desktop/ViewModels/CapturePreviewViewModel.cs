@@ -25,10 +25,7 @@ public abstract class CapturePreviewViewModel(TimeProvider clock) : CaptureDispl
         && LiveFrame
             .Bind(value => value.Segmentation)
             .Match(
-                region =>
-                    region.Issue == Fs50ContactIssue.None
-                    && region.ComponentCount == 1
-                    && region.SpatialComponentCount == 1,
+                region => CaptureContactFeedback.Validate(region.Diagnostics).IsSuccess,
                 () => false
             );
 
@@ -93,6 +90,15 @@ public abstract class CapturePreviewViewModel(TimeProvider clock) : CaptureDispl
         if (IsStopping)
             return UnitResult.Success<DesktopError>();
         var feedback = CapturePreviewGuidance.Feedback(foreground, proof);
+        var loss = automation.ObserveContactLoss(
+            frame,
+            foreground,
+            proof,
+            ready && feedback.HasNoValue
+        );
+        if (loss.HasValue)
+            return ClearPreview(clearDetails: false)
+                .Bind(() => FinishObservation(loss.Value, default));
         if (!ready)
             return WaitForCaptureReady(
                 frame,

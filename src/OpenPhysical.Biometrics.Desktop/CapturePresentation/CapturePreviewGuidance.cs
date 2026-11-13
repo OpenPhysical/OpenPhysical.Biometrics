@@ -6,7 +6,7 @@ using OpenPhysical.Biometrics.Capture.Futronic;
 
 internal static class CapturePreviewGuidance
 {
-    internal const string Removal = "Lift your finger. If it is already off, clean the sensor.";
+    internal const string Removal = "Lift your finger, then place the next finger.";
 
     internal static Maybe<DesktopError> Feedback(
         Maybe<Fs50ContactRegion> foreground,

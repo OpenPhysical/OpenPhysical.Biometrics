@@ -176,10 +176,37 @@
         "resolved": "2.6.1",
         "contentHash": "vZsG2YILhthgRqO+ZVgRff4ZFKKTl0v7kqaVBLCtRvpREhfBP33pcWrdA3PRYgWuFL1RxiUFvjMUHTdBZlJcoA=="
       },
+      "CoreJ2K": {
+        "type": "Transitive",
+        "resolved": "2.4.1.108",
+        "contentHash": "428a3E0xlV5w1zWj7+3AaGZcZwEQXknTcXZriEYVgZw6cbzO6FBW3IiZ9loKeSukHWuPjtw5uTvmzV5wCCxcqw=="
+      },
+      "CoreJ2K.Skia": {
+        "type": "Transitive",
+        "resolved": "2.4.1.108",
+        "contentHash": "7PlUwX+5R6XZ4kULRDHlEbN6AZYl1jcG/4tbvbObu4Okdwds+PmplyhaLExlUVFEYlqyyM/QDfRXJlOUxoWqAA==",
+        "dependencies": {
+          "CoreJ2K": "2.4.1.108",
+          "SkiaSharp": "3.119.4"
+        }
+      },
       "CSharpFunctionalExtensions": {
         "type": "Transitive",
         "resolved": "3.7.0",
         "contentHash": "eMZp8tc88O96eEFutiIskF3LE8lFY3fjbNRGfNa1ca0CD9sB8A00r5ltyYDih/7UFdJdVbhVq7tGeHI8xj6DlQ=="
+      },
+      "FlashCap": {
+        "type": "Transitive",
+        "resolved": "1.13.0",
+        "contentHash": "JWQfmGqo7mNxXxaWRemSbdmUGQ995ykjVvdKKJt91aPdKaQjUxCspWGtutmh6m3mUwjQiMJGUp8W+AvPq4SEjQ==",
+        "dependencies": {
+          "FlashCap.Core": "1.13.0"
+        }
+      },
+      "FlashCap.Core": {
+        "type": "Transitive",
+        "resolved": "1.13.0",
+        "contentHash": "BwlGr96lEib6nwdhgADjdFAaMFd1+aFmZZT1V2xxjRwRKuLbww/UsH3uFaNPWe9r5qgnR/L2/KDnma+jvMd+Fg=="
       },
       "HarfBuzzSharp": {
         "type": "Transitive",
@@ -209,6 +236,11 @@
         "type": "Transitive",
         "resolved": "8.3.1.1",
         "contentHash": "UsJtQsfAJoFDZrXc4hCUfRPMqccfKZ0iumJ/upcUjz/cmsTgVFGNEL5yaJWmkqsuFYdMWbj/En5/kS4PFl9hBA=="
+      },
+      "MathNet.Numerics": {
+        "type": "Transitive",
+        "resolved": "5.0.0",
+        "contentHash": "pg1W2VwaEQMAiTpGK840hZgzavnqjlCMTVSbtVCXVyT+7AX4mc1o89SPv4TBlAjhgCOo9c1Y+jZ5m3ti2YgGgA=="
       },
       "MicroCom.Runtime": {
         "type": "Transitive",
@@ -465,6 +497,19 @@
         "resolved": "10.0.0",
         "contentHash": "inRnbpCS0nwO/RuoZIAqxQUuyjaknOOnCEZB55KSMMjRhl0RQDttSmLSGsUJN3RQ3ocf5NDLFd2mOQViHqMK5w=="
       },
+      "Microsoft.ML.OnnxRuntime": {
+        "type": "Transitive",
+        "resolved": "1.20.1",
+        "contentHash": "NzUD79BC6R7TKROLyB3XCzXTpbNZ1YfOdVbult7hoFvd/xyRecOMiRO5HTzkPXvaFlcvZ91+WNCiroAPzUE7Dw==",
+        "dependencies": {
+          "Microsoft.ML.OnnxRuntime.Managed": "1.20.1"
+        }
+      },
+      "Microsoft.ML.OnnxRuntime.Managed": {
+        "type": "Transitive",
+        "resolved": "1.20.1",
+        "contentHash": "+EVcEcKdq3gkw6iu8TYl2coJxfPnMi1YQc6eZ80BGNlw6mbBCxNGe6h4udDCwENYWsXFvYjoBc6412t40tl4ew=="
+      },
       "OpenPhysical.Biometrics.NBIS": {
         "type": "Transitive",
         "resolved": "1.0.1",
@@ -534,6 +579,11 @@
         "resolved": "10.0.0",
         "contentHash": "uaFRda9NjtbJRkdx311eXlAA3n2em7223c1A8d1VWyl+4FL9vkG7y2lpPfBU9HYdj/9KgdRNdn1vFK8ZYCYT/A=="
       },
+      "System.IO.FileSystem.AccessControl": {
+        "type": "Transitive",
+        "resolved": "5.0.0",
+        "contentHash": "SxHB3nuNrpptVk+vZ/F+7OHEpoHUIKKMl02bUmYHQr1r+glbZQxs7pRtsf4ENO29TVm2TH3AEeep2fJcy92oYw=="
+      },
       "UsbDotNet.Core": {
         "type": "Transitive",
         "resolved": "1.4.2",
@@ -554,6 +604,14 @@
           "CSharpFunctionalExtensions": "[3.7.0, )"
         }
       },
+      "openphysical.biometrics.capture.camera": {
+        "type": "Project",
+        "dependencies": {
+          "CSharpFunctionalExtensions": "[3.7.0, )",
+          "FlashCap": "[1.13.0, )",
+          "OpenPhysical.Biometrics.Imaging": "[3.0.0-dev.20261105.2, )"
+        }
+      },
       "openphysical.biometrics.capture.futronic": {
         "type": "Project",
         "dependencies": {
@@ -569,6 +627,25 @@
           "OpenPhysical.Biometrics.Capture": "[3.0.0-dev.20261105.2, )",
           "UsbDotNet.LibUsbNative": "[1.4.2, )"
         }
+      },
+      "openphysical.biometrics.facial": {
+        "type": "Project",
+        "dependencies": {
+          "BouncyCastle.Cryptography": "[2.6.1, )",
+          "CSharpFunctionalExtensions": "[3.7.0, )",
+          "CoreJ2K.Skia": "[2.4.1.108, )",
+          "MathNet.Numerics": "[5.0.0, )",
+          "Microsoft.Extensions.DependencyInjection.Abstractions": "[10.0.0, )",
+          "Microsoft.Extensions.Logging.Abstractions": "[10.0.0, )",
+          "Microsoft.ML.OnnxRuntime": "[1.20.1, )",
+          "OpenPhysical.Biometrics.Facial.Models": "[3.0.0-dev.20261105.2, )",
+          "OpenPhysical.Biometrics.Imaging": "[3.0.0-dev.20261105.2, )",
+          "OpenPhysical.Biometrics.Piv": "[3.0.0-dev.20261105.2, )",
+          "SkiaSharp.NativeAssets.Linux.NoDependencies": "[3.119.4, )"
+        }
+      },
+      "OpenPhysical.Biometrics.Facial.Models": {
+        "type": "Project"
       },
       "openphysical.biometrics.fingerprints": {
         "type": "Project",
@@ -603,104 +680,30 @@
           "SkiaSharp.NativeAssets.Linux.NoDependencies": "[3.119.4, )"
         }
       },
+      "openphysical.biometrics.packages": {
+        "type": "Project",
+        "dependencies": {
+          "BouncyCastle.Cryptography": "[2.6.1, )",
+          "CSharpFunctionalExtensions": "[3.7.0, )",
+          "System.IO.FileSystem.AccessControl": "[5.0.0, )"
+        }
+      },
       "openphysical.biometrics.piv": {
         "type": "Project",
         "dependencies": {
           "CSharpFunctionalExtensions": "[3.7.0, )",
           "OpenPhysical.Biometrics.Formats": "[3.0.0-dev.20261105.2, )"
         }
-      }
-    },
-    "net10.0/osx-arm64": {
-      "Avalonia.Angle.Windows.Natives": {
-        "type": "Transitive",
-        "resolved": "2.1.25547.20250602",
-        "contentHash": "ZL0VLc4s9rvNNFt19Pxm5UNAkmKNylugAwJPX9ulXZ6JWs/l6XZihPWWTyezaoNOVyEPU8YbURtW7XMAtqXH5A=="
       },
-      "Avalonia.Native": {
-        "type": "Transitive",
-        "resolved": "11.3.6",
-        "contentHash": "QaIKZLfquJ12Rpwo9pQ2V24TfpJI2tQJeYe235G4cJnI3d699DvMUcntQA1VLDCwAK3xHOSTyoN737oU3f9ErQ==",
+      "openphysical.biometrics.presentation": {
+        "type": "Project",
         "dependencies": {
-          "Avalonia": "11.3.6"
-        }
-      },
-      "HarfBuzzSharp.NativeAssets.Linux": {
-        "type": "Transitive",
-        "resolved": "8.3.1.1",
-        "contentHash": "3EZ1mpIiKWRLL5hUYA82ZHteeDIVaEA/Z0rA/wU6tjx6crcAkJnBPwDXZugBSfo8+J3EznvRJf49uMsqYfKrHg=="
-      },
-      "HarfBuzzSharp.NativeAssets.macOS": {
-        "type": "Transitive",
-        "resolved": "8.3.1.1",
-        "contentHash": "jbtCsgftcaFLCA13tVKo5iWdElJScrulLTKJre36O4YQTIlwDtPPqhRZNk+Y0vv4D1gxbscasGRucUDfS44ofQ=="
-      },
-      "HarfBuzzSharp.NativeAssets.Win32": {
-        "type": "Transitive",
-        "resolved": "8.3.1.1",
-        "contentHash": "UsJtQsfAJoFDZrXc4hCUfRPMqccfKZ0iumJ/upcUjz/cmsTgVFGNEL5yaJWmkqsuFYdMWbj/En5/kS4PFl9hBA=="
-      },
-      "OpenPhysical.Biometrics.NBIS": {
-        "type": "Transitive",
-        "resolved": "1.0.1",
-        "contentHash": "KhaVnUncqvgmdYtP/rPlnNFehH+JWXQetNnrNYc5LJw1Yj/VCJkUwVqrC833T0iXmOJHQqv1HXR+OPH5qx/ooQ==",
-        "dependencies": {
-          "Microsoft.Extensions.DependencyInjection.Abstractions": "10.0.0",
-          "Microsoft.Extensions.Logging.Abstractions": "10.0.0"
-        }
-      },
-      "OpenPhysical.Biometrics.NFIQ1": {
-        "type": "Transitive",
-        "resolved": "1.0.1",
-        "contentHash": "cmHD1qQO5TQh7+a633QcZUDrkpnDet7YWtCWMdxhe5wl89CDhx4JoXnLIYLiloJnknxDeuSVkKjbPYtU2Kqk0g==",
-        "dependencies": {
-          "Microsoft.Extensions.DependencyInjection.Abstractions": "10.0.0",
-          "Microsoft.Extensions.Logging.Abstractions": "10.0.0"
-        }
-      },
-      "OpenPhysical.Biometrics.NFIQ2": {
-        "type": "Transitive",
-        "resolved": "1.0.1",
-        "contentHash": "5xfcHfGfY9u1gpVCUH3kv5KZFJkO+Nrpb4wV8ilXAswOiNQ/HUboDCTGWRag+MGudxyPv78674s9rebPbsq4TA==",
-        "dependencies": {
-          "Microsoft.Extensions.DependencyInjection.Abstractions": "10.0.0",
-          "Microsoft.Extensions.Logging.Abstractions": "10.0.0"
-        }
-      },
-      "SkiaSharp.NativeAssets.Linux": {
-        "type": "Transitive",
-        "resolved": "2.88.9",
-        "contentHash": "cWSaJKVPWAaT/WIn9c8T5uT/l4ETwHxNJTkEOtNKjphNo8AW6TF9O32aRkxqw3l8GUdUo66Bu7EiqtFh/XG0Zg==",
-        "dependencies": {
-          "SkiaSharp": "2.88.9"
-        }
-      },
-      "SkiaSharp.NativeAssets.Linux.NoDependencies": {
-        "type": "Transitive",
-        "resolved": "3.119.4",
-        "contentHash": "iFnpOfZoim2SwhSPy0EJNZtQAaWM7D0A6Q1YvquwOXUdQAFrSy81Tfb1I4c0IHrrQnoVjcZPcwOc1+VM2ja77w=="
-      },
-      "SkiaSharp.NativeAssets.macOS": {
-        "type": "Transitive",
-        "resolved": "3.119.4",
-        "contentHash": "fgBOWEqbY012x7gMfJU4ezgz6dfhJb30Z6YdW35h85Zoe39+a8YNbAAwL29ihPfWoppg5AjvyKNzD1oCvlqWwA=="
-      },
-      "SkiaSharp.NativeAssets.Win32": {
-        "type": "Transitive",
-        "resolved": "3.119.4",
-        "contentHash": "XOpbx/4CReO2wYsq2s6rbvdauc6dntG4Zv499sHGTJ87bwZaFXszFkwql3+FIZMc8kUPeaj3Mx2ezIJmo8a1Kg=="
-      },
-      "System.Diagnostics.EventLog": {
-        "type": "Transitive",
-        "resolved": "10.0.0",
-        "contentHash": "uaFRda9NjtbJRkdx311eXlAA3n2em7223c1A8d1VWyl+4FL9vkG7y2lpPfBU9HYdj/9KgdRNdn1vFK8ZYCYT/A=="
-      },
-      "UsbDotNet.LibUsbNative": {
-        "type": "Transitive",
-        "resolved": "1.4.2",
-        "contentHash": "8rmqg/KqUT0XgHU3EtZx/6T4B+UDpleR7QL6R1zUqozbwdi9fAqI74f/rCxnbo/c+VlY6LJM+uB5KKv/W411vA==",
-        "dependencies": {
-          "UsbDotNet.Core": "1.4.2"
+          "Avalonia.Desktop": "[11.3.6, )",
+          "CommunityToolkit.Mvvm": "[8.4.0, )",
+          "Material.Avalonia": "[3.14.2, )",
+          "Microsoft.Extensions.Logging.Abstractions": "[10.0.0, )",
+          "OpenPhysical.Biometrics.Packages": "[3.0.0-dev.20261105.2, )",
+          "Tmds.DBus.Protocol": "[0.21.3, )"
         }
       }
     }

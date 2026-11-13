@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <OutputType>WinExe</OutputType>
+        <TargetFramework>net10.0</TargetFramework>
+        <IsPackable>false</IsPackable>
+        <AssemblyTitle>OpenPhysical Biometric Studio</AssemblyTitle>
+        <Product>OpenPhysical Biometric Studio</Product>
+        <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+    </PropertyGroup>
+    <ItemGroup>
+        <ProjectReference Include="../OpenPhysical.Biometrics.Desktop/OpenPhysical.Biometrics.Desktop.csproj" />
+    </ItemGroup>
+</Project>

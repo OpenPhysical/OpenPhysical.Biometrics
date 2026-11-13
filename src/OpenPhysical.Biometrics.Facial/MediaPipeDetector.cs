@@ -52,13 +52,15 @@ internal sealed class MediaPipeDetector : IDisposable
     private static Result<MediaPipeDetector, FacialError> OpenSessions()
     {
         using var options = new SessionOptions { IntraOpNumThreads = 1, InterOpNumThreads = 1 };
-        return OpenSession(
+        return MediaPipeModelLoader
+            .OpenSession(
                 "face_detection_short_range.onnx",
                 "2f2689b040becf555706d2cb978d2f0e3296ea82413734fba9a856c66c5f2b17",
                 options
             )
             .Bind(opened =>
-                OpenSession(
+                MediaPipeModelLoader
+                    .OpenSession(
                         "face_landmarker_Nx3x256x256.onnx",
                         "111795f8703cdeb6d0c68a9f3cc966a0f23f8786bb00f4577a11f461fc4276ac",
                         options
@@ -67,21 +69,6 @@ internal sealed class MediaPipeDetector : IDisposable
                     .Map(second => new MediaPipeDetector(opened, second))
             );
     }
-
-    private static Result<InferenceSession, FacialError> OpenSession(
-        string file,
-        string hash,
-        SessionOptions options
-    ) =>
-        MediaPipeModelLoader
-            .Load(file, hash)
-            .Bind(bytes =>
-                FacialEdge.Try(
-                    () => new InferenceSession(bytes, options),
-                    FacialErrorCodes.ModelLoadFailed,
-                    "The packaged MediaPipe model could not be loaded."
-                )
-            );
 
     private Result<List<double[]>, FacialError> RunDetector(byte[] pixels) =>
         FacialEdge

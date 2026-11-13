@@ -35,6 +35,19 @@ internal static class ProcessingFrameFixtures
         return pixels;
     }
 
+    internal static byte[] FaintResidue()
+    {
+        var pixels = Enumerable.Repeat((byte)255, 800 * 750).ToArray();
+        uint state = 19;
+        for (var y = 210; y < 530; y++)
+        for (var x = 280; x < 520; x++)
+        {
+            state = state * 1664525 + 1013904223;
+            pixels[y * 800 + x] = (byte)(235 + state % 21);
+        }
+        return pixels;
+    }
+
     internal static byte[] EmptyHardwareFrame()
     {
         using var input = File.OpenRead(

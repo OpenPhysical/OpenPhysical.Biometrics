@@ -10,20 +10,28 @@ internal sealed class EnrollmentOperatorContext : IAsyncDisposable
     private readonly ScoringTestServices services = new();
 
     internal EnrollmentOperatorContext(
-        ITemplateSessionStorage storage,
+        IEnrollmentPackageStorage storage,
         EnrollmentFingerSuggestions suggestions
+    )
+        : this(
+            (capture, inspection) =>
+                EnrollmentExportFixtures.Create(capture, storage, suggestions, inspection)
+        ) { }
+
+    internal EnrollmentOperatorContext(
+        Func<CaptureViewModel, InspectionViewModel, ExportViewModel> createExport
     )
     {
         var driver = new ControlledCaptureDriver { Available = false };
         var clock = new ControlledCaptureClock();
         var dispatcher = new DesktopPreviewDispatcher();
-        var coordinator = new CaptureCoordinator(
+        Coordinator = new CaptureCoordinator(
             driver.Registry,
             dispatcher,
             clock,
             NullLogger<CaptureCoordinator>.Instance
         );
-        Capture = new CaptureViewModel(coordinator, services.Processor, dispatcher, clock)
+        Capture = new CaptureViewModel(Coordinator, services.Processor, dispatcher, clock)
         {
             AutoCapture = false,
             AutomaticExposure = false,
@@ -37,10 +45,11 @@ internal sealed class EnrollmentOperatorContext : IAsyncDisposable
                 new ScriptedCredentialTransport(new ScriptedCredentialCard())
             )
         );
-        Export = new ExportViewModel(Capture, storage, suggestions, Inspection);
+        Export = createExport(Capture, Inspection);
     }
 
     internal CaptureViewModel Capture { get; }
+    internal CaptureCoordinator Coordinator { get; }
     internal InspectionViewModel Inspection { get; }
     internal ExportViewModel Export { get; }
     internal (int Nfiq1, int Nfiq2, int Extractions) Counts => services.Counts;

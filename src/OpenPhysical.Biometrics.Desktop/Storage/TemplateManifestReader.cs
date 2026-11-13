@@ -6,6 +6,7 @@ using System.Text.Json;
 using CSharpFunctionalExtensions;
 using OpenPhysical.Biometrics.Fingerprints;
 using OpenPhysical.Biometrics.Formats.Fingerprints;
+using OpenPhysical.Biometrics.Packages;
 
 internal static class TemplateManifestReader
 {
@@ -24,22 +25,66 @@ internal static class TemplateManifestReader
             .ConfigureAwait(false);
         if (input.IsFailure)
             return input.Error;
-        var parsed = Parse(input.Value);
-        if (parsed.IsFailure)
-            return parsed.Error;
-        var validated = TemplateManifestValidation.Check(parsed.Value, record, bytes);
-        if (validated.IsFailure)
-            return validated.Error;
         if (Path.GetDirectoryName(Path.GetFullPath(path)) is not { } folder)
             return new DesktopError(
                 "Storage.Manifest",
                 "The template must have a containing directory."
             );
-        var images = await LoadImagesAsync(folder, parsed.Value.Images, cancellationToken)
+        return await LoadAsync(
+                TemplateCompanionSource.FromFolder(folder),
+                input.Value,
+                bytes,
+                record,
+                cancellationToken
+            )
             .ConfigureAwait(false);
-        return images
-            .Check(value => TemplateFeatureAdmission.Check(record, value))
-            .Map(value => new TemplateDocument(record, value) { Subjects = parsed.Value.Subjects });
+    }
+
+    internal static async Task<Result<TemplateDocument, DesktopError>> LoadFilesAsync(
+        ImmutableArray<PackageArtifact> files,
+        byte[] bytes,
+        FingerprintRecord record,
+        CancellationToken token
+    )
+    {
+        var source = TemplateCompanionSource.FromFiles(files);
+        var input = await source
+            .ReadAsync("fingerprints.json", 256 * 1024, token)
+            .ConfigureAwait(false);
+        return input.IsFailure
+            ? input.Error
+            : await LoadAsync(source, input.Value, bytes, record, token).ConfigureAwait(false);
+    }
+
+    private static async Task<Result<TemplateDocument, DesktopError>> LoadAsync(
+        TemplateCompanionSource source,
+        byte[] input,
+        byte[] bytes,
+        FingerprintRecord record,
+        CancellationToken token
+    )
+    {
+        try
+        {
+            var parsed = Parse(input);
+            if (parsed.IsFailure)
+                return parsed.Error;
+            var validated = TemplateManifestValidation.Check(parsed.Value, record, bytes);
+            if (validated.IsFailure)
+                return validated.Error;
+            var images = await LoadImagesAsync(source, parsed.Value.Images, token)
+                .ConfigureAwait(false);
+            return images
+                .Check(value => TemplateFeatureAdmission.Check(record, value))
+                .Map(value => new TemplateDocument(record, value)
+                {
+                    Subjects = parsed.Value.Subjects,
+                });
+        }
+        finally
+        {
+            Array.Clear(input);
+        }
     }
 
     private static Result<TemplateManifest, DesktopError> Parse(byte[] bytes)
@@ -57,7 +102,7 @@ internal static class TemplateManifestReader
     }
 
     private static async Task<Result<ImmutableArray<TemplateImage>, DesktopError>> LoadImagesAsync(
-        string folder,
+        TemplateCompanionSource source,
         ImmutableArray<TemplateManifestImage> entries,
         CancellationToken cancellationToken
     )
@@ -65,7 +110,7 @@ internal static class TemplateManifestReader
         var images = ImmutableArray.CreateBuilder<TemplateImage>();
         foreach (var entry in entries.OrderBy(image => image.ViewIndex))
         {
-            var image = await LoadImageAsync(folder, entry, cancellationToken)
+            var image = await LoadImageAsync(source, entry, cancellationToken)
                 .ConfigureAwait(false);
             if (image.IsFailure)
                 return image.Error;
@@ -75,14 +120,14 @@ internal static class TemplateManifestReader
     }
 
     private static async Task<Result<TemplateImage, DesktopError>> LoadImageAsync(
-        string folder,
+        TemplateCompanionSource source,
         TemplateManifestImage entry,
         CancellationToken cancellationToken
     )
     {
         var input = await TemplatePngFiles
             .ReadAsync(
-                folder,
+                source,
                 new(entry.FileName, entry.Sha256, entry.PixelSha256),
                 entry.Width,
                 entry.Height,
@@ -95,7 +140,7 @@ internal static class TemplateManifestReader
         return image.IsFailure
             ? image.Error
             : await TemplateProcessingReader
-                .AttachAsync(folder, entry, image.Value, cancellationToken)
+                .AttachAsync(source, entry, image.Value, cancellationToken)
                 .ConfigureAwait(false);
     }
 

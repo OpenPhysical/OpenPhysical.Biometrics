@@ -14,11 +14,29 @@ public sealed class PortraitPreparer : IDisposable
         MediaPipeDetector.Create
     );
     private readonly ILogger<PortraitPreparer> logger;
+    private readonly PortraitBackgroundPreparation background;
     private bool disposed;
 
     /// <summary>Creates a portrait service whose model sessions initialize on the first call.</summary>
     /// <param name="logger">Status-only logger.</param>
-    public PortraitPreparer(ILogger<PortraitPreparer> logger) => this.logger = logger;
+    public PortraitPreparer(ILogger<PortraitPreparer> logger)
+    {
+        this.logger = logger;
+        background = new(logger);
+    }
+
+    /// <summary>Enriches one frozen source with reusable person confidence, without changing its pixels.</summary>
+    /// <param name="analysis">Exact cached source detection selected for capture.</param>
+    /// <returns>The immutable enriched analysis, or a typed segmentation failure.</returns>
+    public Result<PortraitAnalysis, FacialError> PrepareBackground(PortraitAnalysis analysis)
+    {
+        lock (gate)
+        {
+            if (disposed)
+                return FacialErrors.Disposed().Fail<PortraitAnalysis>();
+            return background.Prepare(analysis);
+        }
+    }
 
     /// <summary>Decodes, detects, and prepares a portrait of a single face without reviewed geometry.</summary>
     /// <param name="encodedImage">Original encoded image, including orientation and color metadata.</param>
@@ -94,21 +112,86 @@ public sealed class PortraitPreparer : IDisposable
         }
     }
 
+    /// <summary>Analyzes owned source pixels once for preview and subsequent crop review.</summary>
+    /// <param name="image">Exact orientation-corrected source pixels.</param>
+    /// <returns>Owned detections or a typed model failure.</returns>
+    public Result<PortraitAnalysis, FacialError> Analyze(PortraitImage image)
+    {
+        lock (gate)
+            return disposed
+                ? FacialErrors.Disposed().Fail<PortraitAnalysis>()
+                : detector
+                    .Value.Bind(model => model.Detect(image.Pixels))
+                    .Bind(faces => PortraitPoseAnalysis.Analyze(image, faces));
+    }
+
+    /// <summary>Prepares a cached analysis without repeating face detection.</summary>
+    /// <param name="analysis">Source-bound immutable detections.</param>
+    /// <returns>The prepared portrait or expected review outcome.</returns>
+    public Result<PortraitPreparationResult, FacialError> Prepare(PortraitAnalysis analysis) =>
+        Prepare(analysis, Maybe<ReviewedPortraitGeometry>.None, Maybe<int>.None);
+
+    /// <summary>Prepares reviewed geometry using cached detections.</summary>
+    /// <param name="analysis">Source-bound immutable detections.</param>
+    /// <param name="geometry">Reviewed points bound to the same source.</param>
+    /// <returns>The prepared portrait or a typed review mismatch.</returns>
+    public Result<PortraitPreparationResult, FacialError> Prepare(
+        PortraitAnalysis analysis,
+        ReviewedPortraitGeometry geometry
+    ) => Prepare(analysis, Maybe.From(geometry), Maybe<int>.None);
+
+    /// <summary>Replans a selected face and renders one source-supported portrait.</summary>
+    /// <param name="analysis">Source-bound immutable detections.</param>
+    /// <param name="geometry">Optional reviewed source coordinates.</param>
+    /// <param name="faceIndex">Explicit selection when several faces were detected.</param>
+    /// <returns>Owned prepared pixels, expected review outcome, or a typed failure.</returns>
+    public Result<PortraitPreparationResult, FacialError> Prepare(
+        PortraitAnalysis analysis,
+        Maybe<ReviewedPortraitGeometry> geometry,
+        Maybe<int> faceIndex
+    ) => Prepare(analysis, geometry, faceIndex, PortraitMouthPolicy.Default);
+
+    /// <summary>Prepares cached detections using an explicit captured-mouth tolerance.</summary>
+    /// <param name="analysis">Source-bound immutable detections.</param>
+    /// <param name="geometry">Optional reviewed source coordinates.</param>
+    /// <param name="faceIndex">Explicit selection when several faces were detected.</param>
+    /// <param name="mouthPolicy">Immutable application policy snapshotted for this preparation.</param>
+    /// <returns>Owned prepared pixels, named review findings, or a typed failure.</returns>
+    public Result<PortraitPreparationResult, FacialError> Prepare(
+        PortraitAnalysis analysis,
+        Maybe<ReviewedPortraitGeometry> geometry,
+        Maybe<int> faceIndex,
+        PortraitMouthPolicy mouthPolicy
+    )
+    {
+        lock (gate)
+            return disposed
+                ? FacialErrors.Disposed().Fail<PortraitPreparationResult>()
+                : PortraitPreparation.Prepare(analysis, geometry, faceIndex, mouthPolicy, logger);
+    }
+
+    /// <summary>Renders a frozen portrait with explicit source-bound background editing.</summary>
+    /// <param name="analysis">Cached detections and optional frozen-source person confidence.</param>
+    /// <param name="geometry">Optional imported source-bound geometry.</param>
+    /// <param name="faceIndex">Explicit selected face when required.</param>
+    /// <param name="mouthPolicy">Fixed captured-mouth tolerance.</param>
+    /// <param name="backgroundPolicy">Background editing and person-protection parameters.</param>
+    /// <returns>Owned composite pixels and evidence, retaining all acquisition findings.</returns>
+    public Result<PortraitPreparationResult, FacialError> Prepare(
+        PortraitAnalysis analysis,
+        Maybe<ReviewedPortraitGeometry> geometry,
+        Maybe<int> faceIndex,
+        PortraitMouthPolicy mouthPolicy,
+        PortraitBackgroundPolicy backgroundPolicy
+    ) =>
+        Prepare(analysis, geometry, faceIndex, mouthPolicy)
+            .Bind(portrait => PortraitBackground.Apply(analysis, portrait, backgroundPolicy));
+
     private Result<PortraitPreparationResult, FacialError> PrepareImage(
         PortraitImage image,
         Maybe<ReviewedPortraitGeometry> geometry,
         Maybe<int> faceIndex
-    )
-    {
-        var source = new PortraitSource(image.SourceSha256, image.Pixels);
-        return ReviewedGeometryCheck
-            .Resolve(geometry, source, faceIndex)
-            .Bind(index =>
-                detector
-                    .Value.Bind(model => model.Detect(source.Image))
-                    .Bind(faces => Complete(source, geometry, index, faces))
-            );
-    }
+    ) => Analyze(image).Bind(analysis => Prepare(analysis, geometry, faceIndex));
 
     /// <summary>Releases native ONNX sessions after any running call completes.</summary>
     public void Dispose()
@@ -118,65 +201,9 @@ public sealed class PortraitPreparer : IDisposable
             if (disposed)
                 return;
             disposed = true;
+            background.Dispose();
             if (detector.IsValueCreated && detector.Value.IsSuccess)
                 detector.Value.Value.Dispose();
         }
     }
-
-    private Result<PortraitPreparationResult, FacialError> Complete(
-        PortraitSource source,
-        Maybe<ReviewedPortraitGeometry> geometry,
-        Maybe<int> index,
-        ImmutableArray<PortraitFace> faces
-    )
-    {
-        var review = PortraitFaceSelector.NeedsReview(faces, index);
-        return review.HasValue
-            ? PortraitOutcomes.Review(source, faces, review.Value).Succeed()
-            : PortraitFaceSelector
-                .Select(faces, index.GetValueOrDefault(0))
-                .Bind(face => Crop(source, geometry, faces, face));
-    }
-
-    private Result<PortraitPreparationResult, FacialError> Crop(
-        PortraitSource source,
-        Maybe<ReviewedPortraitGeometry> geometry,
-        ImmutableArray<PortraitFace> faces,
-        PortraitFace face
-    ) =>
-        PortraitFeatures
-            .FromMediaPipe(face.Landmarks)
-            .Bind(features =>
-            {
-                var image = source.Image;
-                var crop = PortraitCrop.Calculate(
-                    face,
-                    features,
-                    geometry,
-                    image.Width,
-                    image.Height
-                );
-                return crop.IsFailure
-                    ? PortraitOutcomes
-                        .Review(source, faces, new(PortraitStatus.ReviewRequired, crop.Error))
-                        .Succeed()
-                    : Warp(source, faces, crop.Value);
-            });
-
-    private Result<PortraitPreparationResult, FacialError> Warp(
-        PortraitSource source,
-        ImmutableArray<PortraitFace> faces,
-        PortraitCropPlan plan
-    ) =>
-        source
-            .Image.Warp(480, 640, plan.Transform)
-            .Map(pixels =>
-            {
-                var prepared = PortraitOutcomes.Prepared(source, faces, plan, pixels);
-                logger.LogDebug(
-                    "Portrait preparation completed with {FindingCount} findings.",
-                    prepared.Findings.Length
-                );
-                return prepared;
-            });
 }

@@ -36,7 +36,7 @@ public abstract class CaptureDisplayViewModel
     private Maybe<CapturedFingerprint> captured;
     private string status = "Looking for an FS50…";
     private string guidance = "Place your finger";
-    private bool automaticCapture = true;
+    private bool automaticCapture;
     private bool overlay = true;
     private bool segmentation = true;
     private string problem = string.Empty;

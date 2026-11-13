@@ -55,8 +55,9 @@ internal sealed class CaptureDelaySettingsTests
             preferences =>
             {
                 applied = preferences;
-                return UnitResult.Success<DesktopError>();
-            }
+                return Task.FromResult(UnitResult.Success<DesktopError>());
+            },
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<SettingsViewModel>.Instance
         );
         view.AutoCaptureDelaySeconds = "0.3";
         applied.AutoCaptureDelaySeconds.Should().Be(0.3);

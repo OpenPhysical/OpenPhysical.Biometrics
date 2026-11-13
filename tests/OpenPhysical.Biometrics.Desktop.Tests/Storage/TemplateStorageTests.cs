@@ -14,7 +14,7 @@ internal sealed class TemplateStorageTests
     [Test]
     public async Task StandaloneFmrLoadsWithoutInventingAnImage()
     {
-        var path = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N") + ".fmr");
+        var path = Path.Combine(PrivateTestPaths.Root, Guid.NewGuid().ToString("N") + ".fmr");
         var record = UnsignedTemplateService
             .Create([ProcessingStorageFixtures.Capture()], new TemplateMetadata(1, 0, 0))
             .Value;
@@ -30,7 +30,7 @@ internal sealed class TemplateStorageTests
     {
         var capture = ProcessingStorageFixtures.Capture();
         var folder = Path.Combine(
-            Path.GetTempPath(),
+            PrivateTestPaths.Root,
             "biometrics-tamper-" + Guid.NewGuid().ToString("N")
         );
         var record = UnsignedTemplateService.Create([capture], new TemplateMetadata(1, 0, 0)).Value;
@@ -53,7 +53,7 @@ internal sealed class TemplateStorageTests
     {
         var capture = ProcessingStorageFixtures.Capture();
         var folder = Path.Combine(
-            Path.GetTempPath(),
+            PrivateTestPaths.Root,
             "biometrics-path-" + Guid.NewGuid().ToString("N")
         );
         var record = UnsignedTemplateService.Create([capture], new TemplateMetadata(1, 0, 0)).Value;
@@ -78,7 +78,7 @@ internal sealed class TemplateStorageTests
     {
         var capture = ProcessingStorageFixtures.Capture();
         var folder = Path.Combine(
-            Path.GetTempPath(),
+            PrivateTestPaths.Root,
             "biometrics-record-" + Guid.NewGuid().ToString("N")
         );
         var record = UnsignedTemplateService.Create([capture], new TemplateMetadata(1, 0, 0)).Value;
@@ -99,11 +99,40 @@ internal sealed class TemplateStorageTests
     }
 
     [Test]
+    public async Task BareTemplateExportRejectsARepositoryBeforeWritingBiometrics()
+    {
+        var folder = ProcessingStorageFixtures.Folder();
+        Directory.CreateDirectory(Path.Combine(folder, ".git"));
+        try
+        {
+            var capture = ProcessingStorageFixtures.Capture();
+            var record = UnsignedTemplateService.Create([capture], new(1, 0, 0)).Value;
+            (
+                await new TemplateStorage().SaveAsync(
+                    record,
+                    [capture],
+                    folder,
+                    CancellationToken.None
+                )
+            )
+                .Should()
+                .Fail()
+                .Which.Code.Should()
+                .Be("Package.UnsafePath");
+            Directory.EnumerateFiles(folder, "*", SearchOption.AllDirectories).Should().BeEmpty();
+        }
+        finally
+        {
+            Directory.Delete(folder, true);
+        }
+    }
+
+    [Test]
     public async Task ExportRejectsViewsFromADifferentCapture()
     {
         var capture = ProcessingStorageFixtures.Capture();
         var folder = Path.Combine(
-            Path.GetTempPath(),
+            PrivateTestPaths.Root,
             "biometrics-association-" + Guid.NewGuid().ToString("N")
         );
         var record = UnsignedTemplateService.Create([capture], new TemplateMetadata(1, 0, 0)).Value;

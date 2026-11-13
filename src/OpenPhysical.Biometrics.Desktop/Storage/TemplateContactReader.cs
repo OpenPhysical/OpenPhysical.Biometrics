@@ -9,7 +9,7 @@ using OpenPhysical.Biometrics.Capture.Futronic;
 internal static class TemplateContactReader
 {
     internal static async Task<Result<TemplateImage, DesktopError>> AttachAsync(
-        string folder,
+        TemplateCompanionSource source,
         TemplateProcessingValidated value,
         TemplateImage image,
         CancellationToken token
@@ -21,11 +21,11 @@ internal static class TemplateContactReader
         var metadata = parsed.Value;
         if (metadata.Planes.ValueKind == JsonValueKind.Undefined)
             return WithoutPlanes(metadata, value, image);
-        return await WithPlanes(folder, value, image, metadata, token).ConfigureAwait(false);
+        return await WithPlanes(source, value, image, metadata, token).ConfigureAwait(false);
     }
 
     private static async Task<Result<TemplateImage, DesktopError>> WithPlanes(
-        string folder,
+        TemplateCompanionSource source,
         TemplateProcessingValidated value,
         TemplateImage image,
         TemplateContactManifest metadata,
@@ -36,7 +36,7 @@ internal static class TemplateContactReader
         if (descriptors.IsFailure)
             return descriptors.Error;
         var planes = await TemplatePngFiles
-            .ReadAllAsync(folder, descriptors.Value, image.Width, image.Height, token)
+            .ReadAllAsync(source, descriptors.Value, image.Width, image.Height, token)
             .ConfigureAwait(false);
         if (planes.IsFailure)
             return planes.Error;

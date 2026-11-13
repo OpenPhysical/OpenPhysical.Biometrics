@@ -20,6 +20,9 @@ public sealed record PortraitFace(
     PortraitPoint ViewerRightEar
 )
 {
+    /// <summary>Gets the cached source-pose estimate, absent when the source cannot support one.</summary>
+    public Maybe<PortraitPoseEstimate> Pose { get; init; }
+
     /// <summary>Gets anatomical features derived from the mesh topology, or none when the landmark set is invalid.</summary>
     public Maybe<PortraitFeatures> Features
     {
