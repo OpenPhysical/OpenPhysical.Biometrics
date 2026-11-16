@@ -1,13 +1,6 @@
 name: Publish immutable test fixtures
 
 on:
-  push:
-    branches: [studio-release]
-    paths:
-      - tests/OpenPhysical.Biometrics.TestFixtures.Package/**
-      - scripts/nuget-fixture-projects.json
-      - scripts/nuget-fixture-restore.config
-      - .github/workflows/publish-test-fixtures.yml
   workflow_dispatch:
 
 permissions:

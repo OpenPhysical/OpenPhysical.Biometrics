@@ -47,12 +47,8 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           global-json-file: global.json
-      - name: Verify and pack the frozen test-only fixtures
-        run: |
-          mkdir -p artifacts/test-feed
-          python scripts/verify-test-fixture-package.py
-          dotnet restore tests/OpenPhysical.Biometrics.TestFixtures.Package/OpenPhysical.Biometrics.TestFixtures.Package.csproj --locked-mode
-          dotnet pack tests/OpenPhysical.Biometrics.TestFixtures.Package/OpenPhysical.Biometrics.TestFixtures.Package.csproj -c Release --no-restore --output artifacts/test-feed
+      - name: Verify frozen test fixture provenance
+        run: python scripts/verify-test-fixture-package.py
       - name: Restore locked dependencies from package feeds
         run: dotnet restore OpenPhysical.Biometrics.sln --locked-mode
       - name: Check formatting and repository policy

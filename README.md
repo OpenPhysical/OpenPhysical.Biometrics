@@ -191,16 +191,14 @@ transforms.
 
 This repository restores the pinned NBIS and NFIQ NuGet packages from the
 configured package feed. CI restores locked package versions in an isolated
-clone. Test projects use the local, hash-pinned
-`OpenPhysical.Biometrics.TestFixtures` package, built from versioned fixture
-snapshots in this repository. See [build and release](docs/BUILD_AND_RELEASE.md).
+clone. Test projects restore the private, immutable
+`OpenPhysical.Biometrics.TestFixtures` package from GitHub Packages. Its source
+snapshots and hashes remain in this repository. Configure package access as
+described in [build and release](docs/BUILD_AND_RELEASE.md).
 
 ```sh
 dotnet tool restore
 python3 scripts/verify-test-fixture-package.py
-mkdir -p artifacts/test-feed
-dotnet restore tests/OpenPhysical.Biometrics.TestFixtures.Package/OpenPhysical.Biometrics.TestFixtures.Package.csproj --locked-mode
-dotnet pack tests/OpenPhysical.Biometrics.TestFixtures.Package/OpenPhysical.Biometrics.TestFixtures.Package.csproj -c Release --no-restore --output artifacts/test-feed
 dotnet restore OpenPhysical.Biometrics.sln --locked-mode
 dotnet build OpenPhysical.Biometrics.sln -c Release -m:1
 dotnet test OpenPhysical.Biometrics.sln -c Release --no-build --no-restore -m:1

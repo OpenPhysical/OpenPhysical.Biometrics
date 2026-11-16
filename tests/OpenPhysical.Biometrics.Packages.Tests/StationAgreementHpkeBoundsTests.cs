@@ -33,14 +33,12 @@ public sealed class StationAgreementHpkeBoundsTests
         allocated.Should().BeLessThan(32 * 1024);
     }
 
-    /// <summary>Checks every public span bound for both directions.</summary>
+    /// <summary>Checks every public span bound for sealing.</summary>
     [Test]
-    public void EveryInputSpanRejectsInvalidLengths()
+    public void EverySealInputSpanRejectsInvalidLengths()
     {
         var spki = ValidSpki();
-        var point = ValidPoint();
         var challenge = new byte[32];
-        var ciphertext = new byte[48];
         var oversizedInfo = new byte[129];
         var oversizedAad = new byte[1_101];
         var invalidSeal = new[]
@@ -54,26 +52,35 @@ public sealed class StationAgreementHpkeBoundsTests
         };
         foreach (var result in invalidSeal)
             result.Should().Fail();
+    }
 
+    /// <summary>Checks every public span bound for opening and clears each owned secret.</summary>
+    [Test]
+    public void EveryOpenInputSpanRejectsInvalidLengthsAndClearsSecret()
+    {
+        var spki = ValidSpki();
+        var point = ValidPoint();
+        var ciphertext = new byte[48];
+        var oversizedInfo = new byte[129];
+        var oversizedAad = new byte[1_101];
+        var secrets = Enumerable
+            .Range(0, 7)
+            .Select(_ => Enumerable.Repeat((byte)0xA5, 32).ToArray())
+            .ToArray();
         var invalidOpen = new[]
         {
-            StationAgreementHpke.OpenBase(new byte[90], new byte[32], point, [1], [2], ciphertext),
-            StationAgreementHpke.OpenBase(spki, new byte[32], new byte[64], [1], [2], ciphertext),
-            StationAgreementHpke.OpenBase(spki, new byte[32], point, [], [2], ciphertext),
-            StationAgreementHpke.OpenBase(
-                spki,
-                new byte[32],
-                point,
-                oversizedInfo,
-                [2],
-                ciphertext
-            ),
-            StationAgreementHpke.OpenBase(spki, new byte[32], point, [1], [], ciphertext),
-            StationAgreementHpke.OpenBase(spki, new byte[32], point, [1], oversizedAad, ciphertext),
-            StationAgreementHpke.OpenBase(spki, new byte[32], point, [1], [2], new byte[47]),
+            StationAgreementHpke.OpenBase(new byte[90], secrets[0], point, [1], [2], ciphertext),
+            StationAgreementHpke.OpenBase(spki, secrets[1], new byte[64], [1], [2], ciphertext),
+            StationAgreementHpke.OpenBase(spki, secrets[2], point, [], [2], ciphertext),
+            StationAgreementHpke.OpenBase(spki, secrets[3], point, oversizedInfo, [2], ciphertext),
+            StationAgreementHpke.OpenBase(spki, secrets[4], point, [1], [], ciphertext),
+            StationAgreementHpke.OpenBase(spki, secrets[5], point, [1], oversizedAad, ciphertext),
+            StationAgreementHpke.OpenBase(spki, secrets[6], point, [1], [2], new byte[47]),
         };
         foreach (var result in invalidOpen)
             result.Should().Fail();
+        foreach (var secret in secrets)
+            secret.Should().OnlyContain(value => value == 0);
     }
 
     /// <summary>Clears the owned ECDH bytes when an accepted-length SPKI is malformed.</summary>

@@ -79,9 +79,9 @@
       },
       "OpenPhysical.Biometrics.TestFixtures": {
         "type": "Direct",
-        "requested": "[1.0.0-beta.3, )",
-        "resolved": "1.0.0-beta.3",
-        "contentHash": "aXG5RvxlnmTB/1uTnxzPKXrgv1GTV70P7wRpvHNOr6wq6BGzTum2HppAmWxg7Cs3fJZYTYbRXargLMeOQdryyQ=="
+        "requested": "[1.0.0-dev.20261116.1, )",
+        "resolved": "1.0.0-dev.20261116.1",
+        "contentHash": "lpMgaWklpIYzvM/bscNnAj3445aYz95Ax+CuHGrqH6x4es6CCN7rFPXY9XMnGPQP4qFbMAOD05pwNbE6o7h+XQ=="
       },
       "PolySharp": {
         "type": "Direct",

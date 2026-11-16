@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
     <PropertyGroup>
         <TargetFramework>net10.0</TargetFramework>
-        <Version>4.0.0-dev.20261115.7</Version>
+        <Version>4.0.0-dev.20261115.8</Version>
         <IsPackable>true</IsPackable>
         <IsConsolidatedBiometricsProject>true</IsConsolidatedBiometricsProject>
         <Description>Portable authenticated private biometric capture packages and private file transactions.</Description>

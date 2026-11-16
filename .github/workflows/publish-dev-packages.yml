@@ -102,16 +102,13 @@ jobs:
         env:
           SOURCE_COMMIT: ${{ inputs.source_commit }}
         run: python scripts/camera_native_closure.py verify --source-commit "$SOURCE_COMMIT" --native-root artifacts/native/camera
-      - name: Prepare fixture feed and restore locked dependencies
+      - name: Verify fixture provenance and restore locked dependencies
         shell: bash
         env:
           NuGetPackageSourceCredentials_openphysical: Username=${{ github.actor }};Password=${{ github.token }}
         run: |
           set -euo pipefail
-          mkdir -p artifacts/test-feed
           python scripts/verify-test-fixture-package.py
-          dotnet restore tests/OpenPhysical.Biometrics.TestFixtures.Package/OpenPhysical.Biometrics.TestFixtures.Package.csproj --locked-mode
-          dotnet pack tests/OpenPhysical.Biometrics.TestFixtures.Package/OpenPhysical.Biometrics.TestFixtures.Package.csproj -c Release --no-restore --output artifacts/test-feed
           dotnet restore OpenPhysical.Biometrics.sln --locked-mode
       - name: Run source checks, build, and tests
         shell: bash
