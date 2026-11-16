@@ -1,0 +1,60 @@
+EnrollmentEnvelopeV2 DEFINITIONS EXPLICIT TAGS ::= BEGIN
+
+EnrollmentEnvelopeV2 ::= SEQUENCE {
+    header                  EnrollmentHeaderV2,
+    files                   SEQUENCE SIZE (1..64) OF EncryptedFileV2,
+    signature               OCTET STRING
+}
+
+EnrollmentHeaderV2 ::= SEQUENCE {
+    version                 INTEGER (2),
+    suite                   INTEGER (1),
+    organizationId          UTF8String,
+    transferId              UTF8String,
+    senderId                UTF8String,
+    recipientId             UTF8String,
+    enrollmentId            UTF8String,
+    revision                INTEGER (0..4294967295),
+    senderSigningKeyId      OCTET STRING (SIZE (32)),
+    recipientEncryptionKeyId OCTET STRING (SIZE (32)),
+    purpose                 INTEGER (1..4),
+    createdUnixSeconds      INTEGER (1..MAX),
+    expiresUnixSeconds      INTEGER (1..MAX),
+    authorizationReferences SEQUENCE OF UTF8String,
+    fileCount               INTEGER (1..64)
+}
+
+EncryptedFileV2 ::= SEQUENCE {
+    index                   INTEGER (0..63),
+    encapsulatedKey         OCTET STRING (SIZE (65)),
+    ciphertext              OCTET STRING
+}
+
+SignedOriginManifestV2 ::= SEQUENCE {
+    statement               OriginStatementV2,
+    signature               OCTET STRING
+}
+
+OriginStatementV2 ::= SEQUENCE {
+    version                 INTEGER (2),
+    organizationId          UTF8String,
+    personId                UTF8String,
+    enrollmentId            UTF8String,
+    revision                INTEGER (0..4294967295),
+    purpose                 UTF8String,
+    stationId               UTF8String,
+    capturePolicyEvidence   OCTET STRING,
+    artifacts               SEQUENCE SIZE (1..63) OF OriginArtifactV2,
+    signingKeyId            OCTET STRING (SIZE (32))
+}
+
+OriginArtifactV2 ::= SEQUENCE {
+    index                   INTEGER (1..63),
+    name                    UTF8String,
+    role                    UTF8String,
+    mediaType               UTF8String,
+    length                  INTEGER (0..67108864),
+    sha256                  OCTET STRING (SIZE (32))
+}
+
+END

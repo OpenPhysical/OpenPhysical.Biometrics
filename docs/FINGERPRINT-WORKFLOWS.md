@@ -144,6 +144,8 @@ contains up to 128 minutiae selected by quality with deterministic tie-breaking.
 The header uses the maximum width and height of the original captures. Minutia
 coordinates continue to describe each original image.
 
+Unavailable-finger encoding records an actual acquisition/unavailability finding. It is not the planned issuer-side `NotEnrolled` state for a synthetic unpersonalized test card, and missing capture data must not silently select it. That future profile is specified in the [hosted test issuance plan](../../OpenPhysical.Net/docs/planning/hosted-test-issuance.md).
+
 For an unavailable finger, use `FingerprintEnrollmentFinger.Unavailable` with
 `TemporarilyUnusable` or `PermanentlyUnusable`; it returns a
 `Result<FingerprintEnrollmentFinger, FingerprintError>`. For such a finger the

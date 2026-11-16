@@ -1,0 +1,407 @@
+{
+  "schemaVersion": 1,
+  "packageId": "OpenPhysical.Biometrics.TestFixtures",
+  "packageVersion": "1.0.0-beta.3",
+  "testOnly": true,
+  "sourceRepositories": [
+    {
+      "name": "OpenPhysical.Biometrics.NBIS",
+      "url": "https://github.com/OpenPhysical/OpenPhysical.Biometrics.NBIS",
+      "commit": "d8e67d61af827d179beac51ddc4d933f75d4c695"
+    },
+    {
+      "name": "OpenPhysical.Biometrics.NFIQ",
+      "url": "https://github.com/OpenPhysical/OpenPhysical.Biometrics.NFIQ",
+      "commit": "fea2d64e7e93388f460d57fc1219b44d5b48dd1f"
+    },
+    {
+      "name": "NIST NFIQ2",
+      "url": "https://github.com/usnistgov/NFIQ2",
+      "commit": "76b8c4e0b0541f3deab832b1a496e524edc0b5b6"
+    }
+  ],
+  "sourceInputs": [
+    {
+      "repository": "OpenPhysical.Biometrics.NBIS",
+      "commit": "d8e67d61af827d179beac51ddc4d933f75d4c695",
+      "sourcePath": "tests/Shared/Sd04Fixtures.cs",
+      "packagePath": "fixtures/nbis/tests/Shared/Sd04Fixtures.cs",
+      "sha256": "5f0a23958391d318a5ec93f71ce370423bfedd230babddcbfee0a3c748589a68"
+    },
+    {
+      "repository": "OpenPhysical.Biometrics.NBIS",
+      "commit": "d8e67d61af827d179beac51ddc4d933f75d4c695",
+      "sourcePath": "tests/fixtures/sd04/NIST-DATA-NOTICE.txt",
+      "packagePath": "fixtures/nbis/tests/fixtures/sd04/NIST-DATA-NOTICE.txt",
+      "sha256": "5a975cc1e9f2a15d3b79a9af703e1b48eba37854ad3335d3f5e94606d97706b5"
+    },
+    {
+      "repository": "OpenPhysical.Biometrics.NBIS",
+      "commit": "d8e67d61af827d179beac51ddc4d933f75d4c695",
+      "sourcePath": "tests/fixtures/sd04/README.md",
+      "packagePath": "fixtures/nbis/tests/fixtures/sd04/README.md",
+      "sha256": "f49b2018d458ab03e1b36de4a59b5a1c23464aea8615f766edbfd27fa2ffc281"
+    },
+    {
+      "repository": "OpenPhysical.Biometrics.NBIS",
+      "commit": "d8e67d61af827d179beac51ddc4d933f75d4c695",
+      "sourcePath": "tests/fixtures/sd04/f0002_05.gray8",
+      "packagePath": "fixtures/nbis/tests/fixtures/sd04/f0002_05.gray8",
+      "sha256": "248a69dcfe8ec9065492001c0d2cb21f02a95b5fbdc3ad06dba180325b4d6daf"
+    },
+    {
+      "repository": "OpenPhysical.Biometrics.NBIS",
+      "commit": "d8e67d61af827d179beac51ddc4d933f75d4c695",
+      "sourcePath": "tests/fixtures/sd04/f0003_10.gray8",
+      "packagePath": "fixtures/nbis/tests/fixtures/sd04/f0003_10.gray8",
+      "sha256": "eeede3ee93766a722ea64810ef39f2d27835327b04eced4b5dea5d803b23d6d1"
+    },
+    {
+      "repository": "OpenPhysical.Biometrics.NBIS",
+      "commit": "d8e67d61af827d179beac51ddc4d933f75d4c695",
+      "sourcePath": "tests/fixtures/sd04/f0005_03.gray8",
+      "packagePath": "fixtures/nbis/tests/fixtures/sd04/f0005_03.gray8",
+      "sha256": "61e2fa591785780d6a5bcd861e77ba3b5d46b8806197db192a2a1a1bbe9c7a5b"
+    },
+    {
+      "repository": "OpenPhysical.Biometrics.NBIS",
+      "commit": "d8e67d61af827d179beac51ddc4d933f75d4c695",
+      "sourcePath": "tests/fixtures/sd04/f0008_10.gray8",
+      "packagePath": "fixtures/nbis/tests/fixtures/sd04/f0008_10.gray8",
+      "sha256": "4c4c6ab54c658df3cf6998d78236b9bef877476ae463355e9d240b1b35b7c9e2"
+    },
+    {
+      "repository": "OpenPhysical.Biometrics.NBIS",
+      "commit": "d8e67d61af827d179beac51ddc4d933f75d4c695",
+      "sourcePath": "tests/fixtures/sd04/f0010_01.gray8",
+      "packagePath": "fixtures/nbis/tests/fixtures/sd04/f0010_01.gray8",
+      "sha256": "04239e6cf86877be61b4cffe8a0fea504142a3f08f9d9535dc3a315db07dc5e7"
+    },
+    {
+      "repository": "OpenPhysical.Biometrics.NBIS",
+      "commit": "d8e67d61af827d179beac51ddc4d933f75d4c695",
+      "sourcePath": "tests/fixtures/sd04/f0021_07.gray8",
+      "packagePath": "fixtures/nbis/tests/fixtures/sd04/f0021_07.gray8",
+      "sha256": "e5091c4ece660fc5dd2f1f3a4eebf01c88669aea4fe98929cec7c9003eda11e2"
+    },
+    {
+      "repository": "OpenPhysical.Biometrics.NBIS",
+      "commit": "d8e67d61af827d179beac51ddc4d933f75d4c695",
+      "sourcePath": "tests/fixtures/sd04/f0070_10.gray8",
+      "packagePath": "fixtures/nbis/tests/fixtures/sd04/f0070_10.gray8",
+      "sha256": "32a5e6b4da326024a6f66541b055cb75c434510637dbc418a51ec6c4dd55007c"
+    },
+    {
+      "repository": "OpenPhysical.Biometrics.NBIS",
+      "commit": "d8e67d61af827d179beac51ddc4d933f75d4c695",
+      "sourcePath": "tests/fixtures/sd04/f0091_10.gray8",
+      "packagePath": "fixtures/nbis/tests/fixtures/sd04/f0091_10.gray8",
+      "sha256": "6d901210084a3dadc5d8b2809e9a7af9467b563455fe519e193eea710c209a0f"
+    },
+    {
+      "repository": "OpenPhysical.Biometrics.NBIS",
+      "commit": "d8e67d61af827d179beac51ddc4d933f75d4c695",
+      "sourcePath": "tests/fixtures/sd04/f0110_08.gray8",
+      "packagePath": "fixtures/nbis/tests/fixtures/sd04/f0110_08.gray8",
+      "sha256": "1584abdb3c8cac10d2c0afaa92838a0c5f001fc2f5684f680903fc979a5d8bd8"
+    },
+    {
+      "repository": "OpenPhysical.Biometrics.NBIS",
+      "commit": "d8e67d61af827d179beac51ddc4d933f75d4c695",
+      "sourcePath": "tests/fixtures/sd04/f0371_05.gray8",
+      "packagePath": "fixtures/nbis/tests/fixtures/sd04/f0371_05.gray8",
+      "sha256": "0f0a502d636b0fe0eb93e6c5034fe50db59652e571251b25b99fb2b497d32945"
+    },
+    {
+      "repository": "OpenPhysical.Biometrics.NBIS",
+      "commit": "d8e67d61af827d179beac51ddc4d933f75d4c695",
+      "sourcePath": "tests/fixtures/sd04/manifest.json",
+      "packagePath": "fixtures/nbis/tests/fixtures/sd04/manifest.json",
+      "sha256": "7b52e017365b92738bdd34128d880ffb6aa5cf9f5222f918a5c83ef4f6e1abc5"
+    },
+    {
+      "repository": "OpenPhysical.Biometrics.NBIS",
+      "commit": "d8e67d61af827d179beac51ddc4d933f75d4c695",
+      "sourcePath": "tests/fixtures/sd04/s0002_05.gray8",
+      "packagePath": "fixtures/nbis/tests/fixtures/sd04/s0002_05.gray8",
+      "sha256": "830ce26e99f660e7d19914c4177a38e4523bfd5290ce326ec1b13009e8d6a4d9"
+    },
+    {
+      "repository": "OpenPhysical.Biometrics.NBIS",
+      "commit": "d8e67d61af827d179beac51ddc4d933f75d4c695",
+      "sourcePath": "tests/fixtures/sd04/s0003_10.gray8",
+      "packagePath": "fixtures/nbis/tests/fixtures/sd04/s0003_10.gray8",
+      "sha256": "7db55877b801b9cfb0a1a703ec34b65f1816ba243f49cd08e7c3cb72f1acd944"
+    },
+    {
+      "repository": "OpenPhysical.Biometrics.NBIS",
+      "commit": "d8e67d61af827d179beac51ddc4d933f75d4c695",
+      "sourcePath": "tests/fixtures/sd04/s0005_03.gray8",
+      "packagePath": "fixtures/nbis/tests/fixtures/sd04/s0005_03.gray8",
+      "sha256": "8ea5a02146f77ca3e5b3d8f4db1e1a6a33142d99349a2c0bbd878286206e056f"
+    },
+    {
+      "repository": "OpenPhysical.Biometrics.NBIS",
+      "commit": "d8e67d61af827d179beac51ddc4d933f75d4c695",
+      "sourcePath": "tests/fixtures/sd04/s0008_10.gray8",
+      "packagePath": "fixtures/nbis/tests/fixtures/sd04/s0008_10.gray8",
+      "sha256": "09220a032cb26a0d9bfd0c48a77bc9bb6339823574645302cb531f4b5911ed54"
+    },
+    {
+      "repository": "OpenPhysical.Biometrics.NBIS",
+      "commit": "d8e67d61af827d179beac51ddc4d933f75d4c695",
+      "sourcePath": "tests/fixtures/sd04/s0010_01.gray8",
+      "packagePath": "fixtures/nbis/tests/fixtures/sd04/s0010_01.gray8",
+      "sha256": "a9dfcb892787cc72bdf18256e3e8d40b84ee8cc09ce354179d401ec0cb01e7af"
+    },
+    {
+      "repository": "OpenPhysical.Biometrics.NBIS",
+      "commit": "d8e67d61af827d179beac51ddc4d933f75d4c695",
+      "sourcePath": "tests/fixtures/sd04/s0021_07.gray8",
+      "packagePath": "fixtures/nbis/tests/fixtures/sd04/s0021_07.gray8",
+      "sha256": "c55f60265782937a10f2245db351bb0f88180097243a92a1ebc6bba60d369598"
+    },
+    {
+      "repository": "OpenPhysical.Biometrics.NBIS",
+      "commit": "d8e67d61af827d179beac51ddc4d933f75d4c695",
+      "sourcePath": "tests/fixtures/sd04/s0070_10.gray8",
+      "packagePath": "fixtures/nbis/tests/fixtures/sd04/s0070_10.gray8",
+      "sha256": "bd57d1db732fb2c7e1c5b31c12c61b85a7c67cdd1d9a913e2674f0b6e6b44bae"
+    },
+    {
+      "repository": "OpenPhysical.Biometrics.NBIS",
+      "commit": "d8e67d61af827d179beac51ddc4d933f75d4c695",
+      "sourcePath": "tests/fixtures/sd04/s0091_10.gray8",
+      "packagePath": "fixtures/nbis/tests/fixtures/sd04/s0091_10.gray8",
+      "sha256": "7add921a5ce5c2dbab16fd7c187aad7d018bd1dd71aa3c678a5fa5c321ccf0fa"
+    },
+    {
+      "repository": "OpenPhysical.Biometrics.NBIS",
+      "commit": "d8e67d61af827d179beac51ddc4d933f75d4c695",
+      "sourcePath": "tests/fixtures/sd04/s0110_08.gray8",
+      "packagePath": "fixtures/nbis/tests/fixtures/sd04/s0110_08.gray8",
+      "sha256": "262b66ac19f59f34608115a4af74aa31c7df7b9a3e63cd6a876e3968c15e91f8"
+    },
+    {
+      "repository": "OpenPhysical.Biometrics.NBIS",
+      "commit": "d8e67d61af827d179beac51ddc4d933f75d4c695",
+      "sourcePath": "tests/fixtures/sd04/s0371_05.gray8",
+      "packagePath": "fixtures/nbis/tests/fixtures/sd04/s0371_05.gray8",
+      "sha256": "d551b7b3f9a16315134a2494f8268e520abfa70163a799cc8419aebed77dd218"
+    },
+    {
+      "repository": "OpenPhysical.Biometrics.NFIQ",
+      "commit": "fea2d64e7e93388f460d57fc1219b44d5b48dd1f",
+      "sourcePath": "tests/fixtures/NIST-DATA-NOTICE.txt",
+      "packagePath": "fixtures/nfiq/tests/fixtures/NIST-DATA-NOTICE.txt",
+      "sha256": "5a975cc1e9f2a15d3b79a9af703e1b48eba37854ad3335d3f5e94606d97706b5"
+    },
+    {
+      "repository": "OpenPhysical.Biometrics.NFIQ",
+      "commit": "fea2d64e7e93388f460d57fc1219b44d5b48dd1f",
+      "sourcePath": "tests/fixtures/README.md",
+      "packagePath": "fixtures/nfiq/tests/fixtures/README.md",
+      "sha256": "f099b01f35105f362a86b74f37698dbc26a21dfd6a7bace3bca2506cefa192a9"
+    },
+    {
+      "repository": "OpenPhysical.Biometrics.NFIQ",
+      "commit": "fea2d64e7e93388f460d57fc1219b44d5b48dd1f",
+      "sourcePath": "tests/fixtures/SFinGe_Test01.gray8",
+      "packagePath": "fixtures/nfiq/tests/fixtures/SFinGe_Test01.gray8",
+      "sha256": "41ea2ab829f726b36fbafa427c8adc3f9bc5d52c2651c1e5e1ef1bdce32f3f40"
+    },
+    {
+      "repository": "OpenPhysical.Biometrics.NFIQ",
+      "commit": "fea2d64e7e93388f460d57fc1219b44d5b48dd1f",
+      "sourcePath": "tests/fixtures/nfiq2-release-vectors.json",
+      "packagePath": "fixtures/nfiq/tests/fixtures/nfiq2-release-vectors.json",
+      "sha256": "02f0b870971fca0420436fe10f1a4ec32f395592dc3e5391ec0de8c774c91247"
+    },
+    {
+      "repository": "NIST NFIQ2",
+      "commit": "76b8c4e0b0541f3deab832b1a496e524edc0b5b6",
+      "sourcePath": "examples/README.md",
+      "packagePath": "licenses/NFIQ2-EXAMPLES-README.md",
+      "sha256": "66e2feeb68b95163f50a4c933024ca26c9ab66dc750a001439e1841e6b53f0ee"
+    },
+    {
+      "repository": "NIST NFIQ2",
+      "commit": "76b8c4e0b0541f3deab832b1a496e524edc0b5b6",
+      "sourcePath": "LICENSE.md",
+      "packagePath": "licenses/NFIQ2-LICENSE.md",
+      "sha256": "07684c842bc9f1e4e064f0b648a2aedbc145545fb3f924c14072eea789cd4c03"
+    }
+  ],
+  "files": [
+    {
+      "path": "LICENSE",
+      "sha256": "697c8b0da8c6f85d7f5d62de555d3db2ec7801fbb4cf8e3b615ce5e3957c0aa3",
+      "size": 19447
+    },
+    {
+      "path": "OpenPhysical.Biometrics.TestFixtures.Package.csproj",
+      "sha256": "16bd508475f14ea099ad7b61c822115214c1c490188268d437c71a9a5021dbd0",
+      "size": 1668
+    },
+    {
+      "path": "README.md",
+      "sha256": "9dfa472f005844226070befd25df84f02146ff18b1f06ebe157e893fdb884573",
+      "size": 939
+    },
+    {
+      "path": "THIRD_PARTY_NOTICES.md",
+      "sha256": "65be20b4931261d5253a3c5ddec9b69cb69cb8bf6c7cf568e062ca945edcf41e",
+      "size": 1469
+    },
+    {
+      "path": "fixtures/nbis/tests/Shared/Sd04Fixtures.cs",
+      "sha256": "5f0a23958391d318a5ec93f71ce370423bfedd230babddcbfee0a3c748589a68",
+      "size": 2895
+    },
+    {
+      "path": "fixtures/nbis/tests/fixtures/sd04/NIST-DATA-NOTICE.txt",
+      "sha256": "5a975cc1e9f2a15d3b79a9af703e1b48eba37854ad3335d3f5e94606d97706b5",
+      "size": 3283
+    },
+    {
+      "path": "fixtures/nbis/tests/fixtures/sd04/README.md",
+      "sha256": "f49b2018d458ab03e1b36de4a59b5a1c23464aea8615f766edbfd27fa2ffc281",
+      "size": 5797
+    },
+    {
+      "path": "fixtures/nbis/tests/fixtures/sd04/f0002_05.gray8",
+      "sha256": "248a69dcfe8ec9065492001c0d2cb21f02a95b5fbdc3ad06dba180325b4d6daf",
+      "size": 262144
+    },
+    {
+      "path": "fixtures/nbis/tests/fixtures/sd04/f0003_10.gray8",
+      "sha256": "eeede3ee93766a722ea64810ef39f2d27835327b04eced4b5dea5d803b23d6d1",
+      "size": 262144
+    },
+    {
+      "path": "fixtures/nbis/tests/fixtures/sd04/f0005_03.gray8",
+      "sha256": "61e2fa591785780d6a5bcd861e77ba3b5d46b8806197db192a2a1a1bbe9c7a5b",
+      "size": 262144
+    },
+    {
+      "path": "fixtures/nbis/tests/fixtures/sd04/f0008_10.gray8",
+      "sha256": "4c4c6ab54c658df3cf6998d78236b9bef877476ae463355e9d240b1b35b7c9e2",
+      "size": 262144
+    },
+    {
+      "path": "fixtures/nbis/tests/fixtures/sd04/f0010_01.gray8",
+      "sha256": "04239e6cf86877be61b4cffe8a0fea504142a3f08f9d9535dc3a315db07dc5e7",
+      "size": 262144
+    },
+    {
+      "path": "fixtures/nbis/tests/fixtures/sd04/f0021_07.gray8",
+      "sha256": "e5091c4ece660fc5dd2f1f3a4eebf01c88669aea4fe98929cec7c9003eda11e2",
+      "size": 262144
+    },
+    {
+      "path": "fixtures/nbis/tests/fixtures/sd04/f0070_10.gray8",
+      "sha256": "32a5e6b4da326024a6f66541b055cb75c434510637dbc418a51ec6c4dd55007c",
+      "size": 262144
+    },
+    {
+      "path": "fixtures/nbis/tests/fixtures/sd04/f0091_10.gray8",
+      "sha256": "6d901210084a3dadc5d8b2809e9a7af9467b563455fe519e193eea710c209a0f",
+      "size": 262144
+    },
+    {
+      "path": "fixtures/nbis/tests/fixtures/sd04/f0110_08.gray8",
+      "sha256": "1584abdb3c8cac10d2c0afaa92838a0c5f001fc2f5684f680903fc979a5d8bd8",
+      "size": 262144
+    },
+    {
+      "path": "fixtures/nbis/tests/fixtures/sd04/f0371_05.gray8",
+      "sha256": "0f0a502d636b0fe0eb93e6c5034fe50db59652e571251b25b99fb2b497d32945",
+      "size": 262144
+    },
+    {
+      "path": "fixtures/nbis/tests/fixtures/sd04/manifest.json",
+      "sha256": "7b52e017365b92738bdd34128d880ffb6aa5cf9f5222f918a5c83ef4f6e1abc5",
+      "size": 25295
+    },
+    {
+      "path": "fixtures/nbis/tests/fixtures/sd04/s0002_05.gray8",
+      "sha256": "830ce26e99f660e7d19914c4177a38e4523bfd5290ce326ec1b13009e8d6a4d9",
+      "size": 262144
+    },
+    {
+      "path": "fixtures/nbis/tests/fixtures/sd04/s0003_10.gray8",
+      "sha256": "7db55877b801b9cfb0a1a703ec34b65f1816ba243f49cd08e7c3cb72f1acd944",
+      "size": 262144
+    },
+    {
+      "path": "fixtures/nbis/tests/fixtures/sd04/s0005_03.gray8",
+      "sha256": "8ea5a02146f77ca3e5b3d8f4db1e1a6a33142d99349a2c0bbd878286206e056f",
+      "size": 262144
+    },
+    {
+      "path": "fixtures/nbis/tests/fixtures/sd04/s0008_10.gray8",
+      "sha256": "09220a032cb26a0d9bfd0c48a77bc9bb6339823574645302cb531f4b5911ed54",
+      "size": 262144
+    },
+    {
+      "path": "fixtures/nbis/tests/fixtures/sd04/s0010_01.gray8",
+      "sha256": "a9dfcb892787cc72bdf18256e3e8d40b84ee8cc09ce354179d401ec0cb01e7af",
+      "size": 262144
+    },
+    {
+      "path": "fixtures/nbis/tests/fixtures/sd04/s0021_07.gray8",
+      "sha256": "c55f60265782937a10f2245db351bb0f88180097243a92a1ebc6bba60d369598",
+      "size": 262144
+    },
+    {
+      "path": "fixtures/nbis/tests/fixtures/sd04/s0070_10.gray8",
+      "sha256": "bd57d1db732fb2c7e1c5b31c12c61b85a7c67cdd1d9a913e2674f0b6e6b44bae",
+      "size": 262144
+    },
+    {
+      "path": "fixtures/nbis/tests/fixtures/sd04/s0091_10.gray8",
+      "sha256": "7add921a5ce5c2dbab16fd7c187aad7d018bd1dd71aa3c678a5fa5c321ccf0fa",
+      "size": 262144
+    },
+    {
+      "path": "fixtures/nbis/tests/fixtures/sd04/s0110_08.gray8",
+      "sha256": "262b66ac19f59f34608115a4af74aa31c7df7b9a3e63cd6a876e3968c15e91f8",
+      "size": 262144
+    },
+    {
+      "path": "fixtures/nbis/tests/fixtures/sd04/s0371_05.gray8",
+      "sha256": "d551b7b3f9a16315134a2494f8268e520abfa70163a799cc8419aebed77dd218",
+      "size": 262144
+    },
+    {
+      "path": "fixtures/nfiq/tests/fixtures/NIST-DATA-NOTICE.txt",
+      "sha256": "5a975cc1e9f2a15d3b79a9af703e1b48eba37854ad3335d3f5e94606d97706b5",
+      "size": 3283
+    },
+    {
+      "path": "fixtures/nfiq/tests/fixtures/README.md",
+      "sha256": "f099b01f35105f362a86b74f37698dbc26a21dfd6a7bace3bca2506cefa192a9",
+      "size": 4015
+    },
+    {
+      "path": "fixtures/nfiq/tests/fixtures/SFinGe_Test01.gray8",
+      "sha256": "41ea2ab829f726b36fbafa427c8adc3f9bc5d52c2651c1e5e1ef1bdce32f3f40",
+      "size": 232960
+    },
+    {
+      "path": "fixtures/nfiq/tests/fixtures/nfiq2-release-vectors.json",
+      "sha256": "02f0b870971fca0420436fe10f1a4ec32f395592dc3e5391ec0de8c774c91247",
+      "size": 2377
+    },
+    {
+      "path": "licenses/NFIQ2-EXAMPLES-README.md",
+      "sha256": "66e2feeb68b95163f50a4c933024ca26c9ab66dc750a001439e1841e6b53f0ee",
+      "size": 1804
+    },
+    {
+      "path": "licenses/NFIQ2-LICENSE.md",
+      "sha256": "07684c842bc9f1e4e064f0b648a2aedbc145545fb3f924c14072eea789cd4c03",
+      "size": 2227
+    }
+  ]
+}

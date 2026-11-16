@@ -16,6 +16,8 @@ verifier becomes `VerificationProviderFailed`. A cancelled token, or an
 `OperationCanceledException`, becomes `Cancelled`. The workflow never lets a provider
 exception escape, and it checks the token between signing attempts.
 
+These hooks are for an issuer-owned integration. Biometric Studio does not register a credential signer or card writer. The separate target **OpenPhysical Issuance Studio** is currently Net's Signing application; its hosted account/job and unpersonalized-card flows remain planned in the [hosted test issuance design](../../OpenPhysical.Net/docs/planning/hosted-test-issuance.md). Credential CA, attestation CA and GP management keys have different purposes; none is supplied to the capture application by this library API.
+
 ## Issuance
 
 Prepare a canonical fingerprint or facial record, encode it, and create a

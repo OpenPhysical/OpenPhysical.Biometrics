@@ -10,13 +10,10 @@ script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 output_path=$1
 mkdir -p "$(dirname -- "$output_path")"
 sdk_path=$(xcrun --sdk macosx --show-sdk-path)
-arch_flags=""
-for camera_arch in ${OPBC_ARCHS:-arm64}; do
-    case "$camera_arch" in arm64|x86_64) ;; *) echo "unsupported architecture" >&2; exit 2 ;; esac
-    arch_flags="$arch_flags -arch $camera_arch"
-done
+: "${OPBC_ARCHS:?set OPBC_ARCHS explicitly to arm64 or x86_64}"
+case "$OPBC_ARCHS" in arm64|x86_64) ;; *) echo "OPBC_ARCHS must name exactly one supported architecture" >&2; exit 2 ;; esac
 # These flags intentionally fail on accidental iOS-only API use in the macOS bridge.
-xcrun --sdk macosx clang $arch_flags -isysroot "$sdk_path" -mmacosx-version-min=13.0 \
+xcrun --sdk macosx clang -arch "$OPBC_ARCHS" -isysroot "$sdk_path" -mmacosx-version-min=13.0 \
     -fobjc-arc -fblocks -O2 -Wall -Wextra -Werror -fvisibility=hidden -dynamiclib \
     -framework Foundation -framework AVFoundation -framework CoreMedia \
     -framework CoreVideo -framework CoreImage -framework CoreGraphics \

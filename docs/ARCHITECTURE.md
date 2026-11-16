@@ -1,8 +1,8 @@
 # Biometric processing and middleware boundaries
 
-OpenPhysical.Biometrics owns biometric interpretation. OpenPhysical.Middleware
-owns credential and card operations. Pivantra builds commercial workflows over
-those public capabilities.
+OpenPhysical.Biometrics owns biometric interpretation and the capture application. OpenPhysical.Net owns credential authorization, issuer signing and card administration. Applications may consume shared codecs and presentation without sharing these capabilities.
+
+OpenPhysical Biometric Studio captures and reviews real data and exports encrypted unsigned `.opbio`. It has no credential-issuance, content-signing or card-administration service. OpenPhysical Issuance Studio is the target name for Net's current Signing application; it imports packages, issues and writes cards, and has no capture stack. The [hosted test issuance plan](../../OpenPhysical.Net/docs/planning/hosted-test-issuance.md) distinguishes planned first-card/account flows from current installed tooling.
 
 ## Current package graph
 
@@ -13,7 +13,7 @@ Formats plus the independently versioned NBIS and NFIQ1 bindings. The root packa
 composes those entry points.
 
 `.Facial` depends on Formats/Piv and CoreJ2K.Skia for captured-pixel preparation.
-`.Imaging` owns buffers and Skia-backed image operations. `.Facial.Models` carries
+`.Imaging` owns buffers and Skia-backed image operations. `.Onnx` carries
 the pinned MediaPipe models; `.Facial` runs them through ONNX Runtime and prepares
 portraits using named anatomical features and reviewed head boundaries.
 
@@ -45,11 +45,9 @@ Split oversized code by responsibility.
 
 ## Open source middleware ownership
 
-The current OpenPhysical.Net solution contains CardEdge, CardManagement,
-VirtualPiv, Middleware domain/infrastructure, CLI, emulator tests, and shared
-credential services. These provide the essential PIV capability: transport,
-PIN/security state, object envelopes, key access, CMS and trust services,
-issuance transactions, and card readback.
+The consolidated OpenPhysical.Net solution separates portable Core contracts, read-only Verification, CardEdge reader adapters, Cards execution/signing, Issuance workflows and the Server/desktop hosts. Historical `OpenPhysical.Middleware.*`, CardManagement and VirtualPiv namespaces may remain in moved sources; they are not separate current projects.
+
+Verification and the capture app do not contain concrete credential private-key signing or card-write services. The capture-side Check card module may consume Verification and reader adapters to authenticate existing objects and compare a live probe. TLS operator authentication is separate from issuing credentials.
 
 Biometric adapters consume the public Formats/Piv packages. They map canonical
 inspection into middleware presentations and supply cryptographic services to
@@ -58,7 +56,7 @@ and acquisition evidence into provisioning. Middleware combines signature,
 identity, trust, revocation, biometric profile, and comparison findings according
 to its application policy.
 
-PACS and the OSDP transport/ACU/PD projects remain reusable open source components.
+PACS and the consolidated OSDP library retain their reusable open source capabilities.
 Gp4Net, Kdf108, and other independent libraries keep their own release lifecycles.
 
 ## Commercial product ownership
@@ -72,7 +70,9 @@ The final allocation of existing product-specific UI and orchestration classes
 belongs to the product owners. Class-by-class migration follows an inventory of
 their actual dependencies and rights coverage.
 
-## Migration order
+## Historical package-extraction sequence
+
+The following records the earlier extraction plan. It is not the current project graph or a requirement to move the two Studio applications into Pivantra. The consolidated Net source and hosted test issuance plan govern current ownership. No new executable or combined capture/signing app is proposed here.
 
 1. Release the independent algorithm bindings with reproducible native assets,
    NIST reference vectors, sanitizer checks, and isolated package consumers.
@@ -88,6 +88,12 @@ Each migration keeps its release notes, explicit package versions, caller-owned
 trust policy, and tests at the layer that owns the behavior. Native parity belongs
 to µnit; managed ownership, conversions, services, and workflow composition belong
 to NUnit; card transactions belong to middleware integration tests.
+
+## Shared presentation and private handoff
+
+`OpenPhysical.Biometrics.Presentation` owns themes, stage controls, file dialogs, encrypted package import and privacy locking without capture or signing services. Issuance uses that library instead of `DesktopServices.CreateHost`, which registers capture sources. `OpenPhysical.Biometrics.Packages` preserves unsigned artifacts and producer provenance; it grants no identity, allocation or signing authority.
+
+The planned `SyntheticTestFace` branch belongs to Issuance Studio and is explicitly synthetic TEST provenance. It is not a fabricated captured person or a sensor result. Real capture requires its own accepted acquisition evidence. Credential CA keys, tenant/manufacturer attestation keys and GP management keys remain separate issuer concerns; the capture app receives none of them.
 
 ## Device acquisition boundary
 

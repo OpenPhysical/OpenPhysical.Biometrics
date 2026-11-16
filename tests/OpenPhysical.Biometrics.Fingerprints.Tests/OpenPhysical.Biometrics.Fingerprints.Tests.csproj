@@ -9,14 +9,16 @@
         <PackageReference Include="BouncyCastle.Cryptography" Version="2.6.1" />
         <PackageReference Include="NUnit" Version="4.4.0" />
         <PackageReference Include="NUnit3TestAdapter" Version="5.0.0" />
+        <PackageReference
+            Include="OpenPhysical.Biometrics.TestFixtures"
+            Version="1.0.0-beta.3"
+            GeneratePathProperty="true"
+            PrivateAssets="all"
+        />
     </ItemGroup>
     <ItemGroup>
-        <Compile
-            Include="../../../OpenPhysical.Biometrics.NBIS/tests/Shared/Sd04Fixtures.cs"
-            Link="Fixtures/Sd04Fixtures.cs"
-        />
         <Content
-            Include="../../../OpenPhysical.Biometrics.NBIS/tests/fixtures/sd04/*.gray8;../../../OpenPhysical.Biometrics.NBIS/tests/fixtures/sd04/manifest.json"
+            Include="$(PkgOpenPhysical_Biometrics_TestFixtures)/fixtures/nbis/tests/fixtures/sd04/*.gray8;$(PkgOpenPhysical_Biometrics_TestFixtures)/fixtures/nbis/tests/fixtures/sd04/manifest.json"
             Link="Fixtures/sd04/%(Filename)%(Extension)"
             CopyToOutputDirectory="PreserveNewest"
         />

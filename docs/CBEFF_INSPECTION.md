@@ -130,3 +130,7 @@ for these common problems:
 
 Signature verification belongs to the application's provider; see
 [signature integration](SIGNATURE-INTEGRATION.md).
+
+## Unpersonalized test cards
+
+The [hosted issuance plan](../../OpenPhysical.Net/docs/planning/hosted-test-issuance.md) specifies a future generated TEST face and fingerprints `NotEnrolled`. That is an explicit issuer profile, not a missing/corrupt CBEFF fallback or an unavailable-person finding. The existing empty-template inspector does not establish that profile, biometric proof or full PIV/PIV-I conformity. Biometric Studio does not synthesize or issue these cards.

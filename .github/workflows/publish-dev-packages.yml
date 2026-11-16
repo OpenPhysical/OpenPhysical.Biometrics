@@ -1,0 +1,158 @@
+name: Publish immutable DEV NuGet packages
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_commit:
+        description: Full commit SHA to test and package
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: nuget-publish-${{ github.workflow }}
+  cancel-in-progress: false
+
+env:
+  DOTNET_CLI_TELEMETRY_OPTOUT: '1'
+  DOTNET_NOLOGO: '1'
+  MSBUILDDISABLENODEREUSE: '1'
+
+jobs:
+  camera-native:
+    name: Camera native ${{ matrix.rid }}
+    runs-on: macos-15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { rid: osx-arm64, architecture: arm64 }
+          - { rid: osx-x64, architecture: x86_64 }
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.source_commit }}
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify exact source commit on default branch
+        env:
+          SOURCE_COMMIT: ${{ inputs.source_commit }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          set -euo pipefail
+          git fetch origin "$DEFAULT_BRANCH"
+          git merge-base --is-ancestor "$SOURCE_COMMIT" "origin/$DEFAULT_BRANCH"
+          python scripts/assert-package-source.py --source-commit "$SOURCE_COMMIT"
+      - name: Build and record the explicit camera architecture
+        env:
+          SOURCE_COMMIT: ${{ inputs.source_commit }}
+        run: >-
+          python scripts/camera_native_closure.py build
+          --rid "${{ matrix.rid }}"
+          --source-commit "$SOURCE_COMMIT"
+          --native-root artifacts/native/camera
+      - uses: actions/upload-artifact@v4
+        with:
+          name: camera-native-${{ matrix.rid }}
+          path: artifacts/native/camera/${{ matrix.rid }}/
+          if-no-files-found: error
+          retention-days: 90
+
+  publish:
+    needs: camera-native
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.source_commit }}
+          fetch-depth: 0
+          lfs: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - uses: actions/download-artifact@v4
+        with:
+          name: camera-native-osx-arm64
+          path: artifacts/native/camera/osx-arm64
+      - uses: actions/download-artifact@v4
+        with:
+          name: camera-native-osx-x64
+          path: artifacts/native/camera/osx-x64
+      - name: Verify clean source and exact commit
+        env:
+          SOURCE_COMMIT: ${{ inputs.source_commit }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          set -euo pipefail
+          git fetch origin "$DEFAULT_BRANCH"
+          git merge-base --is-ancestor "$SOURCE_COMMIT" "origin/$DEFAULT_BRANCH"
+          python scripts/assert-package-source.py --source-commit "$SOURCE_COMMIT"
+      - name: Enforce source repository boundary
+        run: python scripts/check-product-boundaries.py --repository . --role biometrics
+      - name: Verify the complete source-bound camera native closure
+        env:
+          SOURCE_COMMIT: ${{ inputs.source_commit }}
+        run: python scripts/camera_native_closure.py verify --source-commit "$SOURCE_COMMIT" --native-root artifacts/native/camera
+      - name: Prepare fixture feed and restore locked dependencies
+        shell: bash
+        env:
+          NuGetPackageSourceCredentials_openphysical: Username=${{ github.actor }};Password=${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/test-feed
+          python scripts/verify-test-fixture-package.py
+          dotnet restore tests/OpenPhysical.Biometrics.TestFixtures.Package/OpenPhysical.Biometrics.TestFixtures.Package.csproj --locked-mode
+          dotnet pack tests/OpenPhysical.Biometrics.TestFixtures.Package/OpenPhysical.Biometrics.TestFixtures.Package.csproj -c Release --no-restore --output artifacts/test-feed
+          dotnet restore OpenPhysical.Biometrics.sln --locked-mode
+      - name: Run source checks, build, and tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          dotnet tool restore
+          dotnet csharpier check .
+          python scripts/check-file-size.py
+          python scripts/verify-models.py
+          python scripts/verify-documentation-gate.py
+          dotnet build OpenPhysical.Biometrics.sln -c Release --no-restore -m:1 -nr:false -p:UseSharedCompilation=false
+          dotnet test OpenPhysical.Biometrics.sln -c Release --no-build --no-restore -m:1 -nr:false --logger "trx;LogFileName=biometrics.trx"
+      - name: Check built runtime dependency closure
+        run: python scripts/check-product-boundaries.py --repository . --role biometrics --publish-dir tests
+      - name: Verify the package catalog is DEV-only and pack it
+        env:
+          SOURCE_COMMIT: ${{ inputs.source_commit }}
+        run: python scripts/pack-publisher-projects.py --source-commit "$SOURCE_COMMIT" --camera-native-root artifacts/native/camera --output artifacts/packages
+      - name: Create source, package, native, and model hash manifest
+        env:
+          SOURCE_COMMIT: ${{ inputs.source_commit }}
+        run: python scripts/write-nuget-publication-manifest.py --repository OpenPhysical.Biometrics --source-commit "$SOURCE_COMMIT" --camera-native-root artifacts/native/camera --packages artifacts/packages --output artifacts/package-manifest.json
+      - name: Refuse any existing package ID/version
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: python scripts/check-nuget-versions-absent.py --manifest artifacts/package-manifest.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: nuget-dev-candidate-${{ inputs.source_commit }}
+          path: |
+            artifacts/packages/*.nupkg
+            artifacts/package-manifest.json
+          if-no-files-found: error
+          retention-days: 90
+      - name: Publish immutable packages with GITHUB_TOKEN
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          NuGetPackageSourceCredentials_openphysical: Username=${{ github.actor }};Password=${{ github.token }}
+        run: |
+          set -euo pipefail
+          for package in artifacts/packages/*.nupkg; do
+            dotnet nuget push "$package" --api-key "$GITHUB_TOKEN" --source https://nuget.pkg.github.com/OpenPhysical/index.json
+          done

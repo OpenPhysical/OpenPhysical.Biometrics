@@ -7,7 +7,6 @@ using CSharpFunctionalExtensions.AwesomeAssertions;
 using NUnit.Framework;
 using OpenPhysical.Biometrics.Formats.Fingerprints;
 using OpenPhysical.Biometrics.NBIS;
-using OpenPhysical.Biometrics.NBIS.Fixtures;
 
 [TestFixture]
 internal sealed class Sd04AlignmentTests
@@ -16,9 +15,9 @@ internal sealed class Sd04AlignmentTests
     [TestCase("f0002_05", "s0002_05")]
     public void PublicPairedImpressionsHaveOneToOneGeometricSupport(string first, string second)
     {
-        var fixtures = new Sd04Fixtures(
-            Path.Combine(TestContext.CurrentContext.TestDirectory, "Fixtures", "sd04")
-        );
+        var fixtures = Sd04Fixtures
+            .Load(Path.Combine(TestContext.CurrentContext.TestDirectory, "Fixtures", "sd04"))
+            .Value;
         var images = fixtures.Pairs.SelectMany(pair => new[] { pair.First, pair.Second }).ToArray();
         var reference = Extract(images.Single(image => image.Id == first));
         var probe = Extract(images.Single(image => image.Id == second));
@@ -38,9 +37,9 @@ internal sealed class Sd04AlignmentTests
     [TestCase("0010_01")]
     public void PairedImpressionsWithoutUniqueSufficientGeometryFailClosed(string identifier)
     {
-        var fixtures = new Sd04Fixtures(
-            Path.Combine(TestContext.CurrentContext.TestDirectory, "Fixtures", "sd04")
-        );
+        var fixtures = Sd04Fixtures
+            .Load(Path.Combine(TestContext.CurrentContext.TestDirectory, "Fixtures", "sd04"))
+            .Value;
         var images = fixtures.Pairs.SelectMany(pair => new[] { pair.First, pair.Second }).ToArray();
         var reference = Extract(images.Single(image => image.Id == "f" + identifier));
         var probe = Extract(images.Single(image => image.Id == "s" + identifier));
@@ -59,9 +58,9 @@ internal sealed class Sd04AlignmentTests
     [TestCase("f0010_01")]
     public void DifferentPublicFingersHaveNoSupportedUniqueOverlay(string other)
     {
-        var fixtures = new Sd04Fixtures(
-            Path.Combine(TestContext.CurrentContext.TestDirectory, "Fixtures", "sd04")
-        );
+        var fixtures = Sd04Fixtures
+            .Load(Path.Combine(TestContext.CurrentContext.TestDirectory, "Fixtures", "sd04"))
+            .Value;
         var images = fixtures.Pairs.SelectMany(pair => new[] { pair.First, pair.Second }).ToArray();
         var reference = Extract(images.Single(image => image.Id == "f0005_03"));
         var probe = Extract(images.Single(image => image.Id == other));
@@ -75,7 +74,7 @@ internal sealed class Sd04AlignmentTests
 
     private static FingerprintRecord Extract(Sd04Image image)
     {
-        var extracted = new NbisFingerprintEngine().Extract(image.Load());
+        var extracted = new NbisFingerprintEngine().Extract(image.Load().Value);
         var points = extracted
             .Minutiae.Select(
                 point => new OpenPhysical.Biometrics.Formats.Fingerprints.FingerprintMinutia(

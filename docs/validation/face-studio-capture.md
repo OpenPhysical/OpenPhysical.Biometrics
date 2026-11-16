@@ -1,7 +1,6 @@
 # Studio facial capture validation
 
-Date: 2026-11-12. This records unsigned staging behavior, not PIV station
-certification or fingerprint capture-policy release approval.
+Date: 2026-11-12. Historical qualification snapshot: this records unsigned staging behavior, not PIV station certification, fingerprint capture-policy release approval or a hosted issuance release. Later features do not alter what was exercised at this checkpoint.
 
 ## Automated gates
 
@@ -76,10 +75,9 @@ The missing person name stays red both focused and unfocused. The unchecked
 portrait-review checkbox also stays red until confirmed. Independent review of
 the public-fixture renders found no actionable visual issues.
 
-The signed-for-local-use Preview bundle for this follow-up is staged under
-`artifacts/review-apps/`. It has not replaced the running application because an
-unsaved facial capture was observed and restart/discard confirmation is pending.
-Photo auto capture and Google person segmentation are not implemented by this
+The signed-for-local-use validation bundle for this follow-up was staged under
+`artifacts/review-apps/`. At that checkpoint it had not replaced the running application because an unsaved facial capture was observed and restart/discard confirmation was pending.
+Photo auto capture and Google person segmentation were not implemented by this
 follow-up. Segmentation feasibility was assessed; background replacement remains
 separate from using an analysis mask over unchanged photographic pixels.
 
@@ -102,9 +100,8 @@ External USB camera testing is explicitly deferred by the operator.
 
 ## Artifact locations
 
-Automated TRX evidence and public-fixture renders are under the ignored
-`artifacts/developer-checks/facial-integration/` directory. The self-contained
-bundle is `artifacts/apps/OpenPhysical Biometric Studio Preview.app`.
+Automated TRX evidence and public-fixture renders were recorded under the ignored
+`artifacts/developer-checks/facial-integration/` directory. The historical self-contained bundle was recorded under `artifacts/apps/`; its receipt identifies the exact artifact. This is not a current app delivery location or product-name recommendation.
 Private operator packages remain outside the repository in persistent private
 application storage. Unsigned staging retains unknown optical evidence instead
 of inventing proof; camera setup is recommended and does not gate Studio saving.

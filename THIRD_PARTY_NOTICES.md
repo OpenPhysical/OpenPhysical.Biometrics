@@ -60,7 +60,13 @@ is retained in `src/OpenPhysical.Biometrics.Facial/Notices/MathNet.Numerics-5.0.
 The managed provider requires no additional native numerical runtime. Both notices
 are included in NuGet packages and the Studio application's license directory.
 
-## Avalonia desktop utility
+## Desktop application ownership
+
+The desktop application and its PC/SC notice moved to
+[OpenPhysical Enrollment Studio](https://github.com/OpenPhysical/OpenPhysical.Enrollment.Studio).
+Its product repository owns desktop packaging and the corresponding notices.
+The versions below describe the extracted application baseline; the product's
+locked dependency graph identifies the versions distributed in each release.
 
 The desktop application uses Avalonia Desktop 11.3.6 and bundled Roboto through
 Material.Avalonia,
@@ -74,14 +80,16 @@ Sources: [Avalonia](https://github.com/AvaloniaUI/Avalonia),
 [.NET extensions](https://github.com/dotnet/runtime).
 
 Inserted-card access uses PCSC 7.0.1 under BSD-2-Clause. Its exact published-source
-notice is retained at `src/OpenPhysical.Biometrics.Desktop/Notices/PCSC-COPYING.txt`.
+notice is retained in Enrollment Studio at
+`OpenPhysical.Biometrics.Desktop/Notices/PCSC-COPYING.txt`.
 Source: [pcsc-sharp](https://github.com/danm-de/pcsc-sharp).
 
 ## BouncyCastle.Cryptography
 
-SHA-256 digests (model integrity checks and input hashing) use
-BouncyCastle.Cryptography 2.6.1, distributed under the MIT license (Legion of
-the Bouncy Castle Inc.). Source and notices: https://github.com/bcgit/bc-csharp.
+Existing capture and imaging components reference BouncyCastle.Cryptography
+2.6.1; the enrollment-package codec references 2.7.0. Both retain the MIT
+license (Legion of the Bouncy Castle Inc.). Each consuming application's lock
+records its resolved version. Source and notices: https://github.com/bcgit/bc-csharp.
 All cryptographic operations in this repository use BouncyCastle; the
 `System.Security.Cryptography` namespace is banned at build time.
 
@@ -123,3 +131,11 @@ historical FaceOFFx MIT notice in
 `src/OpenPhysical.Biometrics.Facial/Notices/FaceOFFx-MIT.txt` and the published
 bundle. Their migration disposition is documented in the retired FaceOFFx
 repository's `docs/MIGRATION.md`.
+
+## Retired sample artwork
+
+Unused FaceOFFx sample portraits, their generated reports, and the obsolete
+FaceOFFx CLI image-regeneration script are excluded from the Studio split's
+current source tree. Existing Git history remains historical evidence; this
+change does not establish distribution rights for those historical images.
+Current automated fixtures retain their own provenance and licenses.

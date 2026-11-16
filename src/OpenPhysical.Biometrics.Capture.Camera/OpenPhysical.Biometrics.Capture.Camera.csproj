@@ -1,8 +1,11 @@
 <Project Sdk="Microsoft.NET.Sdk">
     <PropertyGroup>
         <TargetFramework>net10.0</TargetFramework>
+        <Version>4.0.0-dev.20261115.3</Version>
         <Description>Bounded RGB webcam acquisition using native platform camera providers.</Description>
         <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+        <CameraNativePackageRoot Condition="'$(CameraNativePackageRoot)' == ''"
+            >$(MSBuildProjectDirectory)/../../artifacts/native/camera</CameraNativePackageRoot>
     </PropertyGroup>
     <ItemGroup>
         <PackageReference Include="FlashCap" Version="1.13.0" />
@@ -18,10 +21,18 @@
         />
     </ItemGroup>
     <PropertyGroup Condition="$([MSBuild]::IsOSPlatform('OSX'))">
-        <CameraNativeRuntime>$(NETCoreSdkRuntimeIdentifier)</CameraNativeRuntime>
+        <CameraNativeRuntime Condition="'$(RuntimeIdentifier)' == ''"
+            >$(NETCoreSdkRuntimeIdentifier)</CameraNativeRuntime>
+        <CameraNativeRuntime
+            Condition="'$(RuntimeIdentifier)' == 'osx-arm64' Or '$(RuntimeIdentifier)' == 'osx-x64'"
+            >$(RuntimeIdentifier)</CameraNativeRuntime>
+        <CameraNativeArchitecture Condition="'$(CameraNativeRuntime)' == 'osx-arm64'"
+            >arm64</CameraNativeArchitecture>
+        <CameraNativeArchitecture Condition="'$(CameraNativeRuntime)' == 'osx-x64'"
+            >x86_64</CameraNativeArchitecture>
         <CameraNativeOutput>$(MSBuildProjectDirectory)/../../artifacts/native/camera/$(CameraNativeRuntime)/libopenphysical_camera.dylib</CameraNativeOutput>
     </PropertyGroup>
-    <ItemGroup Condition="$([MSBuild]::IsOSPlatform('OSX'))">
+    <ItemGroup Condition="$([MSBuild]::IsOSPlatform('OSX')) And '$(CameraNativeRuntime)' != ''">
         <CameraNativeSource Include="native/macos/**/*" />
         <Content
             Include="$(CameraNativeOutput)"
@@ -30,15 +41,49 @@
             CopyToPublishDirectory="PreserveNewest"
             Pack="true"
             PackagePath="runtimes/$(CameraNativeRuntime)/native/"
+            Condition="'$(IncludeCameraNativeClosure)' != 'true'"
+        />
+    </ItemGroup>
+    <ItemGroup Condition="'$(IncludeCameraNativeClosure)' == 'true'">
+        <Content
+            Include="$(CameraNativePackageRoot)/osx-arm64/libopenphysical_camera.dylib"
+            Pack="true"
+            PackagePath="runtimes/osx-arm64/native/"
+        />
+        <Content
+            Include="$(CameraNativePackageRoot)/osx-x64/libopenphysical_camera.dylib"
+            Pack="true"
+            PackagePath="runtimes/osx-x64/native/"
         />
     </ItemGroup>
     <Target
+        Name="ValidateCameraNativePackageClosure"
+        BeforeTargets="Pack"
+        Condition="'$(IncludeCameraNativeClosure)' == 'true'"
+    >
+        <Error
+            Condition="!Exists('$(CameraNativePackageRoot)/osx-arm64/libopenphysical_camera.dylib')"
+            Text="Missing source-bound osx-arm64 camera native asset."
+        />
+        <Error
+            Condition="!Exists('$(CameraNativePackageRoot)/osx-x64/libopenphysical_camera.dylib')"
+            Text="Missing source-bound osx-x64 camera native asset."
+        />
+    </Target>
+    <Target
         Name="BuildMacCameraBridge"
         BeforeTargets="GetCopyToOutputDirectoryItems;CoreCompile"
-        Condition="$([MSBuild]::IsOSPlatform('OSX'))"
-        Inputs="@(CameraNativeSource)"
+        Condition="$([MSBuild]::IsOSPlatform('OSX')) And '$(CameraNativeRuntime)' != ''"
+        Inputs="@(CameraNativeSource);$(MSBuildProjectFullPath)"
         Outputs="$(CameraNativeOutput)"
     >
-        <Exec Command="bash &quot;$(MSBuildProjectDirectory)/native/macos/build.sh&quot; &quot;$(CameraNativeOutput)&quot;" />
+        <Error
+            Condition="'$(CameraNativeArchitecture)' == ''"
+            Text="Unsupported macOS camera runtime: $(CameraNativeRuntime)."
+        />
+        <Exec
+            Command="bash &quot;$(MSBuildProjectDirectory)/native/macos/build.sh&quot; &quot;$(CameraNativeOutput)&quot;"
+            EnvironmentVariables="OPBC_ARCHS=$(CameraNativeArchitecture)"
+        />
     </Target>
 </Project>

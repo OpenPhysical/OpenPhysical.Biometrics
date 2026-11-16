@@ -1,5 +1,7 @@
 # Live image policy delivery audit
 
+This is a historical sequence of capture-policy delivery checkpoints. Bundle/test counts and operator observations apply to their recorded snapshots, not automatically to current source or the planned hosted issuer. Product naming is OpenPhysical Biometric Studio; the validation bundles below were research artifacts.
+
 This checklist separates implemented behavior from release acceptance. A test pass
 for one source snapshot does not approve later policy changes. Normal publication
 remains blocked until a passing `live-image-policy-v2.json` is available.
@@ -107,7 +109,7 @@ reference warms. Rejected light contact and residue cannot satisfy removal, and
 the accepted first capture survives the second capture and acceptance.
 
 Seventeen actual rendered screens cover all three supported sizes. The separate
-Preview bundles and audits 26 arm64 native binaries and passes strict signature
+validation bundle contained 26 audited arm64 native binaries and passed strict signature
 verification. Current preferences load without writes, preserving contrast 49
 and the configured one-second delay. The source, test reports, rendered screens
 and packaged assembly identities are pinned in the ignored receipt:
@@ -134,8 +136,8 @@ including 211 Futronic and 293 Desktop cases. Release builds report zero warning
 and errors; CSharpier, size and whitespace checks pass. Its 17 supported-size
 renders and tested/published assemblies are pinned in
 `artifacts/developer-checks/first-contact-recovery/integration-v1/verification.json`.
-The separate self-contained Preview bundles 26 audited arm64 binaries, passes
-strict signature verification and launches without a settings error.
+The separate self-contained validation bundle contained 26 audited arm64 binaries, passed
+strict signature verification and launched without a settings error.
 
 Healthy startup contact can now auto-capture without an empty-sensor primer.
 Coherent faint contact can adjust exposure but cannot authorize capture until a
@@ -172,11 +174,11 @@ context bounds. The existing two-slot journey now verifies two real empty frames
 rearm capture without waiting for a background reference, while residue preserves
 the latch and produces an actionable cleaning hint.
 
-The self-contained Preview bundles 26 audited arm64 binaries and passes strict
+The self-contained validation bundle contained 26 audited arm64 binaries and passed strict
 signature verification. Source, test report, rendering and packaged-assembly
 hashes are pinned in
 `artifacts/developer-checks/inspection-polish-v1/verification.json`.
-The inspection-polish Preview launched through LaunchServices and was observed
+The inspection-polish validation bundle launched through LaunchServices and was observed
 ready without a startup error. The user authorized future test-capture discard
 and restarts without further confirmation. The earlier software preview-rate
 failure remains unresolved; live glyph/auto-fit operator confirmation is pending.

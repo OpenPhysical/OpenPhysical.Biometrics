@@ -9,10 +9,16 @@
         <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.0" />
         <PackageReference Include="NUnit" Version="4.4.0" />
         <PackageReference Include="NUnit3TestAdapter" Version="5.0.0" />
+        <PackageReference
+            Include="OpenPhysical.Biometrics.TestFixtures"
+            Version="1.0.0-beta.3"
+            GeneratePathProperty="true"
+            PrivateAssets="all"
+        />
     </ItemGroup>
     <ItemGroup>
         <Content
-            Include="../../../OpenPhysical.Biometrics.NFIQ/tests/fixtures/SFinGe_Test01.gray8"
+            Include="$(PkgOpenPhysical_Biometrics_TestFixtures)/fixtures/nfiq/tests/fixtures/SFinGe_Test01.gray8"
             Link="Fixtures/SFinGe_Test01.gray8"
             CopyToOutputDirectory="PreserveNewest"
         />

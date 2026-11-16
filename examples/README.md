@@ -4,6 +4,8 @@ These examples follow the steps a capture station, PIV issuer, or reader applica
 performs. The comments explain where data comes from, who owns it, and which work
 is worth doing once and reusing.
 
+These are independent library examples, not a combined capture/signing desktop. OpenPhysical Biometric Studio owns acquisition and unsigned `.opbio` export; the separate target OpenPhysical Issuance Studio owns authorized credential issuance and card writing. Caller-supplied signing examples do not add a signer to the capture host. See the [hosted plan](../../OpenPhysical.Net/docs/planning/hosted-test-issuance.md) for planned user workflows.
+
 ## Compare two captured impressions
 
 Build the development dependencies, then run the committed SD04 pair through quality

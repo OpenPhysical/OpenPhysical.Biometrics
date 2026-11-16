@@ -25,6 +25,8 @@ Detections are indexed from zero by horizontal center, then vertical center. A s
 
 The default report contains status, face count, dimensions, and diagnostic codes. `--include-sensitive` explicitly includes source hash, landmarks, measurements, and transforms. Request a lossless preview with `--preview`. Application logs contain operational status.
 
+The reviewed-coordinate options below are a developer/CLI interface, not the Studio operator flow. **OpenPhysical Biometric Studio uses automatic geometry only**, with review or retake and no manual landmark prerequisite. It prepares real unsigned capture records for the separate issuer. The planned synthetic TEST-face mode belongs to Issuance Studio and must not fabricate these camera/acquisition findings; see the [hosted plan](../../OpenPhysical.Net/docs/planning/hosted-test-issuance.md).
+
 ## Reviewed geometry
 
 ```json

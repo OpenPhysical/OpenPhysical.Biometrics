@@ -11,6 +11,14 @@ stored records, explains their structure, applies the biometric profile, and
 prepares the content for the application's signature verifier. Middleware combines
 those findings with card identity, trust, and its authentication policy.
 
+## Product ownership
+
+This repository owns reusable biometric libraries and the versioned `.opbio` codec.
+[OpenPhysical Enrollment Studio](https://github.com/OpenPhysical/OpenPhysical.Enrollment.Studio) owns capture, person workflows, card enrollment, validation and authorized personalization.
+[OpenPhysical Issuer Studio](https://github.com/OpenPhysical/OpenPhysical.Issuer.Studio) owns manufacturing and production issuance. Both use Issuance Server for authority and card changes.
+
+The [cross-product specification](https://github.com/OpenPhysical/OpenPhysical.Net/blob/studio-release/docs/architecture/studio-products.md) defines the current boundaries and release requirements.
+
 ## Choose your capabilities
 
 The libraries target **.NET 10**.
@@ -30,14 +38,9 @@ The libraries target **.NET 10**.
 - **OpenPhysical.Biometrics.Tool** installs `biotool` for portrait preparation, text/JSON inspection, and selected-view template conversion.
 - **OpenPhysical.Biometrics.Capture.Camera** provides owned native webcam frames
   behind a Result-based, cancellable camera interface.
-- **OpenPhysical.Biometrics.Packages** provides encrypted unsigned-person handoff
-  and shared private atomic file transactions.
+- **OpenPhysical.Biometrics.Packages** provides the versioned enrollment-envelope codec, v1 migration input and shared private atomic file transactions.
 - **OpenPhysical.Biometrics.Presentation** provides the shared theme, controls,
   encrypted package import and privacy lock, without capture or signing services.
-- **OpenPhysical.Biometrics.Desktop** provides the face-and-fingerprint capture
-  workspace and template inspection with live-probe comparison.
-- **OpenPhysical.Biometrics.Studio** launches the capture application and exports
-  encrypted person packages for the separate signing application.
 
 [NIST NBIS bindings](https://github.com/OpenPhysical/OpenPhysical.Biometrics.NBIS)
 provide MINDTCT extraction and Bozorth3 comparison. The independently versioned
@@ -45,59 +48,9 @@ provide MINDTCT extraction and Bozorth3 comparison. The independently versioned
 unified quality score. Each algorithm package carries its native runtime assets,
 source provenance, model identity, and upstream notices.
 
-## Capture a person in Studio
+## Desktop application
 
-Run OpenPhysical Biometric Studio on macOS with .NET 10 and the FS50 attached:
-
-```sh
-dotnet run --project src/OpenPhysical.Biometrics.Studio
-```
-
-Enter a **Name or label** for the person. The default plan requires one face and
-two fingers; explicit face-only and fingerprint-only plans are also available.
-Choose Face to capture from a built-in or external webcam, review source-supported
-crown/ear boundaries, apply the portrait crop, then accept it separately. Camera
-optical qualification records the actual 20 cm target at 1.5 m measurement;
-nominal HD resolution does not establish PIV acquisition evidence. See
-[the facial operator guide](docs/FACE-STUDIO-WORKFLOW.md).
-
-Choose Fingerprints and select the required fingers. Each new
-person starts with one suggested finger from each hand; a single-finger plan can use any selected finger.
-Studio automatically connects to the FS50 at the manufacturer's nominal 500 ppi.
-Automatic capture selects one recent acknowledged image after the configured delay,
-initially one second; **Capture now** freezes the latest displayed image manually.
-NIST MINDTCT extraction and NFIQ 1 assessment run once on that exact image.
-The feature overlay shows the selected minutiae encoded in the exported template.
-Automatic and manual exposure controls are available in **Details**.
-
-Review the frozen capture and choose **Accept finger**. Studio retains the accepted
-finger and advances to the next required capture. Select either slot to review or
-work on it. **Reset capture** retries only the current slot while preserving the
-other accepted finger. Saving remains disabled until every required slot is accepted.
-Advanced metadata starts with Vendor ID `0x0103` (**Vendor Unknown**), as selected
-for the test workflow. It can be edited in decimal or `0x` hexadecimal. Product Type
-and Capture Equipment ID accept the same forms; zero records an unreported value.
-
-**Save person** creates one owner-only encrypted `.opbio` file containing the
-selected unsigned INCITS 385 face and/or INCITS 378 fingerprint record, evidence,
-and fingerprint PNG companions. The full camera frame is kept only in RAM.
-The default macOS location is
-`~/Library/Application Support/OpenPhysical/Private Biometrics/Captures`.
-A confirmed passphrase stays in owned memory until Lock, OS lock or exit. Clear
-person clears both modalities and comparison references while retaining that
-protection state and preferences. **Open person** authenticates and inspects the
-saved standard bytes without reprocessing. See [the package format](docs/PRIVATE-PACKAGES.md).
-
-In **Compare**, open an FMR or unwrapped PIV CBEFF fingerprint file, or read the
-fingerprint object from an inserted credential after explicitly entering its PIN.
-Choose a finger view to inspect its fields and minutiae. Saved capture packages
-reopen their paired source images after validating the manifest, image geometry
-and hashes. Standalone templates display points on the record's coordinate canvas.
-Capture a fresh probe in the same workspace, assign its finger for comparison,
-and press **Compare** to see the Bozorth3 result at the configured threshold.
-The probe image displays geometrically aligned reference points. Each image has
-visible zoom, fit, inversion, and overlay controls. See the [desktop guide](docs/DESKTOP.md)
-for capture selection, private package storage, credential reading, and settings.
+Capture, enrollment and operator instructions are maintained in the [Enrollment Studio repository](https://github.com/OpenPhysical/OpenPhysical.Enrollment.Studio). These libraries do not depend on that application.
 
 ## Read and inspect a fingerprint record
 
@@ -187,7 +140,9 @@ produce a changed record while keeping the original available for comparison or
 re-encoding. [The workflow guide](docs/FINGERPRINT-WORKFLOWS.md) shows explicit
 finger/view selection, enrollment, and paired/different-finger comparisons.
 
-## Connect a signing service
+## Library integration with an issuer signing service
+
+This is a caller-supplied library integration, not a signing feature in Biometric Studio. Issuer services own private credential keys, certificate authorization and card writes.
 
 Implement `IBiometricSignatureProvider` and `IBiometricSignatureVerifier` in the
 application's cryptographic integration. The request contains the exact CBEFF
@@ -234,15 +189,21 @@ transforms.
 
 ## Build and develop
 
-The workspace development feed uses sibling checkouts of
-`OpenPhysical.Biometrics.NBIS` and `OpenPhysical.Biometrics.NFIQ`. Build their native
-runtimes and packages first, then run:
+This repository restores the pinned NBIS and NFIQ NuGet packages from the
+configured package feed. CI restores locked package versions in an isolated
+clone. Test projects use the local, hash-pinned
+`OpenPhysical.Biometrics.TestFixtures` package, built from versioned fixture
+snapshots in this repository. See [build and release](docs/BUILD_AND_RELEASE.md).
 
 ```sh
-python scripts/build-development-dependencies.py
 dotnet tool restore
+python3 scripts/verify-test-fixture-package.py
+mkdir -p artifacts/test-feed
+dotnet restore tests/OpenPhysical.Biometrics.TestFixtures.Package/OpenPhysical.Biometrics.TestFixtures.Package.csproj --locked-mode
+dotnet pack tests/OpenPhysical.Biometrics.TestFixtures.Package/OpenPhysical.Biometrics.TestFixtures.Package.csproj -c Release --no-restore --output artifacts/test-feed
+dotnet restore OpenPhysical.Biometrics.sln --locked-mode
 dotnet build OpenPhysical.Biometrics.sln -c Release -m:1
-dotnet test OpenPhysical.Biometrics.sln -c Release --no-build -m:1
+dotnet test OpenPhysical.Biometrics.sln -c Release --no-build --no-restore -m:1
 ```
 
 Run .NET builds and tests serially. CSharpier, public XML documentation, analyzers,
@@ -250,20 +211,15 @@ and warnings-as-errors are build gates. Native algorithm tests live with their
 bindings; NUnit covers the managed workflows and integrations.
 
 Release packages use the pinned NBIS and NFIQ package versions in
-`Directory.Build.props`. The CLI release gate requires native assets for all
-five supported runtimes. Local package verification uses the explicit
-`AllowPartialBiometricRuntimes=true` override and exercises the current host:
-
-```sh
-python scripts/test-package.py
-```
+`Directory.Build.props`. Package validation is documented in
+[`docs/RELEASING.md`](docs/RELEASING.md).
 
 The [validation record](docs/VALIDATION_SUMMARY.md) lists exercised workflows and
-reproduction commands. The [architecture guide](docs/ARCHITECTURE.md) explains package ownership and the
-OpenPhysical.Middleware/Pivantra migration sequence.
+reproduction commands. The [architecture guide](docs/ARCHITECTURE.md) explains package ownership, the
+current capture/issuance boundary and the historical package-extraction sequence.
 
-The [beta release guide](docs/RELEASING.md) describes the signed tags, complete
-package artifacts, and publication order.
+The [build and release guide](docs/BUILD_AND_RELEASE.md) documents package feed
+access, isolated CI and fixture provenance.
 
 ## Licensing and contributions
 

@@ -5,6 +5,8 @@ one face and two different fingers, suggested from opposite hands. Face-only and
 fingerprint-only plans are available under Required captures. Selecting a modality never
 accepts its pending capture. Retaking one item preserves other accepted items.
 
+This is a real-person capture workflow in **OpenPhysical Biometric Studio**. It exports unsigned encrypted staging for the separate target **OpenPhysical Issuance Studio**, currently Net's Signing application. Capture does not issue certificates or administer a card. The [hosted plan](../../OpenPhysical.Net/docs/planning/hosted-test-issuance.md) places generated TEST faces and `NotEnrolled` fingerprints in an explicit future issuer profile; neither is an alternative acquisition result in this workflow.
+
 ## Capture and review a face
 
 1. Enter a name or local label and choose the Face capture section.
@@ -148,7 +150,7 @@ requires explicit reconnection. Clear person clears both modalities and comparis
 references while retaining preferences and the unlocked package passphrase. Lock
 and exit forget the passphrase; saved ciphertext is left intact.
 
-The package is unsigned issuance staging. A later tool must construct signed
+The package is unsigned issuance staging. The separate issuer must construct signed
 CBEFF, supply issuance identity and check actual card capacity. Studio does not
 create dummy FASC-N values, signatures or completed PIV objects.
 

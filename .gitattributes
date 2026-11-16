@@ -30,3 +30,7 @@
 
 # Git Large File Storage (LFS)
 *.onnx filter=lfs diff=lfs merge=lfs -text
+
+# Preserve raw regression vectors exactly across Windows and Unix checkouts.
+*.gray8 binary
+*.f32 binary

@@ -1,8 +1,0 @@
-// SPDX-License-Identifier: GPL-2.0-or-later
-namespace OpenPhysical.Biometrics.Desktop;
-
-internal sealed record TemplateProcessingMasks(
-    TemplatePngDescriptor Retained,
-    TemplatePngDescriptor Inner,
-    string Digest
-);

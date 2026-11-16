@@ -146,8 +146,8 @@
       },
       "BouncyCastle.Cryptography": {
         "type": "Transitive",
-        "resolved": "2.6.1",
-        "contentHash": "vZsG2YILhthgRqO+ZVgRff4ZFKKTl0v7kqaVBLCtRvpREhfBP33pcWrdA3PRYgWuFL1RxiUFvjMUHTdBZlJcoA=="
+        "resolved": "2.7.0",
+        "contentHash": "U+12df8UEWHgBi04YVf/Lgi2dy3SItlIYvHjjEVa/BngCQIzDCDRBk50DDByCfDvSbe5pRNFr3b7UrVK2kMcLw=="
       },
       "CSharpFunctionalExtensions": {
         "type": "Transitive",
@@ -233,7 +233,7 @@
       "openphysical.biometrics.packages": {
         "type": "Project",
         "dependencies": {
-          "BouncyCastle.Cryptography": "[2.6.1, )",
+          "BouncyCastle.Cryptography": "[2.7.0, )",
           "CSharpFunctionalExtensions": "[3.7.0, )",
           "System.IO.FileSystem.AccessControl": "[5.0.0, )"
         }

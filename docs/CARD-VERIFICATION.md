@@ -2,9 +2,11 @@
 
 The **Check card** tab uses the existing signed configuration, protected pairing,
 operator identity and card/holder verifiers. It does not issue credentials or grant
-access. Signing remains in the separate Signing application.
+access. Credential issuance and card administration belong to the separate target **OpenPhysical Issuance Studio**, currently named Signing in Net. The [hosted test issuance plan](../../OpenPhysical.Net/docs/planning/hosted-test-issuance.md) does not make this existing verification setup the bootstrap requirement for a first test card.
 
-## Administrator setup
+## Current installed administrator setup
+
+The invitation and protected operator identity below are current card-checking prerequisites. Planned website-account sign-in and one-time workstation authorization are separate implementation work, not already supported by these steps.
 
 Card checking currently uses the protected macOS identity provider. Studio opens
 its private `LocalApplicationData/OpenPhysical/Verification` profile only when the

@@ -3,7 +3,7 @@
 `OpenPhysical.Biometrics.Packages` is a portable library shared by Studio and
 `biotool`. It stores a person's unsigned codec outputs and expressly selected
 companions in one protected `.opbio` file. These are inputs for a separate issuer
-and signing tool, not signed PIV records or an identity attestation.
+and signing tool, not signed PIV records or an identity attestation. The target consumer is **OpenPhysical Issuance Studio**, currently implemented as Net's Signing application. Biometric Studio only captures/reviews/exports; it does not sign or write credentials.
 
 `BiometricPackage.Create` associates a stable person-session identifier, label,
 optional external identifier, JSON acquisition evidence and ordered artifacts.
@@ -11,6 +11,10 @@ Each `PackageArtifact` has a portable relative name, immutable exact bytes, role
 format identifier and SHA-256. The owning biometric codec remains responsible for
 record syntax and PIV profile validation; the package layer never invents another
 INCITS or CBEFF encoder.
+
+The [hosted plan](../../OpenPhysical.Net/docs/planning/hosted-test-issuance.md) adds an explicit tenant/job handoff. That association is not established merely by decrypting an existing package or trusting its producer GUID. Issuance must check the selected authenticated job and unchanged subject/artifact associations. The current file handoff remains the available route.
+
+The planned synthetic TEST face belongs to the issuer's unpersonalized profile, not a fake captured-person package. Missing or corrupt `.opbio` never means `NotEnrolled`. Real packages remain private, with explicit recipients and retention if hosted transfer is added; publication of nonpersonalized test certificates does not authorize publishing these records. Card PIN/PUK or GP management credentials do not belong in a capture package.
 
 ## Protection and secret ownership
 

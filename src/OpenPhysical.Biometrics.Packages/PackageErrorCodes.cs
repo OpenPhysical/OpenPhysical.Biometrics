@@ -48,4 +48,16 @@ public static class PackageErrorCodes
 
     /// <summary>The caller cancelled the operation.</summary>
     public const string Cancelled = "Cancelled";
+
+    /// <summary>Transfer or origin metadata failed validation.</summary>
+    public const string InvalidTransfer = "Package.InvalidTransfer";
+
+    /// <summary>A signed statement failed ECDSA validation.</summary>
+    public const string SignatureInvalid = "Package.SignatureInvalid";
+
+    /// <summary>A key fingerprint does not match the supplied key.</summary>
+    public const string KeyMismatch = "Package.KeyMismatch";
+
+    /// <summary>A version or cryptographic suite is unsupported.</summary>
+    public const string UnsupportedSuite = "Package.UnsupportedSuite";
 }
