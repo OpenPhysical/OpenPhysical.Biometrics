@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 using System.Diagnostics.CodeAnalysis;
+using CoreJ2K;
 using CSharpFunctionalExtensions;
 using Microsoft.ML.OnnxRuntime;
 
@@ -41,6 +42,7 @@ internal static class FacialEdge
                 FacialErrorCodes.NativeRuntimeUnavailable,
                 "The native model or image runtime is unavailable."
             ),
+            DecoderLimitException => FacialErrors.ImageDimensionsExceeded(),
             OnnxRuntimeException => new FacialError(
                 FacialErrorCodes.ModelExecutionFailed,
                 "The model runtime failed."

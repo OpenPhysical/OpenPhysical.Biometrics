@@ -1,0 +1,43 @@
+{
+  "Status": "Failed prospective held-out gate; publication remains blocked",
+  "Cohort": "NEUROTECHNOLOGY_UAREU_FINAL",
+  "ImageCount": 280,
+  "PersonCount": 4,
+  "GenuineAttempts": 980,
+  "NonmateAttempts": 38080,
+  "Threshold": 40,
+  "Original": {
+    "GenuineAccepted": 859,
+    "NonmateAccepted": 1,
+    "BetweenPersonAccepted": 1,
+    "WithinPersonDifferentFingerAccepted": 0,
+    "UnavailableImages": 1
+  },
+  "RawHull0": {
+    "GenuineAccepted": 865,
+    "NonmateAccepted": 3,
+    "BetweenPersonAccepted": 2,
+    "WithinPersonDifferentFingerAccepted": 1,
+    "UnavailableImages": 0,
+    "GenuineGained": 13,
+    "GenuineLost": 7,
+    "NonmateGained": 2,
+    "NonmateLost": 0
+  },
+  "Passed": false,
+  "OperationalErrors": [],
+  "NativeCalls": {
+    "Nfiq1": 280,
+    "Nfiq2": 280,
+    "Extraction": 280
+  },
+  "PreflightReceiptSha256": "467e97e9207ee00b1c9a9a097872b575f35ae70b786d3d0591726f0d3f4544b3",
+  "FrozenProtocolSha256": "92f093ece9420dfe4dec0c3c5141db2829d16fa30d62f474709bc91cd3517389",
+  "RawManifestSha256": "257790264fe3e9005995f381cbd13df1d4762378266c5e72e123d7b370fe8ef9",
+  "DerivedManifestSha256": "ac3ce7484a39d7b473dad2995e7186816faf66027a1908c0431604d3e58571eb",
+  "FullReportSha256": "be9fc6d84e707e5169f5c44868d58ebbcfe04edd58de4aa27ef022a01d006640",
+  "LedgerSha256": "081494eb9c2bec2efcb838970bd8c9b142d10e8092125e2ea6fe5e6f034acc91",
+  "SupplementalDiagnosisSha256": "eb52a31d275852751f76afbdc7d25cf4075e9413ee7d7312f6b2d5af4a23339a",
+  "Diagnosis": "The processing-context margin admitted exterior uncertain points while the support hull removed measured-contact features. Unchanged pixels, NFIQ assessments and extraction reproduced the score changes; no 128-point cap was reached. Native quality values do not justify an identity-confidence cutoff.",
+  "FutureUse": "Examined diagnostic data for any revised policy; no longer an untouched holdout. No threshold or policy was retuned in this execution."
+}

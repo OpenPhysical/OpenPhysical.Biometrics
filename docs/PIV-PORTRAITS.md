@@ -25,6 +25,8 @@ Detections are indexed from zero by horizontal center, then vertical center. A s
 
 The default report contains status, face count, dimensions, and diagnostic codes. `--include-sensitive` explicitly includes source hash, landmarks, measurements, and transforms. Request a lossless preview with `--preview`. Application logs contain operational status.
 
+The reviewed-coordinate options below are a developer/CLI interface, not the Studio operator flow. **OpenPhysical Biometric Studio uses automatic geometry only**, with review or retake and no manual landmark prerequisite. It prepares real unsigned capture records for the separate issuer. The planned synthetic TEST-face mode belongs to Issuance Studio and must not fabricate these camera/acquisition findings; see the [hosted plan](../../OpenPhysical.Net/docs/planning/hosted-test-issuance.md).
+
 ## Reviewed geometry
 
 ```json
@@ -59,18 +61,29 @@ The acquisition operator supplies those findings from the actual camera and capt
 
 ## Rules and sources
 
-The controlling references are the local SP 800-76-2 §7.2, Table 14 notes, and INCITS 385-2004 §§7–8. The reference documents stay in the Reference Library; this table records mandatory profile rules. Approximate horizontal centering uses an explicit application tolerance. Output dimensions, preferred eye placement, and preferred head width are application defaults, described below. Acquisition confirmation covers the mandatory optical-resolution test: a 20 cm target normal to the optical axis at 1.5 m must span at least 240 pixels. The recommendation to place the subject at least 1.5 m from the camera is recorded separately from the pixel-derived crop measurements.
+The controlling references are the local SP 800-76-2 §7.2, Table 12 notes, and INCITS 385-2004 §§7–8. The reference documents stay in the Reference Library; this table records mandatory profile rules. Approximate horizontal centering uses an explicit application tolerance. Output dimensions, preferred eye placement, and preferred head width are application defaults, described below. Acquisition confirmation covers the mandatory optical-resolution test: a 20 cm target normal to the optical axis at 1.5 m must span at least 240 pixels. The recommendation to place the subject at least 1.5 m from the camera is recorded separately from the pixel-derived crop measurements.
 
 | Rule | Basis | Implementation |
 | --- | --- | --- |
 | Full Frontal type | SP 800-76-2 §7.2 note 4; INCITS §8 | Encode image type 1. |
+| Source pose | INCITS §7.2.2 | Absolute pitch, yaw, and roll must each be <5°. Reject canonical-pose estimates at or beyond 5° before leveling. Operator frontal review remains required. |
 | Centering and eyes | INCITS §§8.3.2–8.3.3 | Center nose-bridge/mouth midpoint; each within 2% of image width as an application tolerance. Eyes 30–50% down from the top. |
 | Head extents | INCITS §§8.3.4–8.3.5 | Image/head-width ratio ≥7:4; crown-to-chin ≤80% of image height. |
-| Resolution | SP 800-76-2 §7.2 note 7 | Width >420; head width ≥240 output pixels; scale ≤1. Acquisition confirmation remains explicit. |
+| Resolution | SP 800-76-2 §7.2 note 7 | Width >420; scale ≤1. The conservative preparation policy also retains head width ≥240 output pixels, independently of the physical optical-resolution test. |
 | Color | SP 800-76-2 §7.2 note 8 | Decode with source profile into sRGB; apply EXIF orientation before analysis. Untagged images use the decoder's sRGB interpretation. |
 | Compression | SP 800-76-2 §7.2 notes 5–6 | JPEG 2000, whole-image ratio ≤15:1; decode-check dimensions and components. |
 
 Application defaults are 480×640, a target eye line at 40% from the top, and a target head width of 256 pixels. The solver intersects the linear constraints in scale and eye-line position, then chooses the point in the feasible polygon nearest those two targets in normalized squared-distance units (16 pixels for head width and 64 pixels for eye placement). Every candidate must fit the source and all geometric constraints. One uniform affine resampling produces the portrait. Model-input resampling is a separate operation and can use zero padding; final portrait sampling requires source coverage.
+
+`PortraitSourcePose` checks the original, orientation-corrected source. It rejects excessive estimated pitch, yaw, or roll with `SourcePitch`, `SourceYaw`, or `SourceRoll`; absent or unusable pose evidence returns `SourcePoseUnassessable`. Reviewed head boundaries cannot erase these findings. Smaller accepted tilts may be leveled by the uniform crop; the implementation does not digitally correct yaw or pitch. Apparent two-dimensional eye-line tilt is not a second pose threshold: perspective can change it even when physical axes meet the limits.
+
+`PortraitFraming` plans a source-supported inspection crop independently of acceptance. A rejected capture can therefore retain cropped RGB pixels, transform, measurements, and image guides while its status remains `ReviewRequired` with the original findings. Pixel availability is not an acceptance decision. `PortraitCrop.Calculate` retains the strict source-pose gate; strict record preparation still rejects review-required portraits. When source coverage or geometry prevents framing, no inspection pixels are fabricated.
+
+The packaged ONNX models expose screen-space landmarks and presence. The shared pose estimator implements [Google's Face Geometry pipeline](https://github.com/google-ai-edge/mediapipe/blob/350fbb2100ad531bc110b93aaea23d96af5a5064/mediapipe/modules/face_geometry/libs/geometry_pipeline.cc): two-pass screen-to-metric conversion followed by weighted canonical alignment. MathNet supplies the numerical SVD. The 468 canonical points and Google's 33 nonzero weights are pinned by SHA-256; the additional iris landmarks do not influence this alignment.
+
+Actual source dimensions preserve square-pixel aspect: normalized input is X/source-width, Y/source-height, and relative Z/source-width. Geometry uses an unmirrored source, a top-left image origin, and a single conversion to right-handed metric coordinates. The returned angles use Rz(roll) Ry(yaw) Rx(pitch), with positive pitch looking down, positive yaw turning toward the subject's left, and positive roll tilting toward the subject's right. Pose estimates are cached with the immutable detections, so crop edits do not run another solve or change source pose.
+
+The default virtual camera has Google's sample vertical field of view of 63 degrees and a unit near plane. `PortraitPoseOptions` allows explicit virtual field of view, and each estimate records the value used. This is an approximate model, not physical camera calibration or a complete PIV compliance measurement. The operator must still review whether the subject faces straight toward the camera. Independent known-pose projection fixtures verify all three axes, signed rotations, combined rotations, and both portrait and landscape source dimensions.
 
 ## Implementation and provenance
 
@@ -112,6 +125,21 @@ var jpeg2000 = PortraitEncoding.EncodeJpeg2000(portrait.RgbPixels.AsSpan(), 480,
 [portrait example](../examples/OpenPhysical.Biometrics.Examples/PortraitExample.cs)
 chains `Prepare`, `Ensure`, and `FacialRecordPreparer.Prepare` with `Bind`.
 
+### Owned images and camera frames
+
+`PortraitImage.Decode(encoded)` returns immutable, orientation-corrected sRGB pixels.
+`PortraitImage.FromSrgb(rgb, width, height)` owns camera samples that the capture
+provider has already converted to opaque eight-bit sRGB. Neither method resizes the
+image. Pass that image to `PortraitPreparer.Prepare(image)` or the overload accepting
+reviewed geometry and a face index; both use the same detector and crop pipeline as
+encoded-image preparation.
+
+Use `image.SourceSha256` when binding reviewed geometry. For decoded files this is
+the original encoded-byte hash. For camera RGB it is a domain-separated hash of the
+oriented dimensions and exact owned samples. The capture provider retains camera,
+time, and color-conversion evidence separately. A pixel buffer alone does not prove
+optical resolution or the camera's color calibration.
+
 ## Troubleshooting
 
 `NoFace` asks for a capture with a clearly visible face. `SelectFace` asks for an
@@ -126,3 +154,31 @@ access failures. Use `--overwrite` to replace an existing output.
 `NativeRuntimeUnavailable` identifies missing or incompatible ONNX Runtime or
 Skia native assets. Packages support Windows x64, Linux x64/ARM64, and macOS
 x64/ARM64. Install the package matching the process architecture.
+
+
+## Shared capture analysis and readiness
+
+Call `PortraitPreparer.Analyze(PortraitImage)` once for a displayed source. The owned
+`PortraitAnalysis` retains the exact image and detections. Repeated
+`Prepare(analysis, reviewedGeometry)` calls replan and render from those detections;
+editing crown or ear boundaries never reruns inference. Results remain immutable.
+
+`FacialRecordPreparer.Prepare(preparedPortrait, acquisition)` retains the strict
+PIV acquisition policy used by the CLI. Studio explicitly supplies
+`FacialPreparationPolicy.UnsignedStaging`: optical measurement is recommended
+provenance, not a capture, acceptance, or save gate. Prepared geometry, reviewed
+head boundaries, and attended frontal review are still required. Unknown optical
+evidence remains `OpticalResolutionConfirmed = false` with a separate
+`OpticalResolutionUnknown` acquisition finding, including in `face.json`.
+Passing encoded-record metadata checks does not confirm acquisition compliance.
+
+The returned INCITS 385 record owns the one JPEG 2000 encoding;
+its image bytes are reused rather than encoded again for a companion or save.
+These unsigned records are staging material for the later issuer/signing tool.
+
+`PortraitQualityAssessor` supplies raw masked LoG variance and conservative backdrop
+statistics for a frozen portrait. These advisory measurements have no combined
+quality score, percentage, or automatic acceptance gate. Background estimates
+require explicit protection of the complete head, hair, ears, and shoulders;
+otherwise the result requests human background review. No source or output pixels
+are changed. The migrated FaceOFFx measurements retain their MIT notice.

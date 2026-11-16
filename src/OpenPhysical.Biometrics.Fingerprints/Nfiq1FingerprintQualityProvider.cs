@@ -4,6 +4,7 @@
 namespace OpenPhysical.Biometrics.Fingerprints;
 
 using CSharpFunctionalExtensions;
+using OpenPhysical.Biometrics.NBIS;
 using OpenPhysical.Biometrics.NFIQ1;
 
 /// <summary>Adapts the original NIST NFIQ 1 classifier to PIV enrollment.</summary>
@@ -19,20 +20,12 @@ public sealed class Nfiq1FingerprintQualityProvider : IFingerprintQualityProvide
     }
 
     /// <summary>Assesses the original capture and preserves the NIST classification details.</summary>
-    /// <param name="capture">The immutable parent image.</param>
+    /// <param name="image">The immutable nominal 500 ppi parent image.</param>
     /// <returns>The original quality class, confidence, image status, and model identity, or an error when the engine fails or returns an unknown image status.</returns>
-    public Result<FingerprintQualityAssessment, FingerprintError> Assess(
-        FingerprintCapture capture
-    ) =>
+    public Result<FingerprintQualityAssessment, FingerprintError> Assess(FingerprintImage image) =>
         FingerprintEdge
             .Try(
-                () =>
-                    engine.Assess(
-                        capture.Image.Pixels,
-                        capture.Image.Width,
-                        capture.Image.Height,
-                        capture.Image.DotsPerInch
-                    ),
+                () => engine.Assess(image.Pixels, image.Width, image.Height, image.DotsPerInch),
                 FingerprintErrorCodes.QualityEngineFailed,
                 "The quality engine failed."
             )

@@ -14,6 +14,15 @@
       "url": "https://github.com/yakhyo/mediapipe-face-mesh-onnx/releases/download/weights/face_detection_short_range.onnx",
       "size": 470549,
       "sha256": "2f2689b040becf555706d2cb978d2f0e3296ea82413734fba9a856c66c5f2b17"
+    },
+    {
+      "file": "selfie_segmenter_square.onnx",
+      "url": "https://storage.googleapis.com/mediapipe-models/image_segmenter/selfie_segmenter/float16/1/selfie_segmenter.tflite",
+      "size": 450208,
+      "sha256": "60460d8359b0fd476381126518b9fa6ced2d7aefcdc8634ed78a33a3b2989b93",
+      "original_sha256": "191ac9529ae506ee0beefa6b2c945a172dab9d07d1e802a290a4e4038226658b",
+      "conversion": "scripts/convert-selfie-segmenter.py",
+      "license": "Apache-2.0"
     }
   ],
   "google_model_card": "https://storage.googleapis.com/mediapipe-assets/Model%20Card%20MediaPipe%20Face%20Mesh%20V2.pdf",
@@ -27,6 +36,11 @@
       "file": "face_detection_short_range.onnx",
       "bytes": 470549,
       "sha256": "2f2689b040becf555706d2cb978d2f0e3296ea82413734fba9a856c66c5f2b17"
+    },
+    {
+      "file": "selfie_segmenter_square.onnx",
+      "bytes": 450208,
+      "sha256": "60460d8359b0fd476381126518b9fa6ced2d7aefcdc8634ed78a33a3b2989b93"
     }
   ]
 }

@@ -7,6 +7,8 @@ signature service to authenticate the completed CBEFF object. A reader parses th
 stored object, authenticates it, and compares a fresh capture with the selected
 reference finger.
 
+These are reusable library contracts, not permission to combine capture and issuance in one GUI. Biometric Studio captures/reviews/exports and performs read-only checks; concrete credential signing and card administration belong to the separate Issuance Studio/Net runtime. The [hosted plan](../../OpenPhysical.Net/docs/planning/hosted-test-issuance.md) labels future user workflows separately.
+
 All current packages target .NET 10. Public XML documentation describes ownership,
 units, expected outcomes, and validation at each entry point.
 

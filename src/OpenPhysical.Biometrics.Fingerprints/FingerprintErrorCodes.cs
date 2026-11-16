@@ -6,6 +6,24 @@ namespace OpenPhysical.Biometrics.Fingerprints;
 /// <summary>Defines the stable error codes returned by fingerprint operations.</summary>
 public static class FingerprintErrorCodes
 {
+    /// <summary>The two-score selection gains are outside their meaningful ranges.</summary>
+    public const string InvalidSelectionPolicy = "InvalidSelectionPolicy";
+
+    /// <summary>An image-aligned binary feature region has invalid geometry or values.</summary>
+    public const string InvalidRegion = "InvalidRegion";
+
+    /// <summary>Registration requires valid geometry and at least eight minutiae per view.</summary>
+    public const string InvalidAlignmentInput = "InvalidAlignmentInput";
+
+    /// <summary>No sufficiently supported bounded similarity registration was found.</summary>
+    public const string AlignmentNotEstablished = "AlignmentNotEstablished";
+
+    /// <summary>Prepared selections or their encoded record are invalid.</summary>
+    public const string InvalidPreparation = "InvalidPreparation";
+
+    /// <summary>The acquisition evidence does not match the approved profile.</summary>
+    public const string AcquisitionProfileMismatch = "AcquisitionProfileMismatch";
+
     /// <summary>The finger position is not an ANSI finger code.</summary>
     public const string InvalidFinger = "InvalidFinger";
 
@@ -65,6 +83,9 @@ public static class FingerprintErrorCodes
 
     /// <summary>The quality engine failed.</summary>
     public const string QualityEngineFailed = "QualityEngineFailed";
+
+    /// <summary>The unified quality engine could not assess the image's usable fingerprint area.</summary>
+    public const string QualityImageNotAssessable = "QualityImageNotAssessable";
 
     /// <summary>The extraction or matching engine failed.</summary>
     public const string EngineFailed = "EngineFailed";

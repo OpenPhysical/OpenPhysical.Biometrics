@@ -1,0 +1,71 @@
+{
+  "Status": "Development evidence only; final validation pending",
+  "ProtocolSha256": "19154a99420dbf49cb685e13a3f272e036e6b2314f8d289e37ec52b251f32ab7",
+  "ImageCount": 240,
+  "PersonCount": 3,
+  "GenuineAttempts": 840,
+  "NonmateAttempts": 27840,
+  "Threshold": 40,
+  "Baseline": {
+    "GenuineAccepted": 747,
+    "NonmateAccepted": 0,
+    "UnavailableImages": 0
+  },
+  "Arms": [
+    {
+      "Arm": "RawHull0",
+      "GenuineAccepted": 766,
+      "NonmateAccepted": 0,
+      "BetweenPersonAccepted": 0,
+      "WithinPersonDifferentFingerAccepted": 0,
+      "UnavailableImages": 0,
+      "DevelopmentGatePassed": true,
+      "LedgerSha256": "0373bce2c236ebbf5e66b282e4743b47f5fc1f09bf564c286d4bb23bb0d23d79",
+      "GenuineGained": 22,
+      "GenuineLost": 3
+    },
+    {
+      "Arm": "WhitenedHull0",
+      "GenuineAccepted": 754,
+      "NonmateAccepted": 0,
+      "BetweenPersonAccepted": 0,
+      "WithinPersonDifferentFingerAccepted": 0,
+      "UnavailableImages": 0,
+      "DevelopmentGatePassed": true,
+      "LedgerSha256": "f3f1708e03154d79e82c380243f90a76a29fc40a08d78840523e5204c6e00156",
+      "GenuineGained": 22,
+      "GenuineLost": 15
+    },
+    {
+      "Arm": "WhitenedHull8",
+      "GenuineAccepted": 764,
+      "NonmateAccepted": 1,
+      "BetweenPersonAccepted": 0,
+      "WithinPersonDifferentFingerAccepted": 1,
+      "UnavailableImages": 0,
+      "DevelopmentGatePassed": false,
+      "LedgerSha256": "7daf8a8855ed3508959edd0e10c6e7cf8008e154cd1516da138376bb3000761b",
+      "GenuineGained": 28,
+      "GenuineLost": 11
+    }
+  ],
+  "SelectedForFinal": "RawHull0",
+  "SelectedConfiguration": {
+    "AutomaticEnhancement": false,
+    "Brightness": 0,
+    "Contrast": 0,
+    "TileSize": 32,
+    "ClipLimit": 2,
+    "Blend": 0,
+    "HullMargin": 32,
+    "ConfiguredBoundaryGuard": 8,
+    "EffectiveBoundaryGuard": 0
+  },
+  "NativeCalls": {
+    "Nfiq1": 480,
+    "Nfiq2": 480,
+    "Extraction": 480
+  },
+  "OperationalErrors": [],
+  "Scope": "Three development people; no population-level claim. Final cohort remains unexamined. Source and execution identities are pinned in the referenced protocol."
+}

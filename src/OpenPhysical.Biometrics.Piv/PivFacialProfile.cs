@@ -26,21 +26,35 @@ internal static class PivFacialProfile
         string path
     )
     {
-        var info = image.ImageInformation;
-        return ProfileFindings.Failed(
+        return
+        [
+            .. ValidateInformation(image.ImageInformation, path),
+            .. ProfileFindings.Failed(
+                path,
+                (image.Information.Expression != 1, "NeutralExpression"),
+                (image.Information.PoseAngle != 0, "FrontalPose"),
+                (image.Information.PoseUncertainty != 0, "PoseUncertainty"),
+                (image.ImageData.IsDefaultOrEmpty, "ImageDataRequired")
+            ),
+        ];
+    }
+
+    internal static ImmutableArray<BiometricProfileDiagnostic> ValidateInformation(
+        FaceImageInformation info,
+        string path
+    ) =>
+        ProfileFindings.Failed(
             path,
             (info.FaceImageType != 1, "FullFrontalImage"),
             (info.ImageDataType is not (0 or 1), "ImageEncoding"),
             (info.ColorSpace != 1, "SrgbColorSpace"),
             (info.SourceType is not (2 or 6), "CaptureSource"),
-            (info.Width <= 420 || info.Height == 0, "ImageDimensions"),
-            (info.Quality > 100, "ImageQuality"),
-            (image.Information.Expression != 1, "NeutralExpression"),
-            (image.Information.PoseAngle != 0, "FrontalPose"),
-            (image.Information.PoseUncertainty != 0, "PoseUncertainty"),
-            (image.ImageData.IsDefaultOrEmpty, "ImageDataRequired")
+            (
+                !PivPortraitGeometry.HasSupportedImageDimensions(info.Width, info.Height),
+                "ImageDimensions"
+            ),
+            (info.Quality > 100, "ImageQuality")
         );
-    }
 
     private static ImmutableArray<BiometricProfileDiagnostic> ValidateEncoding(FaceRecord record) =>
         Incits385Codec

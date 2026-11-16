@@ -3,15 +3,12 @@
 
 namespace OpenPhysical.Biometrics.Fingerprints;
 
-using System.Collections.Immutable;
 using CSharpFunctionalExtensions;
 using OpenPhysical.Biometrics.Formats.Fingerprints;
 
 // Builds the two PIV finger views with their minutiae limits and units.
 internal static class PivEnrollmentRecordBuilder
 {
-    private const int MaximumMinutiae = 128;
-
     internal static Result<FingerprintRecord, FingerprintError> Build(
         FingerprintEnrollmentFinger primary,
         FingerprintEnrollmentFinger secondary,
@@ -121,36 +118,20 @@ internal static class PivEnrollmentRecordBuilder
             .Bind(capture =>
                 selection
                     .Quality.ToResult(MissingEvidence())
-                    .Map(quality => BuildAvailableView(selection, template, capture, quality))
+                    .Bind(quality =>
+                        FingerprintViewFactory.Create(
+                            template,
+                            quality,
+                            selection.Finger,
+                            0,
+                            capture.Impression
+                        )
+                    )
             );
 
     private static FingerprintError MissingEvidence() =>
         new(
             FingerprintErrorCodes.UnavailableCandidate,
             "An available finger requires its capture, template, and quality assessment."
-        );
-
-    private static FingerprintView BuildAvailableView(
-        FingerprintEnrollmentFinger selection,
-        NBIS.FingerprintTemplate template,
-        FingerprintCapture capture,
-        FingerprintQualityAssessment quality
-    ) =>
-        new(
-            (byte)selection.Finger,
-            0,
-            (byte)capture.Impression,
-            quality.PivQuality,
-            template
-                .Minutiae.OrderByDescending(point => point.Quality)
-                .ThenBy(point => point.X)
-                .ThenBy(point => point.Y)
-                .ThenBy(point => point.Angle)
-                .ThenBy(point => point.Type)
-                .DistinctBy(point => (point.X, point.Y))
-                .Take(MaximumMinutiae)
-                .Select(point => FingerprintGeometry.ToRecord(point, template.Height))
-                .ToImmutableArray(),
-            []
         );
 }

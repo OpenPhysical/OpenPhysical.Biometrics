@@ -1,0 +1,128 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
+
+namespace OpenPhysical.Biometrics.Capture.Futronic.Tests;
+
+using AwesomeAssertions;
+using CSharpFunctionalExtensions.AwesomeAssertions;
+using NUnit.Framework;
+
+[TestFixture]
+internal sealed class Fs50ExposureTests
+{
+    [TestCase(0)]
+    [TestCase(128)]
+    [TestCase(255)]
+    public void UniformGlassDoesNotDriveExposure(int value)
+    {
+        var pixels = Enumerable.Repeat((byte)value, 800 * 750).ToArray();
+        var contact = Fs50ContactAnalysis.Analyze(pixels).Value;
+        contact.Present.Should().BeFalse();
+        Fs50ExposureController.Next(128, contact, true, false).Should().Be(128);
+    }
+
+    [Test]
+    public void SmallTexturedMarkIsRejected()
+    {
+        var pixels = Image(20, 20, 60, 140);
+        Fs50ContactAnalysis.Analyze(pixels).Value.Present.Should().BeFalse();
+    }
+
+    [Test]
+    public void ContactExposureIsBoundedAndHonorsExplicitLocks()
+    {
+        var pixels = Image(160, 240, 170, 230);
+        var original = pixels.ToArray();
+        var contact = Fs50ContactAnalysis.Analyze(pixels).Value;
+        contact.Present.Should().BeTrue();
+        contact.Contrast.Should().Be(85);
+        contact.Signal.Should().Be(85);
+        Fs50ExposureController.Next(100, contact, true, false).Should().Be(116);
+        Fs50ExposureController.Next(255, contact, true, false).Should().Be(255);
+        Fs50ExposureController.Next(100, contact, false, false).Should().Be(100);
+        Fs50ExposureController.Next(100, contact, true, true).Should().Be(100);
+        pixels.Should().Equal(original);
+    }
+
+    [Test]
+    public void ExplicitDarkerTargetRaisesAcquisitionExposureWithoutChangingTheImage()
+    {
+        var pixels = Image(160, 240, 65, 125);
+        var original = pixels.ToArray();
+        var contact = Fs50ContactAnalysis.Analyze(pixels).Value;
+        contact.Signal.Should().Be(190);
+        Fs50ExposureController.Next(100, contact, true, false).Should().Be(100);
+        var darker = Fs50ExposureController.Next(100, contact, true, false, 210);
+        darker.Should().Succeed().Which.Should().Be(103);
+        pixels.Should().Equal(original);
+    }
+
+    [Test]
+    public void DarkerProfileKeepsItsTargetInsteadOfReturningToTheLibraryDefault()
+    {
+        var contact = Fs50ContactAnalysis.Analyze(Image(160, 240, 45, 105)).Value;
+        contact.Signal.Should().Be(210);
+        Fs50ExposureController.Next(220, contact, true, false).Should().Be(215);
+        Fs50ExposureController
+            .Next(220, contact, true, false, 210)
+            .Should()
+            .Succeed()
+            .Which.Should()
+            .Be(220);
+    }
+
+    [TestCase(0)]
+    [TestCase(256)]
+    public void InvalidTargetsFailBeforeAdjustment(int target)
+    {
+        var contact = Fs50ContactAnalysis.Analyze(Image(160, 240, 65, 125)).Value;
+        Fs50ExposureController
+            .Next(100, contact, true, false, target)
+            .Should()
+            .Fail()
+            .Which.Code.Should()
+            .Be(CaptureErrorCodes.InvalidArgument);
+    }
+
+    [Test]
+    public void ExplicitTargetPreservesEveryManualByteAndHonorsLocks()
+    {
+        var contact = Fs50ContactAnalysis.Analyze(Image(160, 240, 65, 125)).Value;
+        foreach (var value in Enumerable.Range(0, 256))
+        {
+            Fs50ExposureController
+                .Next((byte)value, contact, false, false, 210)
+                .Value.Should()
+                .Be((byte)value);
+            Fs50ExposureController
+                .Next((byte)value, contact, true, true, 210)
+                .Value.Should()
+                .Be((byte)value);
+        }
+    }
+
+    [Test]
+    public void IncompleteImageFailsBeforeAnalysis() =>
+        Fs50ContactAnalysis
+            .Analyze(new byte[10])
+            .Error.Code.Should()
+            .Be(CaptureErrorCodes.UnsupportedGeometry);
+
+    [Test]
+    public void StrongContactReducesExposureWithinTheSameBound()
+    {
+        var contact = Fs50ContactAnalysis.Analyze(Image(160, 240, 40, 100)).Value;
+        contact.Area.Should().BeLessThan(contact.Diagnostics.CandidateArea);
+        contact.Contrast.Should().Be(215);
+        contact.Signal.Should().Be(215);
+        Fs50ExposureController.Next(255, contact, true, false).Should().Be(247);
+    }
+
+    private static byte[] Image(int width, int height, byte low, byte high)
+    {
+        var image = Enumerable.Repeat((byte)255, 800 * 750).ToArray();
+        for (int y = 200; y < 200 + height; y++)
+        for (int x = 300; x < 300 + width; x++)
+            image[(y * 800) + x] = x % 8 < 4 ? low : high;
+        return image;
+    }
+}

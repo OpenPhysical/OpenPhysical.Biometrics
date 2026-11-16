@@ -17,6 +17,9 @@ public static class FingerprintServiceCollectionExtensions
     public static IServiceCollection AddFingerprintProcessing(this IServiceCollection services)
     {
         services.TryAddSingleton<IFingerprintEngine, NbisFingerprintEngine>();
+        services.TryAddTransient<FingerprintPreparationService>();
+        services.TryAddTransient<AcquiredFingerprintAdapter>();
+        services.TryAddTransient<AcquiredFingerprintPreparationService>();
         services.TryAddTransient<FingerprintComparisonService>();
         services.TryAddTransient<PivFingerprintEnrollmentService>();
         return services;

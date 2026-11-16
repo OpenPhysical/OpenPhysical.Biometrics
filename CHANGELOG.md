@@ -4,6 +4,28 @@ Releases follow Semantic Versioning. Version 3 is the .NET 10 consolidation rele
 
 ## Unreleased
 
+- Add optional NFIQ 2 image-quality assessment through a separate adapter library,
+  with cached desktop results and per-view metadata that leaves PIV encoding unchanged.
+- Explain NFIQ 1 classes in plain language, emphasize current comparison outcomes
+  in green/red, invalidate obsolete comparison details, and bundle the supplied Dock icon.
+- Drain incomplete FS50 replies on cancellation and synchronize new opens before
+  strict descriptor/calibration validation, preventing alternating reconnect faults.
+- Name the desktop application OpenPhysical Biometric Studio, including its native
+  application menu, window, assembly metadata, and published macOS bundle.
+- Use the requested Material.Avalonia theme with guided person, required-finger,
+  capture/review and save steps, plus a focused reference-versus-capture workspace.
+- Retain user-provided names or aliases and optional identifiers with the private
+  capture package and restore their explicit template association when reopened.
+- Add the Avalonia FS50 desktop utility with automatic connection/reconnection,
+  frozen-frame finger selection, NIST extraction and NFIQ 1 quality assessment,
+  and an overlay of the exact exported minutiae.
+- Export one- or two-finger unsigned ANSI/INCITS 378-2004 records with source PNGs,
+  timestamped device provenance and hash-verified private capture packages.
+- Inspect FMR and raw CBEFF fingerprints, reopen paired source images, and compare
+  a selected reference finger against a frozen live probe using Bozorth3.
+- Cancel and drain capture, inspection and export operations when closing the
+  desktop workspace.
+
 - **Breaking:** every library now returns `Result<T, TError>`, `UnitResult<TError>`, or `Maybe<T>` instead of throwing or returning null. Errors are `ImagingError`, `FormatError`, `PivError`, `FingerprintError`, and `FacialError`, each with a stable `Code` from its `*ErrorCodes` class.
 - **Breaking:** constructors that validated input are now `Create` factories returning results, including `FingerprintCapture.Create`, `FingerprintMatchingPolicy.Create`, `PivFingerprintRecordMetadata.Create`, `BiometricIdentity.Create`, `CbeffHeader.Create`, and `RgbImage.Create`.
 - **Breaking:** `Incits378Codec`, `Incits385Codec`, and `CbeffCodec` `Parse` return `Result<ParsedRecord<T>, FormatError>`, with failure diagnostics on `FormatError.Diagnostics`, and `Write` returns `Result<byte[], FormatError>`. `InspectionField.Value` is `Maybe<string>`.

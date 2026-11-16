@@ -34,16 +34,6 @@ internal static class FaceOutputPlanner
         PortraitPreparationResult result
     )
     {
-        var reviewed = result
-            .Measurements.Select(measurements => measurements.ReviewedHeadBoundary)
-            .GetValueOrDefault(false);
-        if (!reviewed)
-            return Review(
-                    result,
-                    "ReviewHeadBoundary",
-                    "Confirm crown and both ear attachments before preparing an issuance record."
-                )
-                .Succeed();
         return arguments
             .Acquisition.ToResult(ToolErrors.FaceMetadata())
             .Bind(FaceMetadata.Read<FacialAcquisitionMetadata>)
@@ -56,7 +46,7 @@ internal static class FaceOutputPlanner
         FacialAcquisitionMetadata acquisition
     ) =>
         new FacialRecordPreparer(NullLogger<FacialRecordPreparer>.Instance)
-            .Prepare(result.RgbPixels.AsSpan(), 480, 640, acquisition)
+            .Prepare(result, acquisition)
             .MapError(ToolErrors.FromFacial)
             .Bind(prepared =>
                 prepared.Status != FacialPreparationStatus.Prepared

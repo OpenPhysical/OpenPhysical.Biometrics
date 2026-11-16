@@ -4,6 +4,7 @@
         <Nullable>enable</Nullable>
         <ImplicitUsings>enable</ImplicitUsings>
         <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+        <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
         <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
         <EnableNETAnalyzers>true</EnableNETAnalyzers>
         <RunAnalyzers>true</RunAnalyzers>
@@ -22,9 +23,9 @@
         <PackageTags>biometrics;piv;cbeff;fingerprint;nbis;nfiq;facial;jpeg2000</PackageTags>
         <PackageIcon>icon.png</PackageIcon>
         <PackageReadmeFile>README.md</PackageReadmeFile>
-        <Version>3.0.0-beta.1</Version>
-        <NbisPackageVersion>0.1.0-beta.1</NbisPackageVersion>
-        <NfiqPackageVersion>0.1.0-beta.1</NfiqPackageVersion>
+        <Version>4.0.0-dev.20261115.1</Version>
+        <NbisPackageVersion>1.0.1</NbisPackageVersion>
+        <NfiqPackageVersion>1.0.1</NfiqPackageVersion>
         <!-- Build Output -->
         <BaseOutputPath>$(MSBuildThisFileDirectory)artifacts\bin\$(MSBuildProjectName)\</BaseOutputPath>
         <BaseIntermediateOutputPath>$(MSBuildThisFileDirectory)artifacts\obj\$(MSBuildProjectName)\</BaseIntermediateOutputPath>
@@ -68,7 +69,7 @@
             Condition="Exists('$(MSBuildThisFileDirectory)README.md')"
         />
     </ItemGroup>
-    <PropertyGroup Condition="'$(MSBuildProjectName)' == 'OpenPhysical.Biometrics.Onnx' or '$(MSBuildProjectName)' == 'OpenPhysical.Biometrics' or '$(MSBuildProjectName)' == 'OpenPhysical.Biometrics.Examples' or '$(MSBuildProjectName)' == 'OpenPhysical.Biometrics.Facial' or '$(MSBuildProjectName)' == 'OpenPhysical.Biometrics.Facial.Tests' or '$(MSBuildProjectName)' == 'OpenPhysical.Biometrics.Tool' or '$(MSBuildProjectName)' == 'OpenPhysical.Biometrics.Imaging' or '$(MSBuildProjectName)' == 'OpenPhysical.Biometrics.Imaging.Tests' or '$(MSBuildProjectName)' == 'OpenPhysical.Biometrics.Formats' or '$(MSBuildProjectName)' == 'OpenPhysical.Biometrics.Piv' or '$(MSBuildProjectName)' == 'OpenPhysical.Biometrics.Fingerprints' or '$(MSBuildProjectName)' == 'OpenPhysical.Biometrics.Formats.Tests' or '$(MSBuildProjectName)' == 'OpenPhysical.Biometrics.Piv.Tests' or '$(MSBuildProjectName)' == 'OpenPhysical.Biometrics.Fingerprints.Tests'">
+    <PropertyGroup Condition="'$(MSBuildProjectName)' == 'OpenPhysical.Biometrics.Packages' or '$(MSBuildProjectName)' == 'OpenPhysical.Biometrics.Packages.Tests' or '$(MSBuildProjectName)' == 'OpenPhysical.Biometrics.Capture.Camera' or '$(MSBuildProjectName)' == 'OpenPhysical.Biometrics.Capture.Camera.Tests' or '$(MSBuildProjectName)' == 'OpenPhysical.Biometrics.Fingerprints.Nfiq2' or '$(MSBuildProjectName)' == 'OpenPhysical.Biometrics.Fingerprints.Nfiq2.Tests' or '$(MSBuildProjectName)' == 'OpenPhysical.Biometrics.Studio' or '$(MSBuildProjectName)' == 'OpenPhysical.Biometrics.Desktop' or '$(MSBuildProjectName)' == 'OpenPhysical.Biometrics.Presentation' or '$(MSBuildProjectName)' == 'OpenPhysical.Biometrics.Desktop.Tests' or '$(MSBuildProjectName)' == 'OpenPhysical.Biometrics.Capture.Usb' or '$(MSBuildProjectName)' == 'OpenPhysical.Biometrics.Capture.Futronic' or '$(MSBuildProjectName)' == 'OpenPhysical.Biometrics.Capture.Futronic.Tests' or '$(MSBuildProjectName)' == 'OpenPhysical.Biometrics.Capture' or '$(MSBuildProjectName)' == 'OpenPhysical.Biometrics.Capture.Tests' or '$(MSBuildProjectName)' == 'OpenPhysical.Biometrics.Onnx' or '$(MSBuildProjectName)' == 'OpenPhysical.Biometrics' or '$(MSBuildProjectName)' == 'OpenPhysical.Biometrics.Examples' or '$(MSBuildProjectName)' == 'OpenPhysical.Biometrics.Facial' or '$(MSBuildProjectName)' == 'OpenPhysical.Biometrics.Facial.Tests' or '$(MSBuildProjectName)' == 'OpenPhysical.Biometrics.Tool' or '$(MSBuildProjectName)' == 'OpenPhysical.Biometrics.Imaging' or '$(MSBuildProjectName)' == 'OpenPhysical.Biometrics.Imaging.Tests' or '$(MSBuildProjectName)' == 'OpenPhysical.Biometrics.Formats' or '$(MSBuildProjectName)' == 'OpenPhysical.Biometrics.Piv' or '$(MSBuildProjectName)' == 'OpenPhysical.Biometrics.Fingerprints' or '$(MSBuildProjectName)' == 'OpenPhysical.Biometrics.Formats.Tests' or '$(MSBuildProjectName)' == 'OpenPhysical.Biometrics.Piv.Tests' or '$(MSBuildProjectName)' == 'OpenPhysical.Biometrics.Fingerprints.Tests'">
         <IsConsolidatedBiometricsProject>true</IsConsolidatedBiometricsProject>
         <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
         <GenerateDocumentationFile>true</GenerateDocumentationFile>

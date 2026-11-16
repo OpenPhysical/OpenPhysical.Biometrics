@@ -1,0 +1,68 @@
+{
+  "Purpose": "RAM-only physical FS50 empty-reference and qualification diagnostics",
+  "StopReason": "DurationComplete",
+  "RequestedSeconds": 30,
+  "ActualSeconds": 30.1977097,
+  "Frames": 120,
+  "CompleteEvidenceFramesPerSecond": 3.9738112986760714,
+  "AcquisitionOnlyReciprocalRate": 4.427412385770271,
+  "AcquisitionMilliseconds": {
+    "Count": 120,
+    "Minimum": 214.8035,
+    "Median": 226.18905,
+    "P95": 233.8714,
+    "Maximum": 238.4307
+  },
+  "ContactMilliseconds": {
+    "Count": 120,
+    "Minimum": 15.475,
+    "Median": 20.721600000000002,
+    "P95": 24.8688,
+    "Maximum": 35.9101
+  },
+  "LearningMilliseconds": {
+    "Count": 120,
+    "Minimum": 1.2976,
+    "Median": 2.52895,
+    "P95": 5.3818,
+    "Maximum": 6.8142
+  },
+  "QualificationMilliseconds": {
+    "Count": 120,
+    "Minimum": 0.2872,
+    "Median": 0.4023,
+    "P95": 0.471,
+    "Maximum": 15.5996
+  },
+  "ReadyFrames": 117,
+  "ReadyTransitions": 1,
+  "QualifiedContactFrames": 0,
+  "Exposure": 220,
+  "EvidencePolicyDigest": "ef4596f8a9ec2d0c1ca4a2f0590cf17ca9115e1c61a1b74900bfb9f1fbbf7889",
+  "EmptySensorPolicyDigest": "0b99cf3e9a2baab70b7e369b31422da259dd92e7fc479acd9d6f1f131357a52a",
+  "WholeContactPolicyDigest": "95a78d260d1601e28a463f5dd175d01de7f3b74039bd80c869da51859763a53f",
+  "NistQualityCalls": 0,
+  "ExtractionCalls": 0,
+  "PixelFiles": 0,
+  "TemplateFiles": 0,
+  "CompletedUtc": "2026-11-11T15:32:53.019533+00:00",
+  "BuildWarnings": 0,
+  "BuildErrors": 0,
+  "ExitCode": 0,
+  "SessionDisposed": true,
+  "ReferenceReadySequence": 3,
+  "ReferenceReadyElapsedSeconds": 1.0400359,
+  "ReportSha256": "66ecb9df0527c3cb0591e1c6849082a05c5c1c3d540867de567c61224f913522",
+  "Scope": "Actual physical FS50 clean-empty check, fixed exposure220. No UI rendering, finger-on-sensor trial or matching accuracy claim.",
+  "ExecutionReceiptSha256": "f18f9c428870896af215fe3b5037c7ffac866fc91c958052b80b33f7769c12fa",
+  "ProductAssemblies": {
+    "deps/OpenPhysical.Biometrics.Capture.Usb.dll": "531d325a8f02337ed2c76af62d6304634c1d881b0caaa707ea244c2e9613587f",
+    "deps/OpenPhysical.Biometrics.Capture.dll": "28744276a7df86d5b09819661e6cacb7c3a8c990111c1d498858ab13b9ca2857",
+    "deps/OpenPhysical.Biometrics.Capture.Futronic.dll": "6cd649a449e27b6db58b3b6abc4ea30ce81b6bf2365390ca13b52ea1f7c2adf6"
+  },
+  "Limitations": [
+    "One physical scanner, clean empty platen, fixed exposure 220, one 30-second run.",
+    "No finger presentation, dirty-sensor challenge, rendering, burst selection, score or matching validation.",
+    "Physical acquisition includes USB transfer and correction; the reciprocal rate is not a measured UI frame rate."
+  ]
+}

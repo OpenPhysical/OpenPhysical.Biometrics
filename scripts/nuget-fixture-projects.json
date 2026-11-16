@@ -1,0 +1,5 @@
+{
+  "projects": [
+    "tests/OpenPhysical.Biometrics.TestFixtures.Package/OpenPhysical.Biometrics.TestFixtures.Package.csproj"
+  ]
+}

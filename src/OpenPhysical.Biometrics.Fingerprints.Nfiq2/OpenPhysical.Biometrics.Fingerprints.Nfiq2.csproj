@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <Description>Opt-in NFIQ 2 unified fingerprint quality adapter.</Description>
+    </PropertyGroup>
+    <ItemGroup>
+        <ProjectReference Include="../OpenPhysical.Biometrics.Fingerprints/OpenPhysical.Biometrics.Fingerprints.csproj" />
+        <PackageReference Include="OpenPhysical.Biometrics.NFIQ2" Version="$(NfiqPackageVersion)" />
+    </ItemGroup>
+</Project>

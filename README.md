@@ -11,6 +11,14 @@ stored records, explains their structure, applies the biometric profile, and
 prepares the content for the application's signature verifier. Middleware combines
 those findings with card identity, trust, and its authentication policy.
 
+## Product ownership
+
+This repository owns reusable biometric libraries and the versioned `.opbio` codec.
+[OpenPhysical Enrollment Studio](https://github.com/OpenPhysical/OpenPhysical.Enrollment.Studio) owns capture, person workflows, card enrollment, validation and authorized personalization.
+[OpenPhysical Issuer Studio](https://github.com/OpenPhysical/OpenPhysical.Issuer.Studio) owns manufacturing and production issuance. Both use Issuance Server for authority and card changes.
+
+The [cross-product specification](https://github.com/OpenPhysical/OpenPhysical.Net/blob/studio-release/docs/architecture/studio-products.md) defines the current boundaries and release requirements.
+
 ## Choose your capabilities
 
 The libraries target **.NET 10**.
@@ -28,12 +36,21 @@ The libraries target **.NET 10**.
 - **OpenPhysical.Biometrics.Imaging** provides owned image buffers and Skia-backed
   decoding, encoding, and transforms.
 - **OpenPhysical.Biometrics.Tool** installs `biotool` for portrait preparation, text/JSON inspection, and selected-view template conversion.
+- **OpenPhysical.Biometrics.Capture.Camera** provides owned native webcam frames
+  behind a Result-based, cancellable camera interface.
+- **OpenPhysical.Biometrics.Packages** provides the versioned enrollment-envelope codec, v1 migration input and shared private atomic file transactions.
+- **OpenPhysical.Biometrics.Presentation** provides the shared theme, controls,
+  encrypted package import and privacy lock, without capture or signing services.
 
 [NIST NBIS bindings](https://github.com/OpenPhysical/OpenPhysical.Biometrics.NBIS)
 provide MINDTCT extraction and Bozorth3 comparison. The independently versioned
 [NFIQ bindings](https://github.com/OpenPhysical/OpenPhysical.Biometrics.NFIQ) provide the original five-level NFIQ 1 assessment and the NFIQ 2
 unified quality score. Each algorithm package carries its native runtime assets,
 source provenance, model identity, and upstream notices.
+
+## Desktop application
+
+Capture, enrollment and operator instructions are maintained in the [Enrollment Studio repository](https://github.com/OpenPhysical/OpenPhysical.Enrollment.Studio). These libraries do not depend on that application.
 
 ## Read and inspect a fingerprint record
 
@@ -123,7 +140,9 @@ produce a changed record while keeping the original available for comparison or
 re-encoding. [The workflow guide](docs/FINGERPRINT-WORKFLOWS.md) shows explicit
 finger/view selection, enrollment, and paired/different-finger comparisons.
 
-## Connect a signing service
+## Library integration with an issuer signing service
+
+This is a caller-supplied library integration, not a signing feature in Biometric Studio. Issuer services own private credential keys, certificate authorization and card writes.
 
 Implement `IBiometricSignatureProvider` and `IBiometricSignatureVerifier` in the
 application's cryptographic integration. The request contains the exact CBEFF
@@ -170,15 +189,19 @@ transforms.
 
 ## Build and develop
 
-The workspace development feed uses sibling checkouts of
-`OpenPhysical.Biometrics.NBIS` and `OpenPhysical.Biometrics.NFIQ`. Build their native
-runtimes and packages first, then run:
+This repository restores the pinned NBIS and NFIQ NuGet packages from the
+configured package feed. CI restores locked package versions in an isolated
+clone. Test projects restore the private, immutable
+`OpenPhysical.Biometrics.TestFixtures` package from GitHub Packages. Its source
+snapshots and hashes remain in this repository. Configure package access as
+described in [build and release](docs/BUILD_AND_RELEASE.md).
 
 ```sh
-python scripts/build-development-dependencies.py
 dotnet tool restore
+python3 scripts/verify-test-fixture-package.py
+dotnet restore OpenPhysical.Biometrics.sln --locked-mode
 dotnet build OpenPhysical.Biometrics.sln -c Release -m:1
-dotnet test OpenPhysical.Biometrics.sln -c Release --no-build -m:1
+dotnet test OpenPhysical.Biometrics.sln -c Release --no-build --no-restore -m:1
 ```
 
 Run .NET builds and tests serially. CSharpier, public XML documentation, analyzers,
@@ -186,20 +209,15 @@ and warnings-as-errors are build gates. Native algorithm tests live with their
 bindings; NUnit covers the managed workflows and integrations.
 
 Release packages use the pinned NBIS and NFIQ package versions in
-`Directory.Build.props`. The CLI release gate requires native assets for all
-five supported runtimes. Local package verification uses the explicit
-`AllowPartialBiometricRuntimes=true` override and exercises the current host:
-
-```sh
-python scripts/test-package.py
-```
+`Directory.Build.props`. Package validation is documented in
+[`docs/RELEASING.md`](docs/RELEASING.md).
 
 The [validation record](docs/VALIDATION_SUMMARY.md) lists exercised workflows and
-reproduction commands. The [architecture guide](docs/ARCHITECTURE.md) explains package ownership and the
-OpenPhysical.Middleware/Pivantra migration sequence.
+reproduction commands. The [architecture guide](docs/ARCHITECTURE.md) explains package ownership, the
+current capture/issuance boundary and the historical package-extraction sequence.
 
-The [beta release guide](docs/RELEASING.md) describes the signed tags, complete
-package artifacts, and publication order.
+The [build and release guide](docs/BUILD_AND_RELEASE.md) documents package feed
+access, isolated CI and fixture provenance.
 
 ## Licensing and contributions
 

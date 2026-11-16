@@ -41,8 +41,42 @@ public sealed class FingerprintComparisonService
             )
             .Bind(() => reference.ToMatchingTemplate(finger, viewNumber))
             .Bind(template =>
+                FingerprintEdge
+                    .Try(
+                        () => engine.Extract(probe.Image),
+                        FingerprintErrorCodes.EngineFailed,
+                        "The fingerprint engine failed."
+                    )
+                    .Bind(extracted => Compare(extracted, probe.Finger, template, finger, policy))
+            );
+
+    /// <summary>Compares reusable templates without extracting either source image again.</summary>
+    /// <param name="probe">Selected probe template, converted from the canonical exported view when available.</param>
+    /// <param name="probeFinger">The finger selected for the probe template.</param>
+    /// <param name="reference">Selected reference template in the same nominal 500 ppi NBIS coordinates.</param>
+    /// <param name="referenceFinger">The finger selected for the reference template.</param>
+    /// <param name="policy">The application's explicit versioned matching policy.</param>
+    /// <returns>The raw score and policy decision, or an invalid finger, mismatch or engine failure.</returns>
+    public Result<FingerprintComparisonResult, FingerprintError> Compare(
+        FingerprintTemplate probe,
+        FingerPosition probeFinger,
+        FingerprintTemplate reference,
+        FingerPosition referenceFinger,
+        FingerprintMatchingPolicy policy
+    ) =>
+        FingerprintChecks
+            .Finger(probeFinger)
+            .Bind(() => FingerprintChecks.Finger(referenceFinger))
+            .Bind(() =>
+                FingerprintChecks.Require(
+                    probeFinger == referenceFinger,
+                    FingerprintErrorCodes.FingerMismatch,
+                    "The probe and selected reference fingers must agree."
+                )
+            )
+            .Bind(() =>
                 FingerprintEdge.Try(
-                    () => engine.Match(engine.Extract(probe.Image), template),
+                    () => engine.Match(probe, reference),
                     FingerprintErrorCodes.EngineFailed,
                     "The fingerprint engine failed."
                 )

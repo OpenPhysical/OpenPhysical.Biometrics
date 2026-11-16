@@ -1,0 +1,47 @@
+<Window
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:OpenPhysical.Biometrics.Desktop"
+    x:Class="OpenPhysical.Biometrics.Desktop.PackageUnlockWindow"
+    x:DataType="local:PackageProtectionViewModel"
+    Title="Package protection"
+    Width="460"
+    Height="440"
+    CanResize="False"
+    WindowStartupLocation="CenterOwner"
+>
+    <Grid Margin="24" RowDefinitions="*,Auto" RowSpacing="16">
+        <StackPanel Spacing="12">
+            <TextBlock Classes="section" Text="Protect biometric packages" />
+            <TextBlock
+                Classes="caption"
+                Text="Use at least 15 characters. A forgotten passphrase cannot be recovered."
+                TextWrapping="Wrap"
+            />
+            <TextBlock Text="Passphrase" />
+            <TextBox
+                Text="{Binding Passphrase}"
+                PasswordChar="●"
+                AutomationProperties.Name="Package passphrase"
+            />
+            <StackPanel IsVisible="{Binding ConfirmRequired}" Spacing="8">
+                <TextBlock Text="Confirm passphrase" />
+                <TextBox
+                    Text="{Binding Confirmation}"
+                    PasswordChar="●"
+                    AutomationProperties.Name="Confirm package passphrase"
+                />
+            </StackPanel>
+            <TextBlock
+                Text="{Binding Status}"
+                Classes="caption"
+                TextWrapping="Wrap"
+                AutomationProperties.LiveSetting="Polite"
+            />
+        </StackPanel>
+        <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+            <Button Classes="Flat" Content="Cancel" Click="Cancel" />
+            <Button Content="Unlock" Command="{Binding UnlockCommand}" />
+        </StackPanel>
+    </Grid>
+</Window>

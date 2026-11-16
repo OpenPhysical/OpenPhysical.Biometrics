@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 namespace OpenPhysical.Biometrics.Facial.Tests;
 
+using System.Buffers.Binary;
 using AwesomeAssertions;
 using CSharpFunctionalExtensions.AwesomeAssertions;
 using NUnit.Framework;
@@ -42,8 +43,8 @@ internal sealed class PortraitDecodingTests
     public void ExifOrientationDefinesTheReviewedCoordinateSpace(int orientation)
     {
         var jpeg = GradientJpeg();
-        var plain = PortraitDecoder.Decode(jpeg).Value;
-        var decoded = PortraitDecoder.Decode(WithOrientation(jpeg, orientation));
+        var plain = PortraitImage.Decode(jpeg).Value;
+        var decoded = PortraitImage.Decode(WithOrientation(jpeg, orientation));
         decoded.Should().Succeed();
         var actual = decoded.Value;
         actual.Width.Should().Be(orientation >= 5 ? 5 : 8);
@@ -64,9 +65,9 @@ internal sealed class PortraitDecodingTests
             };
             for (var c = 0; c < 3; c++)
                 actual
-                    .Rgb[(dy * actual.Width + dx) * 3 + c]
+                    .RgbPixels[(dy * actual.Width + dx) * 3 + c]
                     .Should()
-                    .Be(plain.Rgb[(y * 8 + x) * 3 + c]);
+                    .Be(plain.RgbPixels[(y * 8 + x) * 3 + c]);
         }
     }
 
@@ -85,22 +86,22 @@ internal sealed class PortraitDecodingTests
         }
         using var image = SKImage.FromBitmap(bitmap);
         using var encoded = image.Encode(SKEncodedImageFormat.Png, 100);
-        var decoded = PortraitDecoder.Decode(encoded.ToArray());
+        var decoded = PortraitImage.Decode(encoded.ToArray());
         decoded.Should().Succeed();
         // Half-intensity linear light maps to about 188 in 8-bit sRGB.
-        decoded.Value.Rgb[0].Should().BeInRange(186, 190);
+        decoded.Value.RgbPixels[0].Should().BeInRange(186, 190);
     }
 
     [Test]
     public void EmptyAndMalformedBytesFailWithStableCodes()
     {
-        PortraitDecoder
+        PortraitImage
             .Decode([])
             .Should()
             .Fail()
             .Which.Code.Should()
             .Be(FacialErrorCodes.EncodedImageSize);
-        PortraitDecoder
+        PortraitImage
             .Decode([1, 2, 3])
             .Should()
             .Fail()
@@ -117,11 +118,42 @@ internal sealed class PortraitDecodingTests
         bitmap.Erase(new SKColor(10, 20, 30, 100));
         using var image = SKImage.FromBitmap(bitmap);
         using var encoded = image.Encode(SKEncodedImageFormat.Png, 100);
-        PortraitDecoder
+        PortraitImage
             .Decode(encoded.ToArray())
             .Should()
             .Fail()
             .Which.Code.Should()
             .Be(FacialErrorCodes.ImageNotOpaque);
+    }
+
+    [Test]
+    public void OversizedImageHeaderFailsBeforeAllocatingItsPixelBuffer()
+    {
+        using var bitmap = new SKBitmap(1, 1);
+        bitmap.Erase(SKColors.White);
+        using var image = SKImage.FromBitmap(bitmap);
+        using var encoded = image.Encode(SKEncodedImageFormat.Png, 100);
+        var bytes = encoded.ToArray();
+        BinaryPrimitives.WriteInt32BigEndian(bytes.AsSpan(16, 4), 10000);
+        BinaryPrimitives.WriteInt32BigEndian(bytes.AsSpan(20, 4), 10000);
+        BinaryPrimitives.WriteUInt32BigEndian(bytes.AsSpan(29, 4), PngCrc(bytes.AsSpan(12, 17)));
+        PortraitImage
+            .Decode(bytes)
+            .Should()
+            .Fail()
+            .Which.Code.Should()
+            .Be(FacialErrorCodes.ImageDimensionsExceeded);
+    }
+
+    private static uint PngCrc(ReadOnlySpan<byte> bytes)
+    {
+        var crc = uint.MaxValue;
+        foreach (var value in bytes)
+        {
+            crc ^= value;
+            for (var bit = 0; bit < 8; bit++)
+                crc = (crc >> 1) ^ ((crc & 1) != 0 ? 0xedb88320u : 0u);
+        }
+        return ~crc;
     }
 }

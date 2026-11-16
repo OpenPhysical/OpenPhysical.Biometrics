@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "projects": [
+    "src/OpenPhysical.Biometrics/OpenPhysical.Biometrics.csproj",
+    "src/OpenPhysical.Biometrics.Capture/OpenPhysical.Biometrics.Capture.csproj",
+    "src/OpenPhysical.Biometrics.Capture.Camera/OpenPhysical.Biometrics.Capture.Camera.csproj",
+    "src/OpenPhysical.Biometrics.Capture.Futronic/OpenPhysical.Biometrics.Capture.Futronic.csproj",
+    "src/OpenPhysical.Biometrics.Capture.Usb/OpenPhysical.Biometrics.Capture.Usb.csproj",
+    "src/OpenPhysical.Biometrics.Facial/OpenPhysical.Biometrics.Facial.csproj",
+    "src/OpenPhysical.Biometrics.Fingerprints/OpenPhysical.Biometrics.Fingerprints.csproj",
+    "src/OpenPhysical.Biometrics.Fingerprints.Nfiq2/OpenPhysical.Biometrics.Fingerprints.Nfiq2.csproj",
+    "src/OpenPhysical.Biometrics.Formats/OpenPhysical.Biometrics.Formats.csproj",
+    "src/OpenPhysical.Biometrics.Imaging/OpenPhysical.Biometrics.Imaging.csproj",
+    "src/OpenPhysical.Biometrics.Onnx/OpenPhysical.Biometrics.Onnx.csproj",
+    "src/OpenPhysical.Biometrics.Packages/OpenPhysical.Biometrics.Packages.csproj",
+    "src/OpenPhysical.Biometrics.Piv/OpenPhysical.Biometrics.Piv.csproj",
+    "src/OpenPhysical.Biometrics.Presentation/OpenPhysical.Biometrics.Presentation.csproj"
+  ]
+}

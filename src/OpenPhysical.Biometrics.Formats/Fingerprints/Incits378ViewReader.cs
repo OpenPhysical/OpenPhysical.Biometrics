@@ -11,24 +11,26 @@ internal static class Incits378ViewReader
 {
     internal static Result<ImmutableArray<FingerprintView>, FormatError> ReadViews(
         BinaryFormatReader reader,
-        Incits378Header header
+        Incits378Header header,
+        FingerprintParsePolicy policy
     ) =>
         ParseSteps.Repeat<FingerprintView>(
             header.ViewCount,
-            previous => ReadView(reader, header, previous)
+            previous => ReadView(reader, header, previous, policy)
         );
 
     private static Result<FingerprintView, FormatError> ReadView(
         BinaryFormatReader reader,
         Incits378Header header,
-        IReadOnlyList<FingerprintView> previous
+        IReadOnlyList<FingerprintView> previous,
+        FingerprintParsePolicy policy
     )
     {
         var path = $"Views[{previous.Count}]";
         return ReadViewHeader(reader, path, previous)
             .Bind(view =>
                 Incits378MinutiaReader
-                    .Read(reader, header, path, view.MinutiaCount)
+                    .Read(reader, header, path, view.MinutiaCount, policy)
                     .Bind(minutiae =>
                         Incits378ExtendedReader
                             .Read(reader, path, view.MinutiaCount)

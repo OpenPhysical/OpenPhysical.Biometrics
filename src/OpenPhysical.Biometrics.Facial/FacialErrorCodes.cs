@@ -4,6 +4,33 @@ namespace OpenPhysical.Biometrics.Facial;
 /// <summary>Defines the stable error codes returned by facial operations.</summary>
 public static class FacialErrorCodes
 {
+    /// <summary>The background-editing parameters are outside their supported bounds.</summary>
+    public const string InvalidBackgroundPolicy = "InvalidBackgroundPolicy";
+
+    /// <summary>The person mask does not belong to the exact source-supported portrait.</summary>
+    public const string BackgroundMaskMismatch = "BackgroundMaskMismatch";
+
+    /// <summary>The person segmentation model returned invalid dimensions or probabilities.</summary>
+    public const string SegmentationOutput = "SegmentationOutput";
+
+    /// <summary>A confidence sample is outside the mask's source-image coordinates.</summary>
+    public const string MaskSampleOutsideSource = "MaskSampleOutsideSource";
+
+    /// <summary>Capture override evidence is ineligible, stale or bound to another source.</summary>
+    public const string InvalidCaptureOverride = "InvalidCaptureOverride";
+
+    /// <summary>Source image checks still require correction, recapture or an explicit allowed override.</summary>
+    public const string CaptureReviewRequired = "CaptureReviewRequired";
+
+    /// <summary>Crown and ear measurements still need review.</summary>
+    public const string GeometryReviewRequired = "GeometryReviewRequired";
+
+    /// <summary>The mouth assessment policy is outside its supported range.</summary>
+    public const string InvalidMouthPolicy = "InvalidMouthPolicy";
+
+    /// <summary>Landmark geometry or numerical estimation cannot support a source pose measurement.</summary>
+    public const string PoseUnassessable = "PoseUnassessable";
+
     /// <summary>The service has been disposed.</summary>
     public const string Disposed = "Disposed";
 

@@ -27,6 +27,33 @@ public static class RgbImageBytes
         return Result.Success<RgbImage, ImagingError>(RgbImage.Adopt(pixels, width, height));
     }
 
+    /// <summary>Owns opaque sRGB samples from top-down BGRA rows, excluding row padding.</summary>
+    /// <param name="data">Complete rows in blue, green, red, alpha order.</param>
+    /// <param name="width">Positive source width, without resampling.</param>
+    /// <param name="height">Positive source height.</param>
+    /// <param name="rowBytes">Actual bytes between row starts.</param>
+    /// <returns>An independent opaque image, or an invalid geometry/buffer failure.</returns>
+    public static Result<RgbImage, ImagingError> FromBgraBytes(
+        ReadOnlySpan<byte> data,
+        int width,
+        int height,
+        int rowBytes
+    )
+    {
+        if (!RgbImage.DimensionsValid(width, height))
+            return ImagingErrors.InvalidDimensions();
+        if (rowBytes < (long)width * 4 || data.Length < (long)rowBytes * height)
+            return ImagingErrors.RgbLengthMismatch();
+        var pixels = new RgbaPixel[width * height];
+        for (var y = 0; y < height; y++)
+        for (var x = 0; x < width; x++)
+        {
+            var offset = y * rowBytes + x * 4;
+            pixels[y * width + x] = new(data[offset + 2], data[offset + 1], data[offset]);
+        }
+        return RgbImage.Adopt(pixels, width, height);
+    }
+
     /// <summary>Copies tightly packed RGBA samples in row-major order.</summary>
     /// <param name="image">Image to copy.</param>
     /// <returns>Four bytes per pixel owned by the caller, or a disposed failure.</returns>

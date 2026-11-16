@@ -35,10 +35,12 @@ internal static class FingerprintGeometry
         new(
             (byte)point.Type,
             (ushort)point.X,
-            (ushort)(height - point.Y),
+            (ushort)ToImageRow(point, height),
             (byte)(ReverseDirection(point.Angle) / 2),
             (byte)point.Quality
         );
+
+    internal static int ToImageRow(MatchingMinutia point, int height) => height - point.Y;
 
     private static int ReverseDirection(int degrees) => (degrees + 180) % 360;
 }

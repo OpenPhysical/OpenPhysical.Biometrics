@@ -1,0 +1,61 @@
+{
+  "source": "NIST NFIQ2 v2.3.0 release examples",
+  "upstream_commit": "76b8c4e0b0541f3deab832b1a496e524edc0b5b6",
+  "vectors": [
+    {
+      "id": "SFinGe_Test01",
+      "raw": "SFinGe_Test01.gray8",
+      "width": 416,
+      "height": 560,
+      "dots_per_inch": 500,
+      "score": 54,
+      "source_pgm_sha256": "827e1485f6cd267dc280cf2f30af19759764ff421d62c3396ffe14738553faa9",
+      "raw_sha256": "41ea2ab829f726b36fbafa427c8adc3f9bc5d52c2651c1e5e1ef1bdce32f3f40",
+      "expected_output_sha256": "d928292e033a34ca923086f5092a94507a90365f9f1f46319ffb10b7758d57ae"
+    },
+    {
+      "id": "SFinGe_Test02",
+      "raw": "SFinGe_Test02.gray8",
+      "width": 416,
+      "height": 560,
+      "dots_per_inch": 500,
+      "score": 45,
+      "source_pgm_sha256": "587f6f853ac210c6b33864e8d6772ad54f721ad603fbba96dd4d6e4079390f94",
+      "raw_sha256": "4628500a01c7206935792b6f0df97cd9ed205f5cf09e4c2bbf9c35755461fe1b",
+      "expected_output_sha256": "76858551991e127155032a91f4154270eb68b2c45a3bfbb43dfb79c20c476521"
+    },
+    {
+      "id": "SFinGe_Test03",
+      "raw": "SFinGe_Test03.gray8",
+      "width": 416,
+      "height": 560,
+      "dots_per_inch": 500,
+      "score": 53,
+      "source_pgm_sha256": "457f046d6662b7042150ab3269990e949fb7856a5e875aaaf72683684801b6b9",
+      "raw_sha256": "5b47e33b673cc09c456067743eaf16ec2c3ac3984d66cc81ee75c938aef45b6d",
+      "expected_output_sha256": "323518cfb3270282f9094a5111870ef943f643fca9e4879fbe246ba2954343de"
+    },
+    {
+      "id": "SFinGe_Test04",
+      "raw": "SFinGe_Test04.gray8",
+      "width": 416,
+      "height": 560,
+      "dots_per_inch": 500,
+      "score": 52,
+      "source_pgm_sha256": "04a2c3279fdbd5f1e1667f9ded3b904f6a57bf8e869cc6e4eff0373d783152af",
+      "raw_sha256": "85f1d6100e9a73910bd2b937edadd2cb67200f0ba33e1b1081fac628a54b74aa",
+      "expected_output_sha256": "c2fb883066d8d9e5a87f62e6d85f54b09991362ba6f77810f4314714e830a070"
+    },
+    {
+      "id": "SFinGe_Test05",
+      "raw": "SFinGe_Test05.gray8",
+      "width": 416,
+      "height": 560,
+      "dots_per_inch": 500,
+      "score": 57,
+      "source_pgm_sha256": "75634e306e6b0fa4456bb1bc0eda5a59151d87831bf6f15fa79b2a70b6946293",
+      "raw_sha256": "cff9aa055c198763998cfb36dae19943521c99de0c6df4422df0e87c5cd48c61",
+      "expected_output_sha256": "c3b1e888d5876d0c3228b9bc1246bfde1659124b9b5a2c5bcdbb22ddbd865f24"
+    }
+  ]
+}

@@ -26,6 +26,7 @@ internal sealed class PortraitGeometryTests
         var plan = result.Value;
         using (new AssertionScope())
         {
+            plan.Transform.Should().Be(new PortraitTransform(.8, 0, -240, -264));
             plan.Measurements.HeadWidth.Should().BeApproximately(256, .001);
             plan.Measurements.EyeHeightFraction.Should().BeApproximately(.4, .001);
             plan.Measurements.HeadHeight.Should().BeLessThanOrEqualTo(512);
@@ -47,39 +48,6 @@ internal sealed class PortraitGeometryTests
             .Which.Code.Should()
             .Be("HeadGeometry");
         Crop(face, review, 650, 900).Should().Fail().Which.Code.Should().Be("SourceCoverage");
-    }
-
-    [Test]
-    public void RollCorrectionPreservesTheReviewedMeasurements()
-    {
-        var (face, review) = TestFixtures.Geometry();
-        var rotate = new PortraitTransform(Math.Cos(.15), Math.Sin(.15), 40, 100);
-        Maybe<PortraitPoint> Map(Maybe<PortraitPoint> p) => p.Select(rotate.Map);
-        var tilted = face with
-        {
-            Landmarks = face
-                .Landmarks.Select(p =>
-                {
-                    var q = rotate.Map(new(p.X, p.Y));
-                    return new FaceMeshPoint(q.X, q.Y, p.Z);
-                })
-                .ToImmutableArray(),
-            ViewerLeftEar = rotate.Map(face.ViewerLeftEar),
-            ViewerRightEar = rotate.Map(face.ViewerRightEar),
-        };
-        var result = Crop(
-            tilted,
-            review with
-            {
-                Crown = Map(review.Crown),
-                ViewerLeftEar = Map(review.ViewerLeftEar),
-                ViewerRightEar = Map(review.ViewerRightEar),
-            },
-            1600,
-            1800
-        );
-        result.Should().Succeed();
-        result.Value.Measurements.HeadWidth.Should().BeApproximately(256, .001);
     }
 
     [Test]

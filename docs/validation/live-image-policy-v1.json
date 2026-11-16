@@ -1,0 +1,17 @@
+{
+  "SchemaVersion": 1,
+  "Passed": false,
+  "Threshold": 40,
+  "Cohort": "FVC2002 DB1_B: 80 impressions, 10 published finger IDs",
+  "GenuinePairs": 280,
+  "ImpostorPairs": 2880,
+  "Original": { "GenuineAccepted": 230, "ImpostorAccepted": 0 },
+  "Processed": { "GenuineAccepted": 176, "ImpostorAccepted": 0 },
+  "UnavailableProcessedImages": 2,
+  "PreprocessingPolicyDigest": "de8699e1fee932842a77714929234aaf89048bb2e950d31fec99c4a471e9b27e",
+  "ContactPolicyDigest": "aaf0291f83c24e468b6ae31de1fcb6299a790d05ce1bf104e2e3eb47b771735b",
+  "IdentityLimit": "Finger IDs are published; person grouping and cross-dataset person disjointness are not verifiable.",
+  "SelectionLimit": "Single-image policy validation. This is not a temporal FS50 burst study.",
+  "SourceReport": "docs/validation/fvc2002-default-initial-20261110.json",
+  "SourceHashes": {}
+}

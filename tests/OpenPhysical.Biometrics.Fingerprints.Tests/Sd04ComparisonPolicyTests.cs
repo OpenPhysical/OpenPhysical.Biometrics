@@ -9,7 +9,6 @@ using CSharpFunctionalExtensions.AwesomeAssertions;
 using NUnit.Framework;
 using OpenPhysical.Biometrics.Formats.Fingerprints;
 using OpenPhysical.Biometrics.NBIS;
-using OpenPhysical.Biometrics.NBIS.Fixtures;
 
 [TestFixture]
 internal sealed class Sd04ComparisonPolicyTests
@@ -19,7 +18,9 @@ internal sealed class Sd04ComparisonPolicyTests
         .Create("sd04-assortment-regression-v1", 40)
         .Value;
     private readonly Lazy<Sd04Fixtures> lazyFixtures = new(() =>
-        new(Path.Combine(TestContext.CurrentContext.TestDirectory, "Fixtures", "sd04"))
+        Sd04Fixtures
+            .Load(Path.Combine(TestContext.CurrentContext.TestDirectory, "Fixtures", "sd04"))
+            .Value
     );
     private readonly Lazy<FingerprintRecord> lazyReference;
 
@@ -32,7 +33,9 @@ internal sealed class Sd04ComparisonPolicyTests
 
     private FingerprintRecord PrepareTwoFingerReferenceFromRealCaptures()
     {
-        var enrollment = new PivFingerprintEnrollmentService(engine, new FixtureQuality());
+        var enrollment = new PivFingerprintEnrollmentService(
+            new FingerprintPreparationService(engine, new FixtureQuality())
+        );
         return enrollment
             .CreateRecord(
                 enrollment.Prepare(Capture(Image("f0005_03"), FingerPosition.RightMiddle)).Value,
@@ -57,8 +60,8 @@ internal sealed class Sd04ComparisonPolicyTests
         // native tests own exact extraction and all ordered score baselines.
         // Capture metadata states the claimed reference finger. The nonmate
         // images come from other actual SD04 fingers, including the other view.
-        var probeImage = Image(imageId).Load();
-        var galleryImage = Image("f0005_03").Load();
+        var probeImage = Image(imageId).Load().Value;
+        var galleryImage = Image("f0005_03").Load().Value;
         var probePixels = probeImage.Pixels.ToArray();
         var galleryPixels = galleryImage.Pixels.ToArray();
         var referenceBytes = Incits378Codec.Write(reference).Value;
@@ -86,7 +89,7 @@ internal sealed class Sd04ComparisonPolicyTests
     [Test]
     public void EvenDegreeReferencePointsPreserveGeometryAndMatchScoreThroughCanonicalConversion()
     {
-        var source = engine.Extract(Image("f0005_03").Load());
+        var source = engine.Extract(Image("f0005_03").Load().Value);
         // Even-degree directions map exactly to the two-degree interchange grid.
         // Restricting this fixture subset makes round-trip equality meaningful.
         var points = source.Minutiae.Where(point => point.Angle % 2 == 0).ToArray();
@@ -117,7 +120,7 @@ internal sealed class Sd04ComparisonPolicyTests
         );
         var converted = record.ToMatchingTemplate(FingerPosition.RightMiddle, 0).Value;
         converted.Minutiae.Should().Equal(subset.Minutiae);
-        var gallery = engine.Extract(Image("s0005_03").Load());
+        var gallery = engine.Extract(Image("s0005_03").Load().Value);
         engine.Match(converted, gallery).Should().Be(engine.Match(subset, gallery));
     }
 
@@ -177,7 +180,7 @@ internal sealed class Sd04ComparisonPolicyTests
 
     private static FingerprintCapture Capture(Sd04Image image, FingerPosition finger)
     {
-        var capture = image.Load();
+        var capture = image.Load().Value;
         return FingerprintCapture
             .Create(
                 capture.Pixels,
@@ -196,7 +199,7 @@ internal sealed class Sd04ComparisonPolicyTests
     private sealed class FixtureQuality : IFingerprintQualityProvider
     {
         public Result<FingerprintQualityAssessment, FingerprintError> Assess(
-            FingerprintCapture capture
+            FingerprintImage image
         ) => FingerprintQualityAssessment.Create(2, "sd04-workflow-fixture");
     }
 }

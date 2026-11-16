@@ -61,11 +61,7 @@ public sealed class FingerprintEnrollmentFinger
         FingerprintAvailability availability
     ) =>
         FingerprintChecks
-            .Require(
-                Enum.IsDefined(finger),
-                FingerprintErrorCodes.InvalidFinger,
-                "The finger position is not an ANSI finger code."
-            )
+            .Finger(finger)
             .Bind(() =>
                 FingerprintChecks.Require(
                     availability

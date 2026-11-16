@@ -14,7 +14,8 @@ internal static class Incits378Reader
 
     internal static Result<FingerprintRecord, FormatError> ReadRecord(
         BinaryFormatReader reader,
-        int totalLength
+        int totalLength,
+        FingerprintParsePolicy policy
     ) =>
         reader
             .Expect(
@@ -36,7 +37,9 @@ internal static class Incits378Reader
             .Bind(() => ReadRecordLength(reader, totalLength))
             .Bind(() => ReadHeader(reader))
             .Bind(header =>
-                Incits378ViewReader.ReadViews(reader, header).Map(views => header.ToRecord(views))
+                Incits378ViewReader
+                    .ReadViews(reader, header, policy)
+                    .Map(views => header.ToRecord(views))
             )
             .Check(_ => reader.RequireEnd());
 

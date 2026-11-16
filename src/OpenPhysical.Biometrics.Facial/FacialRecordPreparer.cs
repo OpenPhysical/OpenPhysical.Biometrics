@@ -18,6 +18,48 @@ public sealed class FacialRecordPreparer : IFacialRecordPreparer
     /// <param name="logger">An application logger.</param>
     public FacialRecordPreparer(ILogger<FacialRecordPreparer> logger) => this.logger = logger;
 
+    /// <summary>Prepares one reviewed portrait without duplicating CLI or desktop readiness rules.</summary>
+    /// <param name="portrait">The exact prepared pixels and source-bound head measurements.</param>
+    /// <param name="acquisition">Explicit attended-capture findings.</param>
+    /// <returns>A canonical record or the geometry/acquisition review still required.</returns>
+    public Result<FacialPreparationResult, FacialError> Prepare(
+        PortraitPreparationResult portrait,
+        FacialAcquisitionMetadata acquisition
+    ) => Prepare(portrait, acquisition, FacialPreparationPolicy.StrictPiv);
+
+    /// <inheritdoc/>
+    public Result<FacialPreparationResult, FacialError> Prepare(
+        PortraitPreparationResult portrait,
+        FacialAcquisitionMetadata acquisition,
+        FacialPreparationPolicy policy
+    )
+    {
+        var ready = FacialPortraitReadiness.Check(portrait, policy);
+        if (ready.IsFailure)
+            return Outcome(
+                FacialPreparationStatus.GeometryReviewRequired,
+                acquisition,
+                [new(ready.Error.Code, "Portrait")]
+            );
+        var applied =
+            portrait.Status == PortraitStatus.ReviewRequired ? policy.CaptureOverride : default;
+        var evidence = applied.HasValue
+            ? acquisition with
+            {
+                FullFrontalConfirmed = false,
+            }
+            : acquisition;
+        return PreparePixels(
+                portrait.RgbPixels.AsSpan(),
+                PortraitOutput.Width,
+                PortraitOutput.Height,
+                evidence,
+                policy,
+                applied.HasValue
+            )
+            .Map(result => result with { CaptureOverride = applied });
+    }
+
     /// <summary>Encodes original sRGB pixels and prepares their INCITS 385 record.</summary>
     /// <param name="srgbPixels">Tightly packed sRGB pixels, starting at the top left.</param>
     /// <param name="width">Original width from one through 4096 pixels.</param>
@@ -29,20 +71,40 @@ public sealed class FacialRecordPreparer : IFacialRecordPreparer
         int width,
         int height,
         FacialAcquisitionMetadata acquisition
+    ) =>
+        PreparePixels(
+            srgbPixels,
+            width,
+            height,
+            acquisition,
+            FacialPreparationPolicy.StrictPiv,
+            false
+        );
+
+    private Result<FacialPreparationResult, FacialError> PreparePixels(
+        ReadOnlySpan<byte> srgbPixels,
+        int width,
+        int height,
+        FacialAcquisitionMetadata acquisition,
+        FacialPreparationPolicy policy,
+        bool allowUnconfirmedFrontal
     )
     {
         if (width is < 1 or > 4096 || height is < 1 or > 4096)
             return FacialErrors.InvalidDimensions().Fail<FacialPreparationResult>();
         if (srgbPixels.Length != width * height * 3)
             return FacialErrors.InvalidPixelBuffer().Fail<FacialPreparationResult>();
-        if (!acquisition.FullFrontalConfirmed || !acquisition.OpticalResolutionConfirmed)
+        if (
+            (!acquisition.FullFrontalConfirmed && !allowUnconfirmedFrontal)
+            || (
+                policy.RequireOpticalResolutionConfirmation
+                && !acquisition.OpticalResolutionConfirmed
+            )
+        )
             return Outcome(FacialPreparationStatus.AcquisitionReviewRequired, acquisition, []);
-        if (width <= 420 || acquisition.SourceType is not (2 or 6) || acquisition.Quality > 100)
-            return Outcome(
-                FacialPreparationStatus.ProfileRejected,
-                acquisition,
-                [new("FacialAcquisition", "Capture")]
-            );
+        var metadata = PivBiometricProfile.Validate(Information(width, height, acquisition));
+        if (!metadata.IsEmpty)
+            return Outcome(FacialPreparationStatus.ProfileRejected, acquisition, metadata);
         var encoded = PortraitEncoding.EncodeJpeg2000(srgbPixels, width, height);
         if (encoded.IsSuccess)
             return Profile(encoded.Value, width, height, acquisition);
@@ -68,16 +130,7 @@ public sealed class FacialRecordPreparer : IFacialRecordPreparer
         var face = new FaceImage(
             new FaceInformation(0, 0, 0, 0, 1, 0, 0),
             [],
-            new FaceImageInformation(
-                1,
-                1,
-                (ushort)width,
-                (ushort)height,
-                1,
-                acquisition.SourceType,
-                acquisition.DeviceType,
-                acquisition.Quality
-            ),
+            Information(width, height, acquisition),
             ImmutableArray.Create(encoded)
         );
         var record = new FaceRecord([face]);
@@ -97,6 +150,22 @@ public sealed class FacialRecordPreparer : IFacialRecordPreparer
             []
         ).Succeed();
     }
+
+    private static FaceImageInformation Information(
+        int width,
+        int height,
+        FacialAcquisitionMetadata acquisition
+    ) =>
+        new(
+            1,
+            1,
+            (ushort)width,
+            (ushort)height,
+            1,
+            acquisition.SourceType,
+            acquisition.DeviceType,
+            acquisition.Quality
+        );
 
     private static Result<FacialPreparationResult, FacialError> Outcome(
         FacialPreparationStatus status,

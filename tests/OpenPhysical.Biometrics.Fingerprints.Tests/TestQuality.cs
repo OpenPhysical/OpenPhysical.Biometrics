@@ -4,10 +4,22 @@
 namespace OpenPhysical.Biometrics.Fingerprints.Tests;
 
 using CSharpFunctionalExtensions;
+using OpenPhysical.Biometrics.NBIS;
 
 internal sealed class TestQuality : IFingerprintQualityProvider
 {
-    public Result<FingerprintQualityAssessment, FingerprintError> Assess(
-        FingerprintCapture capture
-    ) => FingerprintQualityAssessment.Create(2, "test-provider");
+    private readonly int nfiq;
+
+    internal TestQuality(int nfiq = 2)
+    {
+        this.nfiq = nfiq;
+    }
+
+    internal int Assessments { get; private set; }
+
+    public Result<FingerprintQualityAssessment, FingerprintError> Assess(FingerprintImage image)
+    {
+        Assessments++;
+        return FingerprintQualityAssessment.Create(nfiq, "test-provider");
+    }
 }

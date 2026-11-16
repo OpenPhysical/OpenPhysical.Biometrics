@@ -13,17 +13,19 @@ internal static class Incits378MinutiaReader
         BinaryFormatReader reader,
         Incits378Header header,
         string path,
-        int count
+        int count,
+        FingerprintParsePolicy policy
     ) =>
         ParseSteps.Repeat<FingerprintMinutia>(
             count,
-            done => ReadMinutia(reader, header, $"{path}.Minutiae[{done.Count}]")
+            done => ReadMinutia(reader, header, $"{path}.Minutiae[{done.Count}]", policy)
         );
 
     private static Result<FingerprintMinutia, FormatError> ReadMinutia(
         BinaryFormatReader reader,
         Incits378Header header,
-        string prefix
+        string prefix,
+        FingerprintParsePolicy policy
     )
     {
         var offset = reader.Offset;
@@ -42,7 +44,7 @@ internal static class Incits378MinutiaReader
         )
             .Check(point =>
                 reader.Require(
-                    IsValid(point.x, point.y, point.angle, point.quality, header),
+                    IsValid(point.x, point.y, point.angle, point.quality, header, policy),
                     "Minutia",
                     "A minutia has an invalid type, coordinate, angle, quality, or reserved bit.",
                     offset,
@@ -63,12 +65,15 @@ internal static class Incits378MinutiaReader
         ushort y,
         byte angle,
         byte quality,
-        Incits378Header header
+        Incits378Header header,
+        FingerprintParsePolicy policy
     ) =>
         (x >> 14) != 3
         && (y & 0xC000) == 0
-        && (x & 0x3FFF) < header.Width
-        && y < header.Height
+        && (
+            policy == FingerprintParsePolicy.PreserveOutOfBoundsMinutiae
+            || ((x & 0x3FFF) < header.Width && y < header.Height)
+        )
         && angle <= 179
         && quality <= 100;
 }

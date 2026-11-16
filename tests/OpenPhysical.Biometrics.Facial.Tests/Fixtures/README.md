@@ -17,3 +17,5 @@ python scripts/generate-portrait-reference.py /path/to/mediapipe-face-mesh-onnx
 The generator verifies the source revision and model hashes before running CPU inference. Tests allow 0.002 model pixels for direct network parity and 2 source pixels for the full pipeline, which uses independently implemented decoding and interpolation.
 
 `maddie.jpeg` is the repository's existing user-supplied photograph of Maddie the cat, retained as a non-human negative control. The fixture remains subject to the original photograph's rights.
+
+`closed-mouth.jpg` is the unmodified January 2025 official portrait of Donald J. Trump by Daniel Torok, downloaded from the Library of Congress image service: https://tile.loc.gov/storage-services/service/pnp/ppbd/11600/11614v.jpg . The catalog identifies it as official White House open content: https://www.loc.gov/pictures/item/2025163294/ . Government-produced White House material is not copyright protected under its published policy: https://www.whitehouse.gov/copyright/ . This fixture tests a closed mouth only; its pose, lighting and background are not asserted to satisfy PIV requirements.

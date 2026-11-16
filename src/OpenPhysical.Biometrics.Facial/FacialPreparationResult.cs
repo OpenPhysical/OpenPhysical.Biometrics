@@ -18,4 +18,23 @@ public sealed record FacialPreparationResult(
     Maybe<FaceRecord> Record,
     FacialAcquisitionMetadata Acquisition,
     ImmutableArray<BiometricProfileDiagnostic> ProfileDiagnostics
-);
+)
+{
+    /// <summary>Gets applied unsigned-staging override evidence, independent of profile and acquisition findings.</summary>
+    public Maybe<FacialCaptureOverride> CaptureOverride { get; init; }
+
+    /// <summary>Gets unconfirmed acquisition evidence separately from encoded-record metadata validation.</summary>
+    public ImmutableArray<BiometricProfileDiagnostic> AcquisitionFindings => Findings(Acquisition);
+
+    private static ImmutableArray<BiometricProfileDiagnostic> Findings(
+        FacialAcquisitionMetadata acquisition
+    )
+    {
+        var findings = ImmutableArray.CreateBuilder<BiometricProfileDiagnostic>();
+        if (!acquisition.FullFrontalConfirmed)
+            findings.Add(new("FullFrontalReviewUnknown", "Acquisition.FullFrontalConfirmed"));
+        if (!acquisition.OpticalResolutionConfirmed)
+            findings.Add(new("OpticalResolutionUnknown", "Acquisition.OpticalResolutionConfirmed"));
+        return findings.ToImmutable();
+    }
+}

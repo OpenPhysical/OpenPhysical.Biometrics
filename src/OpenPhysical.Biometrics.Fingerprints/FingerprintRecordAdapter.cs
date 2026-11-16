@@ -38,18 +38,8 @@ public static class FingerprintRecordAdapter
         byte viewNumber
     ) =>
         FingerprintChecks
-            .Require(
-                Enum.IsDefined(finger),
-                FingerprintErrorCodes.InvalidFinger,
-                "The finger position is not an ANSI finger code."
-            )
-            .Bind(() =>
-                FingerprintChecks.Require(
-                    viewNumber <= 15,
-                    FingerprintErrorCodes.InvalidViewNumber,
-                    "The view number must be from zero through fifteen."
-                )
-            )
+            .Finger(finger)
+            .Bind(() => FingerprintChecks.ViewNumber(viewNumber))
             .Bind(() =>
                 FingerprintChecks.Require(
                     record.XResolution == FingerprintGeometry.NominalPixelsPerCentimeter

@@ -22,17 +22,24 @@ public static class BiometricSignatureWorkflow
         CbeffRecord record,
         BiometricIdentity identity
     ) =>
-        record.Header.FascN.AsSpan().SequenceEqual(identity.FascN.AsSpan())
+        identity.CardUuid == Guid.Empty
+            ? Result.Failure<BiometricSignatureRequest, PivError>(
+                new PivError(
+                    PivErrorCodes.InvalidCardUuid,
+                    "Issuance requires a populated card UUID."
+                )
+            )
+        : record.Header.FascN.AsSpan().SequenceEqual(identity.FascN.AsSpan())
             ? CbeffCodec
                 .GetSignedData(record)
                 .MapError(ToPivError)
                 .Bind(content => BiometricSignatureRequest.Create(content, identity))
-            : Result.Failure<BiometricSignatureRequest, PivError>(
-                new PivError(
-                    PivErrorCodes.HeaderIdentityMismatch,
-                    "The CBEFF header and expected identity must agree."
-                )
-            );
+        : Result.Failure<BiometricSignatureRequest, PivError>(
+            new PivError(
+                PivErrorCodes.HeaderIdentityMismatch,
+                "The CBEFF header and expected identity must agree."
+            )
+        );
 
     /// <summary>Attaches an owned detached block after checking the declared CBEFF length.</summary>
     /// <param name="record">The record containing the exact header previously submitted for signing.</param>

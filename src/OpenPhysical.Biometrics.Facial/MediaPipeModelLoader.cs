@@ -4,11 +4,26 @@
 namespace OpenPhysical.Biometrics.Facial;
 
 using CSharpFunctionalExtensions;
+using Microsoft.ML.OnnxRuntime;
 using OpenPhysical.Biometrics.Onnx;
 
 // Reads packaged ONNX models and verifies their pinned checksums before use.
 internal static class MediaPipeModelLoader
 {
+    internal static Result<InferenceSession, FacialError> OpenSession(
+        string file,
+        string hash,
+        SessionOptions options
+    ) =>
+        Load(file, hash)
+            .Bind(bytes =>
+                FacialEdge.Try(
+                    () => new InferenceSession(bytes, options),
+                    FacialErrorCodes.ModelLoadFailed,
+                    "The packaged MediaPipe model could not be loaded."
+                )
+            );
+
     internal static Result<byte[], FacialError> Load(string file, string hash) =>
         Maybe
             .From(
