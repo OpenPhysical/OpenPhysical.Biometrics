@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "packageId": "OpenPhysical.Biometrics.TestFixtures",
-  "packageVersion": "1.0.0-beta.3",
+  "packageVersion": "1.0.0-dev.20261116.1",
   "testOnly": true,
   "sourceRepositories": [
     {
@@ -240,8 +240,8 @@
     },
     {
       "path": "OpenPhysical.Biometrics.TestFixtures.Package.csproj",
-      "sha256": "16bd508475f14ea099ad7b61c822115214c1c490188268d437c71a9a5021dbd0",
-      "size": 1668
+      "sha256": "d07741e11a26168861b580d759ac9e7c91c899760f8d42e8c532f3c05cb5fab6",
+      "size": 1684
     },
     {
       "path": "README.md",
