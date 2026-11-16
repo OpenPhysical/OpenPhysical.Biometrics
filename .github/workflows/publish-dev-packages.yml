@@ -122,7 +122,7 @@ jobs:
           dotnet build OpenPhysical.Biometrics.sln -c Release --no-restore -m:1 -nr:false -p:UseSharedCompilation=false
           dotnet test OpenPhysical.Biometrics.sln -c Release --no-build --no-restore -m:1 -nr:false --logger "trx;LogFileName=biometrics.trx"
       - name: Check built runtime dependency closure
-        run: python scripts/check-product-boundaries.py --repository . --role biometrics --publish-dir tests
+        run: python scripts/check-product-boundaries.py --repository . --role biometrics --publish-dir artifacts/bin
       - name: Verify the package catalog is DEV-only and pack it
         env:
           SOURCE_COMMIT: ${{ inputs.source_commit }}

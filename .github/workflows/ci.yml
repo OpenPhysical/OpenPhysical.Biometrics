@@ -61,7 +61,7 @@ jobs:
       - name: Build shared biometric libraries and tests
         run: dotnet build OpenPhysical.Biometrics.sln -c Release --no-restore -m:1 -nr:false -p:UseSharedCompilation=false
       - name: Check built test runtime dependency closure
-        run: python scripts/check-product-boundaries.py --repository . --role biometrics --publish-dir tests
+        run: python scripts/check-product-boundaries.py --repository . --role biometrics --publish-dir artifacts/bin
       - name: Run all biometric tests
         run: dotnet test OpenPhysical.Biometrics.sln -c Release --no-build --no-restore -m:1 -nr:false --collect:"XPlat Code Coverage" --logger "trx;LogFileName=${{ matrix.rid }}.trx" --results-directory artifacts/test-results/${{ matrix.rid }}
       - name: Retain test results
