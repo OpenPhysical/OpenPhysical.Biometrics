@@ -30,7 +30,7 @@
         "type": "Direct",
         "requested": "[1.0.1, )",
         "resolved": "1.0.1",
-        "contentHash": "5xfcHfGfY9u1gpVCUH3kv5KZFJkO+Nrpb4wV8ilXAswOiNQ/HUboDCTGWRag+MGudxyPv78674s9rebPbsq4TA==",
+        "contentHash": "cpuFyrRQR0owgOyEYEoC9JHffr4ucrrR8SNFw3SEC0GzqKy0Bv5cMWBmUduyVWPmP/aL9ZRyJ2qSqPGn7LNh3A==",
         "dependencies": {
           "Microsoft.Extensions.DependencyInjection.Abstractions": "10.0.0",
           "Microsoft.Extensions.Logging.Abstractions": "10.0.0"
